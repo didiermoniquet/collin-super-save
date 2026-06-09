@@ -1,0 +1,14 @@
+{
+  "name": "COLLIN · Super Save!",
+  "short_name": "Super Save!",
+  "description": "A toy-box 3D penalty shootout — dive and save!",
+  "start_url": "collin-super-save.html",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#7ec8e3",
+  "theme_color": "#7ec8e3",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
