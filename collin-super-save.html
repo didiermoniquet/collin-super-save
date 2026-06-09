@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Super Save!">
+<meta name="theme-color" content="#7ec8e3">
 <title>COLLIN · Super Save!</title>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Bungee&display=swap" rel="stylesheet">
 <style>
@@ -79,6 +84,12 @@
         cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
   #muteBtn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
   #muteBtn.off{opacity:.55}
+  #fsBtn{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));
+        z-index:11;width:46px;height:46px;line-height:1;
+        border:3px solid var(--ink);border-radius:14px;background:var(--card);font-size:21px;
+        cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
+  #fsBtn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
+  #fsBtn.on{background:var(--toy-blue);color:#fff}
   #finalStats{font-family:'Bungee';font-size:22px;color:var(--toy-blue);margin-top:6px}
   .hidden{display:none!important}
 
@@ -94,7 +105,7 @@
     .badge{padding:4px 9px;min-width:0}
     .badge .val{font-size:18px}.badge .lbl{font-size:9px}
     #lives{margin-top:2px}.glove{width:13px;height:13px}
-    #muteBtn{width:38px;height:38px;font-size:16px}
+    #muteBtn,#fsBtn{width:38px;height:38px;font-size:17px}
     .panel{padding:14px 24px;transform:none}
     .panel h1{font-size:clamp(22px,6vw,32px)}
     .panel p{margin:6px 0 3px;font-size:12.5px;line-height:1.35}
@@ -119,6 +130,7 @@
 <div id="flash"></div>
 
 <button id="muteBtn" aria-label="Toggle sound">🔊</button>
+<button id="fsBtn" aria-label="Fullscreen" title="Fullscreen">⛶</button>
 
 <div id="pad">
   <button data-z="0">↖<small>Q</small></button>
@@ -1127,6 +1139,20 @@ muteBtn.addEventListener('click', ()=>{
   muteBtn.classList.toggle('off', !soundOn);
   if(soundOn) initAudio();           // (re)create the context if needed, on this user gesture
 });
+
+/* fullscreen toggle (works in-browser on Android/desktop; iPhone Safari has no
+   Fullscreen API — those users can "Add to Home Screen" for a fullscreen launch) */
+const fsBtn = document.getElementById('fsBtn'), root = document.documentElement;
+const reqFS = root.requestFullscreen || root.webkitRequestFullscreen;
+const exitFS = document.exitFullscreen || document.webkitExitFullscreen;
+const fsOn = ()=> document.fullscreenElement || document.webkitFullscreenElement;
+if(!reqFS){ fsBtn.style.display = 'none'; }   // unsupported (e.g. iPhone Safari)
+else fsBtn.addEventListener('click', ()=>{
+  if(fsOn()) exitFS.call(document); else reqFS.call(root);
+});
+const syncFS = ()=> fsBtn.classList.toggle('on', !!fsOn());
+document.addEventListener('fullscreenchange', syncFS);
+document.addEventListener('webkitfullscreenchange', syncFS);
 
 /* =====================================================
    LOOP
