@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COLLIN · Super Save!</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Bungee&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --grass:#5cae2f; --grass-dark:#4d9a26;
+    --toy-orange:#ff5a1f; --toy-pink:#ff5fb4; --toy-blue:#1f6bff;
+    --toy-yellow:#d8ff2e; --ink:#1b1b1f; --card:#fffdf6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;font-family:'Fredoka',sans-serif;background:#7ec8e3;user-select:none}
+  #c{position:fixed;inset:0;display:block}
+
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;
+       align-items:flex-start;padding:14px 16px;pointer-events:none;z-index:5}
+  .badge{background:var(--card);border:3px solid var(--ink);border-radius:16px;
+         padding:8px 16px;box-shadow:0 4px 0 var(--ink);text-align:center;min-width:96px}
+  .badge .lbl{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888}
+  .badge .val{font-family:'Bungee',cursive;font-size:26px;line-height:1;color:var(--ink)}
+  #saves .val{color:var(--toy-blue)} #streak .val{color:var(--toy-orange)}
+  #lives{display:flex;gap:6px;justify-content:center;margin-top:4px}
+  .glove{width:18px;height:18px;border-radius:50% 50% 40% 40%;background:var(--toy-blue);
+         border:2px solid var(--ink);transition:all .3s}
+  .glove.lost{background:#ccc;opacity:.4;transform:scale(.8)}
+
+  /* ---------- flash text ---------- */
+  #flash{position:fixed;top:34%;left:50%;transform:translate(-50%,-50%) scale(0) rotate(-6deg);
+         font-family:'Bungee',cursive;font-size:clamp(44px,9vw,96px);z-index:6;pointer-events:none;
+         -webkit-text-stroke:3px var(--ink);text-shadow:0 6px 0 var(--ink);opacity:0}
+  #flash.pop{animation:pop .9s cubic-bezier(.2,1.6,.4,1) forwards}
+  @keyframes pop{0%{transform:translate(-50%,-50%) scale(0) rotate(-6deg);opacity:0}
+    18%{transform:translate(-50%,-50%) scale(1.15) rotate(2deg);opacity:1}
+    30%{transform:translate(-50%,-50%) scale(1) rotate(-1deg)}
+    75%{opacity:1}100%{transform:translate(-50%,-46%) scale(1.05);opacity:0}}
+
+  /* ---------- dive pad (mobile + click) ---------- */
+  #pad{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+       display:grid;grid-template-columns:repeat(3,72px);grid-template-rows:repeat(2,58px);
+       gap:8px;z-index:5}
+  #pad button{font-family:'Bungee',cursive;font-size:18px;border:3px solid var(--ink);
+       border-radius:14px;background:var(--card);color:var(--ink);cursor:pointer;
+       box-shadow:0 4px 0 var(--ink);transition:transform .06s}
+  #pad button:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
+  #pad button small{display:block;font-family:'Fredoka';font-size:10px;font-weight:700;color:#999}
+
+  /* ---------- overlays ---------- */
+  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+           background:rgba(27,27,31,.35);backdrop-filter:blur(3px);z-index:10}
+  .panel{background:var(--card);border:4px solid var(--ink);border-radius:28px;
+         padding:34px 38px;max-width:440px;width:90%;text-align:center;
+         box-shadow:0 10px 0 var(--ink);transform:rotate(-1deg)}
+  .panel h1{font-family:'Bungee',cursive;font-size:clamp(30px,6vw,44px);line-height:1.05;
+            color:var(--toy-orange);-webkit-text-stroke:1.5px var(--ink)}
+  .panel h1 span{color:var(--toy-pink)}
+  .panel p{margin:14px 0 6px;font-weight:600;color:#444;font-size:15px;line-height:1.5}
+  .keys{display:inline-grid;grid-template-columns:repeat(3,38px);gap:5px;margin:10px 0}
+  .keys b{border:2px solid var(--ink);border-radius:8px;padding:5px 0;background:#fff;
+          font-family:'Bungee';font-size:13px;box-shadow:0 3px 0 var(--ink)}
+  .panel button{margin-top:18px;font-family:'Bungee',cursive;font-size:20px;padding:14px 38px;
+        border:3px solid var(--ink);border-radius:18px;background:var(--toy-yellow);
+        cursor:pointer;box-shadow:0 5px 0 var(--ink);transition:transform .06s}
+  .panel button:active{transform:translateY(5px);box-shadow:0 0 0 var(--ink)}
+  .diffs{display:flex;gap:8px;justify-content:center;margin:16px 0 2px}
+  .diffs .diff-btn{margin:0;font-family:'Bungee',cursive;font-size:14px;padding:9px 16px;
+        border:3px solid var(--ink);border-radius:13px;background:#fff;color:var(--ink);
+        cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
+  .diffs .diff-btn.sel{background:var(--toy-blue);color:#fff}
+  .diffs .diff-btn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
+  .difflbl{font-size:12px;color:#888;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:6px 0 0}
+  #finalStats{font-family:'Bungee';font-size:22px;color:var(--toy-blue);margin-top:6px}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <div class="badge" id="saves"><div class="lbl">Saves</div><div class="val">0</div></div>
+  <div class="badge"><div class="lbl">Gloves</div><div id="lives">
+    <div class="glove"></div><div class="glove"></div><div class="glove"></div></div></div>
+  <div class="badge" id="streak"><div class="lbl">Streak</div><div class="val">0</div></div>
+</div>
+
+<div id="flash"></div>
+
+<div id="pad">
+  <button data-z="0">↖<small>Q</small></button>
+  <button data-z="1">↑<small>W</small></button>
+  <button data-z="2">↗<small>E</small></button>
+  <button data-z="3">↙<small>A</small></button>
+  <button data-z="4">●<small>S</small></button>
+  <button data-z="5">↘<small>D</small></button>
+</div>
+
+<div class="overlay" id="startOverlay">
+  <div class="panel">
+    <h1>COLLIN<br><span>SUPER SAVE!</span></h1>
+    <p>The striker is lining up penalties.<br>Dive to the right zone before the ball hits the net!</p>
+    <div class="keys" id="keysHint"><b>Q</b><b>W</b><b>E</b><b>A</b><b>S</b><b>D</b></div>
+    <p style="font-size:13px;color:#888">Top row = high dives · bottom row = low dives<br>(physical key positions — works on AZERTY too) …or tap the pad.<br>Drag = look around · scroll = zoom · double-click = reset view.<br>3 goals conceded = full time.</p>
+    <p class="difflbl">Difficulty — how fast he shoots</p>
+    <div class="diffs">
+      <button class="diff-btn" data-diff="easy">EASY</button>
+      <button class="diff-btn sel" data-diff="medium">MEDIUM</button>
+      <button class="diff-btn" data-diff="hard">HARD</button>
+    </div>
+    <button id="startBtn">KICK OFF!</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="endOverlay">
+  <div class="panel">
+    <h1>FULL<br><span>TIME!</span></h1>
+    <div id="finalStats"></div>
+    <p id="finalMsg"></p>
+    <p class="difflbl">Difficulty</p>
+    <div class="diffs">
+      <button class="diff-btn" data-diff="easy">EASY</button>
+      <button class="diff-btn sel" data-diff="medium">MEDIUM</button>
+      <button class="diff-btn" data-diff="hard">HARD</button>
+    </div>
+    <button id="retryBtn">PLAY AGAIN</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* =====================================================
+   COLLIN · SUPER SAVE — a toy-box penalty shootout
+   ===================================================== */
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x8fd0ea);
+scene.fog = new THREE.Fog(0xb4dcf0, 55, 170);
+
+const camera = new THREE.PerspectiveCamera(50, 1, .1, 200);
+camera.position.set(0, 2.6, -5.2);
+camera.lookAt(0, 1.15, 8);
+
+/* ---------- mouse camera orbit (drag = rotate, wheel = zoom, dblclick = reset) ---------- */
+const camTarget = new THREE.Vector3(0, 1, 4); // pivot between keeper and penalty spot
+const camHome = (()=>{
+  const s = new THREE.Spherical().setFromVector3(camera.position.clone().sub(camTarget));
+  return {theta:s.theta, phi:s.phi, radius:s.radius};
+})();
+const orbit = {...camHome};      // smoothed values applied to the camera
+const orbitGoal = {...camHome};  // where the user is steering to
+const _sph = new THREE.Spherical();
+let camDrag = false, camLX = 0, camLY = 0;
+canvas.style.cursor = 'grab';
+canvas.addEventListener('pointerdown', e=>{
+  camDrag = true; camLX = e.clientX; camLY = e.clientY;
+  canvas.setPointerCapture(e.pointerId);
+  canvas.style.cursor = 'grabbing';
+});
+canvas.addEventListener('pointermove', e=>{
+  if(!camDrag) return;
+  orbitGoal.theta -= (e.clientX - camLX) * .005;
+  orbitGoal.phi   -= (e.clientY - camLY) * .005;
+  camLX = e.clientX; camLY = e.clientY;
+  // full 360° around the pitch (inputs auto-mirror on the striker's side) — just stay above the turf
+  orbitGoal.phi = THREE.MathUtils.clamp(orbitGoal.phi, .35, 1.5);
+});
+const camDragEnd = ()=>{ camDrag = false; canvas.style.cursor = 'grab'; };
+canvas.addEventListener('pointerup', camDragEnd);
+canvas.addEventListener('pointercancel', camDragEnd);
+canvas.addEventListener('wheel', e=>{
+  e.preventDefault();
+  orbitGoal.radius = THREE.MathUtils.clamp(orbitGoal.radius*(1 + e.deltaY*.001), 4, 20);
+}, {passive:false});
+canvas.addEventListener('dblclick', ()=>{
+  Object.assign(orbitGoal, camHome);
+  // take the short way home, not several full spins
+  orbitGoal.theta = camHome.theta + Math.round((orbit.theta - camHome.theta)/(Math.PI*2))*Math.PI*2;
+});
+
+/* ---------- lights ---------- */
+scene.add(new THREE.HemisphereLight(0xcfeaff, 0x3f7a1f, .85));
+const sun = new THREE.DirectionalLight(0xfff3d6, 1.15);
+sun.position.set(8, 14, -6);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left=-15; sun.shadow.camera.right=15;
+sun.shadow.camera.top=20;  sun.shadow.camera.bottom=-10;
+scene.add(sun);
+
+/* ---------- pitch (striped toy turf) ---------- */
+const turfCanvas = document.createElement('canvas');
+turfCanvas.width = turfCanvas.height = 512;
+const tc = turfCanvas.getContext('2d');
+for(let i=0;i<8;i++){ tc.fillStyle = i%2?'#5cae2f':'#4d9a26'; tc.fillRect(0,i*64,512,64); }
+const turfTex = new THREE.CanvasTexture(turfCanvas);
+turfTex.wrapS = turfTex.wrapT = THREE.RepeatWrapping; turfTex.repeat.set(4,4);
+const pitch = new THREE.Mesh(
+  new THREE.PlaneGeometry(80,80),
+  new THREE.MeshStandardMaterial({map:turfTex, roughness:.9}));
+pitch.rotation.x = -Math.PI/2; pitch.receiveShadow = true;
+scene.add(pitch);
+
+/* penalty spot + box line */
+const lineMat = new THREE.MeshBasicMaterial({color:0xffffff});
+const spot = new THREE.Mesh(new THREE.CircleGeometry(.16,24), lineMat);
+spot.rotation.x = -Math.PI/2; spot.position.set(0,.01,11); scene.add(spot);
+function lineSeg(w,d,x,z){
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w,d), lineMat);
+  m.rotation.x = -Math.PI/2; m.position.set(x,.01,z); scene.add(m);
+}
+lineSeg(16,.1,0,16.5); lineSeg(.1,16.5,-8,8.25); lineSeg(.1,16.5,8,8.25); lineSeg(16,.1,0,0.02);
+
+/* ---------- goal — youth size: 5 m wide × 2 m high ---------- */
+const GOAL_W = 5, GOAL_H = 2, POST_R = .07;
+const postMat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:.3, metalness:.1});
+function post(x){ const p = new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_H,16), postMat);
+  p.position.set(x,GOAL_H/2,0); p.castShadow=true; scene.add(p); }
+post(-GOAL_W/2); post(GOAL_W/2);
+const bar = new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_W+POST_R*2,16), postMat);
+bar.rotation.z = Math.PI/2; bar.position.set(0,GOAL_H,0); bar.castShadow=true; scene.add(bar);
+
+/* ---------- deformable net — bulges & ripples when the ball hits it ---------- */
+const NET_COLS = 25, NET_ROWS = 13;
+const netNodes = [];                                   // grid of {x,y,rz, z,vz}
+for(let r=0;r<NET_ROWS;r++) for(let c=0;c<NET_COLS;c++){
+  const x = -GOAL_W/2 + (c/(NET_COLS-1))*GOAL_W;
+  const y = (r/(NET_ROWS-1))*GOAL_H;
+  const rz = -1.4 + (y/GOAL_H)*1.2;                    // net surface slopes back & down
+  netNodes.push({x, y, rz, z:rz, vz:0});
+}
+const netIdx = (r,c)=> r*NET_COLS + c;
+// one position per node, shared by the grid lines and a translucent surface so the
+// bulge reads as a 3-D pocket (shading) even when viewed head-on
+const nodePos = new Float32Array(netNodes.length*3);
+function writeNodePos(){
+  for(let i=0;i<netNodes.length;i++){ const n=netNodes[i];
+    nodePos[i*3]=n.x; nodePos[i*3+1]=n.y; nodePos[i*3+2]=n.z; }
+}
+writeNodePos();
+const posAttr = new THREE.BufferAttribute(nodePos, 3);
+const linePairs = [];
+for(let r=0;r<NET_ROWS;r++) for(let c=0;c<NET_COLS;c++){
+  if(c<NET_COLS-1) linePairs.push(netIdx(r,c), netIdx(r,c+1));
+  if(r<NET_ROWS-1) linePairs.push(netIdx(r,c), netIdx(r+1,c));
+}
+const lineGeo = new THREE.BufferGeometry();
+lineGeo.setAttribute('position', posAttr); lineGeo.setIndex(linePairs);
+scene.add(new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:.85})));
+const tris = [];
+for(let r=0;r<NET_ROWS-1;r++) for(let c=0;c<NET_COLS-1;c++){
+  const a=netIdx(r,c), b=netIdx(r,c+1), d=netIdx(r+1,c), e=netIdx(r+1,c+1);
+  tris.push(a,d,b, b,d,e);
+}
+const surfGeo = new THREE.BufferGeometry();
+surfGeo.setAttribute('position', posAttr); surfGeo.setIndex(tris); surfGeo.computeVertexNormals();
+scene.add(new THREE.Mesh(surfGeo, new THREE.MeshStandardMaterial(
+  {color:0xffffff, transparent:true, opacity:.14, side:THREE.DoubleSide, depthWrite:false, roughness:.9})));
+function updateNetGeo(){
+  writeNodePos();
+  posAttr.needsUpdate = true;
+  surfGeo.computeVertexNormals();   // re-shade the bulging pocket
+}
+updateNetGeo();
+function rippleNet(bx, by, power){                      // billow nodes toward the viewer (-z) near the impact
+  for(const n of netNodes){
+    const d2 = (n.x-bx)*(n.x-bx) + (n.y-by)*(n.y-by);
+    n.vz -= power * Math.exp(-d2/1.1);                  // wide, soft billow
+  }
+}
+function stepNet(dt){                                   // spring each node back to rest (springy ripple)
+  let moved = false;
+  for(const n of netNodes){
+    n.vz += ((n.rz - n.z)*55 - n.vz*4)*dt;
+    n.z  += n.vz*dt;
+    if(Math.abs(n.vz)>2e-3 || Math.abs(n.z-n.rz)>2e-3) moved = true;
+  }
+  if(moved) updateNetGeo();
+}
+
+/* ---------- shared toy materials ---------- */
+const M = {
+  skin:  new THREE.MeshStandardMaterial({color:0xf6c89a, roughness:.35}),
+  hair:  new THREE.MeshStandardMaterial({color:0x6b4423, roughness:.5}),
+  black: new THREE.MeshStandardMaterial({color:0x222226, roughness:.35}),
+  camo:  new THREE.MeshStandardMaterial({color:0x2e2e34, roughness:.4}),
+  blue:  new THREE.MeshStandardMaterial({color:0x1f6bff, roughness:.3}),
+  volt:  new THREE.MeshStandardMaterial({color:0xd8ff2e, roughness:.3}),
+  pink:  new THREE.MeshStandardMaterial({color:0xff5fb4, roughness:.3}),
+  red:   new THREE.MeshStandardMaterial({color:0xe23b2e, roughness:.35}),
+  royal: new THREE.MeshStandardMaterial({color:0x1d49cf, roughness:.3}),
+  greyLeg:new THREE.MeshStandardMaterial({color:0x4a4a52, roughness:.4}),
+  gold:  new THREE.MeshStandardMaterial({color:0xf5b81e, roughness:.3}),
+  redBoot:new THREE.MeshStandardMaterial({color:0xe8401c, roughness:.3}),
+  white: new THREE.MeshStandardMaterial({color:0xffffff, roughness:.3}),
+  orange:new THREE.MeshStandardMaterial({color:0xff5a1f, roughness:.4}),
+};
+function shadowed(m){ m.traverse(o=>{ if(o.isMesh){o.castShadow=true;} }); return m; }
+
+/* keeper kit print: near-black with subtle diagonal brush-stroke streaks (photo) */
+const camoCanvas = document.createElement('canvas');
+camoCanvas.width = camoCanvas.height = 256;
+const cc = camoCanvas.getContext('2d');
+cc.fillStyle = '#16161a'; cc.fillRect(0,0,256,256);
+cc.lineCap = 'round';
+for(let i=0;i<80;i++){
+  const x = Math.random()*320-50, y = Math.random()*256, len = 26+Math.random()*70;
+  cc.strokeStyle = Math.random()<.5 ? '#2b2b33' : '#23232a';
+  cc.lineWidth = 2+Math.random()*5;
+  cc.globalAlpha = .45+Math.random()*.5;
+  cc.beginPath(); cc.moveTo(x,y); cc.lineTo(x+len*.45, y+len); cc.stroke();  // steep diagonal strokes
+}
+cc.globalAlpha = 1;
+const camoTex = new THREE.CanvasTexture(camoCanvas);
+camoTex.wrapS = camoTex.wrapT = THREE.RepeatWrapping; camoTex.repeat.set(1.6,1.6);
+M.camo.map = camoTex; M.camo.color.setHex(0xffffff); M.camo.needsUpdate = true;
+
+/* "1 · COLLIN · uhlsport" back-of-shirt decal (camera sees the keeper's back) */
+const nameCanvas = document.createElement('canvas');
+nameCanvas.width = 256; nameCanvas.height = 256;
+const nc = nameCanvas.getContext('2d');
+nc.fillStyle = '#ffffff'; nc.textAlign = 'center';
+nc.font = '700 38px Fredoka, sans-serif';   nc.fillText('COLLIN', 128, 52);
+nc.font = '700 132px Fredoka, sans-serif';  nc.fillText('1', 128, 178);
+nc.font = 'italic 700 30px Fredoka, sans-serif'; nc.fillText('uhlsport', 128, 232);
+const nameTex = new THREE.CanvasTexture(nameCanvas);
+const nameMat = new THREE.MeshBasicMaterial({map:nameTex, transparent:true});
+
+/* "uhlsport / COLLIN" left-chest decal (photo) */
+const chestCanvas = document.createElement('canvas');
+chestCanvas.width = chestCanvas.height = 128;
+const chc = chestCanvas.getContext('2d');
+chc.fillStyle = '#ffffff'; chc.textAlign = 'left';
+chc.font = 'italic 700 22px Fredoka, sans-serif'; chc.fillText('uhlsport', 6, 56);
+chc.font = '700 30px Fredoka, sans-serif';        chc.fillText('COLLIN', 6, 86);
+const chestMat = new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(chestCanvas), transparent:true});
+
+/* ---------- Playmobil-style figure builder ---------- */
+function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt}){
+  const g = new THREE.Group();
+
+  // legs — hip pivot → thigh → knee pivot → shin + boot (so knees bend)
+  const legsP = {};
+  for(const side of [-1,1]){
+    const hip = new THREE.Group();
+    hip.position.set(side*.16, .78, 0);
+    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(.145,.125,.40,12), legs);
+    thigh.position.y = -.20; hip.add(thigh);
+    const kneeCap = new THREE.Mesh(new THREE.SphereGeometry(.125,10,8), legs);
+    kneeCap.position.y = -.40; hip.add(kneeCap);
+    const knee = new THREE.Group();
+    knee.position.y = -.40; hip.add(knee);
+    const shin = new THREE.Mesh(new THREE.CylinderGeometry(.12,.105,.34,12), legs);
+    shin.position.y = -.17; knee.add(shin);
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(.26,.16,.44), boots);
+    boot.position.set(0,-.30,.07); knee.add(boot);
+    hip.userData.knee = knee; hip.userData.boot = boot;
+    g.add(hip);
+    legsP[side<0?'L':'R'] = hip;
+  }
+
+  // shorts
+  const hipsM = new THREE.Mesh(new THREE.CylinderGeometry(.34,.3,.34,14), shorts);
+  hipsM.position.y = .82; g.add(hipsM);
+
+  // torso (trapezoid — wide shoulders, Playmobil silhouette)
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(.42,.32,.78,14), shirt);
+  torso.position.y = 1.36; g.add(torso);
+
+  // arms — shoulder pivot → upper arm → elbow pivot → forearm + glove (so elbows bend)
+  const arms = {};
+  for(const side of [-1,1]){
+    const sh = new THREE.Group();
+    sh.position.set(side*.46, 1.66, 0);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(.1,.092,.34,10), shirt);
+    upper.position.y = -.17; sh.add(upper);
+    const elbowCap = new THREE.Mesh(new THREE.SphereGeometry(.092,8,8), shirt);
+    elbowCap.position.y = -.34; sh.add(elbowCap);
+    const elbow = new THREE.Group();
+    elbow.position.y = -.34; sh.add(elbow);
+    const fore = new THREE.Mesh(new THREE.CylinderGeometry(.09,.082,.30,10), shirt);
+    fore.position.y = -.15; elbow.add(fore);
+    const glove = new THREE.Mesh(new THREE.SphereGeometry(.15,12,10), gloves);
+    glove.position.y = -.34; glove.scale.set(1,1.1,.8); elbow.add(glove);
+    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.105,.035,8,14), cuffs);
+    cuff.position.y = -.20; cuff.rotation.x = Math.PI/2; elbow.add(cuff);
+    sh.rotation.z = side * .25;
+    sh.userData.elbow = elbow; sh.userData.glove = glove;
+    g.add(sh);
+    arms[side<0?'L':'R'] = sh;
+  }
+
+  // head + face + bowl haircut
+  const head = new THREE.Group(); head.position.y = 2.04;
+  const skull = new THREE.Mesh(new THREE.CylinderGeometry(.27,.25,.42,16), M.skin);
+  head.add(skull);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(.31,16,12,0,Math.PI*2,0,Math.PI*.55), M.hair);
+  hair.position.y = .1; hair.scale.set(1,.95,1.05); head.add(hair);
+  const fringe = new THREE.Mesh(new THREE.BoxGeometry(.46,.12,.1), M.hair);
+  fringe.position.set(0,.1,.24); head.add(fringe);
+  const eyeGeo = new THREE.SphereGeometry(.035,8,8);
+  const eyeMat = new THREE.MeshBasicMaterial({color:0x3a2415});
+  const eL = new THREE.Mesh(eyeGeo,eyeMat); eL.position.set(-.1,.02,.25);
+  const eR = eL.clone(); eR.position.x = .1; head.add(eL,eR);
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(.07,.014,6,12,Math.PI), eyeMat);
+  smile.position.set(0,-.08,.25); smile.rotation.set(0,0,Math.PI); head.add(smile);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.14,10), M.skin);
+  neck.position.y = 1.8; g.add(neck);
+  g.add(head);
+
+  shadowed(g);
+  return {group:g, arms, head, legs:legsP};
+}
+
+/* ---------- COLLIN the keeper ---------- */
+const keeper = buildFigure({shirt:M.camo, shorts:M.black, boots:M.pink, gloves:M.volt, cuffs:M.blue});
+/* figure is ~2.35 units tall as built → scale to 1.60 m */
+const KSCALE = 1.6/2.35;
+keeper.group.scale.setScalar(KSCALE);
+keeper.group.position.set(0,0,.6);
+keeper.group.rotation.y = 0; // face is modelled on local +z → faces the striker
+scene.add(keeper.group);
+const keeperHome = new THREE.Vector3(0,0,.6);
+
+/* --- photo details (added in pre-scale local units) --- */
+{
+  // name + number + uhlsport on the back of the shirt
+  const decal = new THREE.Mesh(new THREE.PlaneGeometry(.62,.62), nameMat);
+  decal.position.set(0, 1.42, -.42); decal.rotation.y = Math.PI;
+  keeper.group.add(decal);
+
+  // "uhlsport / COLLIN" text on the left chest (his left = +x here)
+  const chestText = new THREE.Mesh(new THREE.PlaneGeometry(.34,.34), chestMat);
+  chestText.position.set(.16, 1.5, .405); keeper.group.add(chestText);
+
+  // small white club badge on the right chest (visible during dives)
+  const badge = new THREE.Mesh(new THREE.CircleGeometry(.07,16), M.white);
+  badge.position.set(-.2, 1.5, .405); keeper.group.add(badge);
+  const badgeDot = new THREE.Mesh(new THREE.CircleGeometry(.035,12),
+    new THREE.MeshBasicMaterial({color:0x2e7d4f}));
+  badgeDot.position.set(-.2, 1.5, .408); keeper.group.add(badgeDot);
+
+  // gloves: black tiger-stripe bars raked across the volt backhand (photo)
+  for(const k of ['L','R']){
+    for(let s=-1;s<=1;s++){
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(.025,.085,.14), M.black);
+      stripe.position.set(s*.06, -.32, .10);
+      stripe.rotation.z = .45 + s*.18;
+      keeper.arms[k].userData.elbow.add(stripe);
+    }
+  }
+
+  // pink boots: darker swoosh + white sole, plus sock cuff below the knee —
+  // all parented to the shin so they follow the bend of the keeper's knees
+  const pinkStripeMat = new THREE.MeshStandardMaterial({color:0xd63a8f, roughness:.3});
+  const sockMat = new THREE.MeshStandardMaterial({color:0x3a3a42, roughness:.4});
+  for(const sx of [-1,1]){
+    const knee = keeper.legs[sx<0?'L':'R'].userData.knee;
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(.28,.05,.22), pinkStripeMat);
+    stripe.position.set(0,-.27,.11); knee.add(stripe);
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(.28,.045,.46), M.white);
+    sole.position.set(0,-.40,.07); knee.add(sole);
+    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.125,.03,8,14), sockMat);
+    cuff.position.set(0,-.04,0); cuff.rotation.x = Math.PI/2; knee.add(cuff);
+  }
+
+  // tousled hair tufts (photo: messy bowl cut)
+  const tuftGeo = new THREE.SphereGeometry(.09,8,6);
+  [[-.14,.3,.08],[.12,.32,-.06],[0,.34,.12],[.18,.26,.1],[-.18,.25,-.1]].forEach(p=>{
+    const tuft = new THREE.Mesh(tuftGeo, M.hair);
+    tuft.position.set(...p); tuft.scale.set(1.2,.7,1.2);
+    keeper.head.add(tuft);
+  });
+  shadowed(keeper.group);
+}
+
+/* ---------- striker — "Fortuur Maplezier" kit from the photo ---------- */
+/* chest crest + club name decal */
+const crestCanvas = document.createElement('canvas');
+crestCanvas.width = 256; crestCanvas.height = 256;
+const xc = crestCanvas.getContext('2d');
+// shield: red/blue halves, gold crown, white border
+xc.save(); xc.translate(128,66);
+xc.fillStyle = '#f5b81e';                       // crown
+xc.beginPath(); xc.moveTo(-18,-40); xc.lineTo(-10,-26); xc.lineTo(0,-42);
+xc.lineTo(10,-26); xc.lineTo(18,-40); xc.lineTo(14,-20); xc.lineTo(-14,-20);
+xc.closePath(); xc.fill();
+xc.beginPath(); xc.moveTo(-26,-16); xc.lineTo(26,-16); xc.lineTo(26,14);
+xc.quadraticCurveTo(26,38,0,46); xc.quadraticCurveTo(-26,38,-26,14);
+xc.closePath();
+xc.fillStyle = '#ffffff'; xc.fill();            // border
+xc.clip();
+xc.fillStyle = '#c8332a'; xc.fillRect(-26,-16,26,64);  // red half
+xc.fillStyle = '#1d49cf'; xc.fillRect(0,-16,26,64);    // blue half
+xc.restore();
+xc.fillStyle = '#ffffff'; xc.textAlign = 'center';
+xc.font = '700 26px Fredoka, sans-serif';        xc.fillText('FORTUUR', 128, 150);
+xc.font = '700 42px Fredoka, sans-serif';        xc.fillText('MAPLEZIER', 128, 192);
+xc.font = '600 16px Fredoka, sans-serif';        xc.fillText('· VASTGOED PROJECTEN ·', 128, 218);
+const crestMat = new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(crestCanvas), transparent:true});
+
+/* "9 · TIMOTHY" back-of-shirt decal (visible when the camera orbits behind him) */
+const tNameCanvas = document.createElement('canvas');
+tNameCanvas.width = 256; tNameCanvas.height = 256;
+const tn = tNameCanvas.getContext('2d');
+tn.fillStyle = '#ffffff'; tn.textAlign = 'center';
+tn.font = '700 36px Fredoka, sans-serif';   tn.fillText('TIMOTHY', 128, 52);
+tn.font = '700 132px Fredoka, sans-serif';  tn.fillText('9', 128, 178);
+const tNameMat = new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(tNameCanvas), transparent:true});
+
+const striker = buildFigure({shirt:M.royal, shorts:M.royal, boots:M.redBoot,
+                             gloves:M.black, legs:M.greyLeg, cuffs:M.black});
+striker.group.scale.setScalar(1.72/2.35);
+striker.group.position.set(.7,0,12.4);
+
+/* --- photo details (pre-scale local units; striker faces the camera) --- */
+{
+  // crest + club name on the chest (his front faces the keeper/camera)
+  const chest = new THREE.Mesh(new THREE.PlaneGeometry(.6,.6), crestMat);
+  chest.position.set(0, 1.42, .42); striker.group.add(chest);
+
+  // name + number on the back of the shirt
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(.62,.62), tNameMat);
+  back.position.set(0, 1.42, -.42); back.rotation.y = Math.PI;
+  striker.group.add(back);
+
+  // white shoulder stripes (three per side, generic sport styling)
+  for(const sx of [-1,1]) for(let i=0;i<3;i++){
+    const s = new THREE.Mesh(new THREE.BoxGeometry(.05,.025,.3), M.white);
+    s.position.set(sx*(.18+i*.09), 1.74-i*.02, 0);
+    s.rotation.z = sx*-.35;
+    striker.group.add(s);
+  }
+
+  // white side stripe on the shorts
+  for(const sx of [-1,1]){
+    const s = new THREE.Mesh(new THREE.BoxGeometry(.04,.32,.1), M.white);
+    s.position.set(sx*.32, .82, .12); striker.group.add(s);
+  }
+
+  // blue sock cuffs + white ankle socks + white boot stripes & soles —
+  // parented to the shin so they follow the knee bend through the kick
+  for(const sx of [-1,1]){
+    const knee = striker.legs[sx<0?'L':'R'].userData.knee;
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(.135,.125,.18,12), M.royal);
+    cuff.position.set(0, -.05, 0); knee.add(cuff);
+    const ankle = new THREE.Mesh(new THREE.CylinderGeometry(.12,.13,.10,12), M.white);
+    ankle.position.set(0, -.26, 0); knee.add(ankle);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(.28,.05,.18), M.white);
+    stripe.position.set(0, -.30, .08); knee.add(stripe);          // adidas white boot stripes
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(.28,.045,.46), M.white);
+    sole.position.set(0, -.40, .07); knee.add(sole);              // white sole
+  }
+
+  // tousled brown hair tufts (same hairstyle as the photo)
+  const tuftGeo = new THREE.SphereGeometry(.09,8,6);
+  [[-.15,.29,.06],[.13,.31,-.05],[0,.34,.1],[.17,.25,.08],[-.16,.26,-.09]].forEach(p=>{
+    const tuft = new THREE.Mesh(tuftGeo, M.hair);
+    tuft.position.set(...p); tuft.scale.set(1.2,.7,1.2);
+    striker.head.add(tuft);
+  });
+  shadowed(striker.group);
+}
+const strikerYaw = Math.PI + .15;
+striker.group.rotation.y = strikerYaw;
+scene.add(striker.group);
+
+/* ---------- cones (from the photo!) ---------- */
+const coneHoleMat = new THREE.MeshBasicMaterial({color:0x6e2406});
+function cone(x,z){
+  const c = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.ConeGeometry(.32,.7,16,1,true), M.orange);
+  body.position.y = .35; c.add(body);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(.42,.45,.07,16), M.orange);
+  base.position.y = .035; c.add(base);
+  // training-cone holes — a stacked column punched through both broad faces (photo)
+  for(const face of [1,-1]){
+    [[.20,.235],[.34,.165],[.47,.105]].forEach(([hy,rr])=>{
+      const hole = new THREE.Mesh(new THREE.CircleGeometry(.05,14), coneHoleMat);
+      hole.position.set(0, hy, face*(rr+.004));
+      hole.lookAt(0, hy+.3, face*2);   // sit on the slanted wall, facing out & up
+      c.add(hole);
+    });
+  }
+  shadowed(c); c.position.set(x,0,z); scene.add(c);
+}
+cone(-5.2,1.2); cone(5.4,1.6); cone(-6.4,5); cone(6.6,6); cone(-4.8,9.5); cone(5.6,10.5);
+
+/* =====================================================
+   BACKGROUND SCENERY — suburban pitch (from Timmy's photo)
+   ===================================================== */
+/* ground beyond the striped pitch so the world doesn't end at the field edge */
+const groundBig = new THREE.Mesh(new THREE.PlaneGeometry(400,400),
+  new THREE.MeshStandardMaterial({color:0x4d8f2c, roughness:1}));
+groundBig.rotation.x = -Math.PI/2; groundBig.position.y = -.02;
+groundBig.receiveShadow = true; scene.add(groundBig);
+
+/* low ball-stop hedge framing the field */
+const hedgeMat = new THREE.MeshStandardMaterial({color:0x2f6b27, roughness:1});
+function hedge(x,z,w,d){
+  const h = new THREE.Mesh(new THREE.BoxGeometry(w,1.4,d), hedgeMat);
+  h.position.set(x,.7,z); h.castShadow = h.receiveShadow = true; scene.add(h);
+}
+hedge(0,30,62,1.2); hedge(-23,12,1.2,42); hedge(23,12,1.2,42);
+
+/* simple low-poly houses on the horizon */
+const wallCols = [0xe8d8b0,0xd9b48a,0xcf6b52,0xe0c0a0,0xb9c4cc];
+const roofCols = [0x8a4b34,0x6b4030,0x9a5a3a,0x70493a];
+const winMat = new THREE.MeshStandardMaterial({color:0xbfe6ff, roughness:.25, metalness:.2});
+const doorMat = new THREE.MeshStandardMaterial({color:0x6b4a2b, roughness:.7});
+function house(x,z,rot,wall,roof){
+  const h = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(4,3,4),
+    new THREE.MeshStandardMaterial({color:wall, roughness:.85}));
+  body.position.y = 1.5; h.add(body);
+  const r = new THREE.Mesh(new THREE.ConeGeometry(3.3,2,4),
+    new THREE.MeshStandardMaterial({color:roof, roughness:.8}));
+  r.position.y = 4; r.rotation.y = Math.PI/4; h.add(r);
+  for(const wx of [-1.1,1.1]){
+    const w = new THREE.Mesh(new THREE.BoxGeometry(.9,.9,.1), winMat);
+    w.position.set(wx,1.9,2.01); h.add(w);
+  }
+  const door = new THREE.Mesh(new THREE.BoxGeometry(.9,1.5,.1), doorMat);
+  door.position.set(0,.75,2.01); h.add(door);
+  h.position.set(x,0,z); h.rotation.y = rot;
+  h.traverse(o=>{ if(o.isMesh) o.castShadow = o.receiveShadow = true; });
+  scene.add(h);
+}
+for(let i=0;i<9;i++){
+  house(-28 + i*7 + (i%2?1.5:0), 33 + (i%3)*2.5,
+        Math.PI + (i%2?.18:-.14), wallCols[i%5], roofCols[i%4]);
+}
+
+/* leafy trees dotted around the perimeter */
+const trunkMat = new THREE.MeshStandardMaterial({color:0x6b4a2b, roughness:.9});
+const leafMat  = new THREE.MeshStandardMaterial({color:0x3f8f33, roughness:.9});
+function tree(x,z,s){
+  const t = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.18,.24,1.6,8), trunkMat);
+  trunk.position.y = .8; t.add(trunk);
+  [[0,2,0,1.3],[-.6,1.7,.3,.9],[.6,1.8,-.2,.95],[.1,2.6,.1,.8]].forEach(([lx,ly,lz,lr])=>{
+    const l = new THREE.Mesh(new THREE.SphereGeometry(lr,10,8), leafMat);
+    l.position.set(lx,ly,lz); t.add(l);
+  });
+  t.scale.setScalar(s); t.position.set(x,0,z);
+  t.traverse(o=>{ if(o.isMesh) o.castShadow = true; });
+  scene.add(t);
+}
+tree(-15,26,1.2); tree(16,28,1.4); tree(-25,21,1); tree(25,17,1.1); tree(-19,31,.9); tree(20,33,1.3);
+
+/* a full-size goal at the far end (background, like the photo) */
+{
+  const fw = 7.3, fh = 2.6, gz = 28.5;
+  const fm = new THREE.MeshStandardMaterial({color:0xffffff, roughness:.4});
+  const mk = (g,x,y,rz)=>{ const m=new THREE.Mesh(g,fm); m.position.set(x,y,gz); if(rz)m.rotation.z=rz; m.castShadow=true; scene.add(m); };
+  const postG = new THREE.CylinderGeometry(.08,.08,fh,12);
+  mk(postG,-fw/2,fh/2); mk(postG,fw/2,fh/2);
+  mk(new THREE.CylinderGeometry(.08,.08,fw,12),0,fh,Math.PI/2);
+}
+
+/* puffy clouds */
+const cloudMat = new THREE.MeshBasicMaterial({color:0xffffff});
+function cloud(x,y,z){
+  const c = new THREE.Group();
+  [[0,0,0,2],[1.6,-.2,0,1.5],[-1.5,-.1,.3,1.6],[.6,.5,-.3,1.3]].forEach(([cx,cy,cz,cr])=>{
+    const s = new THREE.Mesh(new THREE.SphereGeometry(cr,10,8), cloudMat);
+    s.position.set(cx,cy,cz); s.scale.y = .65; c.add(s);
+  });
+  c.position.set(x,y,z); scene.add(c);
+}
+cloud(-14,16,22); cloud(13,19,30); cloud(0,23,42); cloud(24,17,8); cloud(-22,20,4);
+
+/* a couple of background team-mates watching (red & blue, from the photo) */
+function bgPlayer(x,z,ry,shirtCol,shortCol,bootCol){
+  const mat = c=>new THREE.MeshStandardMaterial({color:c, roughness:.4});
+  const f = buildFigure({shirt:mat(shirtCol), shorts:mat(shortCol), boots:mat(bootCol),
+                         gloves:M.skin, legs:M.greyLeg, cuffs:mat(shirtCol)});
+  f.group.scale.setScalar(1.6/2.35);
+  f.group.position.set(x,0,z); f.group.rotation.y = ry;
+  scene.add(f.group);
+}
+bgPlayer(-11,22,Math.PI-.3, 0xd23b2e,0xffffff,0xffffff); // red team
+bgPlayer(12,25,Math.PI+.4, 0x1d49cf,0x1d49cf,0xe8401c);  // blue team
+
+/* ---------- ball ---------- */
+const ball = new THREE.Group();
+const ballCore = new THREE.Mesh(new THREE.SphereGeometry(.24,20,16), M.white);
+ball.add(ballCore);
+for(let i=0;i<8;i++){
+  const patch = new THREE.Mesh(new THREE.CircleGeometry(.085,6),
+    new THREE.MeshStandardMaterial({color:0x222226, roughness:.4}));
+  const phi = Math.acos(1-2*(i+.5)/8), theta = Math.PI*(1+Math.sqrt(5))*i;
+  patch.position.setFromSphericalCoords(.241,phi,theta);
+  patch.lookAt(patch.position.clone().multiplyScalar(2));
+  ball.add(patch);
+}
+shadowed(ball);
+ball.scale.setScalar(.65); // ≈ 31 cm toy ball, proportionate to the 1.6 m keeper
+const BALL_R = .156;
+scene.add(ball);
+
+/* ---------- confetti for saves ---------- */
+const confetti = [];
+const confettiColors = [0xff5a1f,0xff5fb4,0x1f6bff,0xd8ff2e];
+function burstConfetti(pos){
+  for(let i=0;i<26;i++){
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(.12,.12),
+      new THREE.MeshBasicMaterial({color:confettiColors[i%4], side:THREE.DoubleSide}));
+    m.position.copy(pos);
+    m.userData.v = new THREE.Vector3((Math.random()-.5)*6, Math.random()*5+2, (Math.random()-.5)*6);
+    m.userData.spin = new THREE.Vector3(Math.random()*8,Math.random()*8,Math.random()*8);
+    m.userData.life = 1.4;
+    scene.add(m); confetti.push(m);
+  }
+}
+
+/* =====================================================
+   GAME STATE
+   ===================================================== */
+const ZONES = [ // 0..2 top row, 3..5 bottom row — SCREEN left/centre/right
+  // NB: camera looks toward +z, so screen-left = world +x (mirrored axis)
+  // tuned to the 5 m × 2 m goal
+  {x: 1.7, y:1.55}, {x:0, y:1.62}, {x:-1.7, y:1.55},
+  {x: 1.7, y:0.45}, {x:0, y:0.35}, {x:-1.7, y:0.45},
+];
+let state = 'idle';          // idle | windup | strike | flight | result | over
+let targetZone = 0, playerZone = -1, committed = false;
+let flightT = 0, flightDur = .85;
+let ballFrom = new THREE.Vector3(), ballTo = new THREE.Vector3(), arcH = 1;
+let saves = 0, streak = 0, conceded = 0, round = 0;
+let resultTimer = 0, windupTimer = 0, strikeT = 0;
+let netHit = false, lastSaved = false;   // net-ripple trigger + last outcome (for reactions)
+
+/* ---------- difficulty: only the shot speed changes (slower → faster) ---------- */
+const DIFFICULTY = {
+  easy:   {base:1.05, dec:.012, floor:.78},   // gentle pace, lots of reaction time
+  medium: {base:.78,  dec:.013, floor:.56},
+  hard:   {base:.54,  dec:.013, floor:.40},   // the original, fast pace
+};
+let diff = 'medium';
+
+/* ---------- keeper pose rig ----------
+   position: x/y/dz · body: roll(z)/pitch(x) · shoulders shL/shR(splay z) + fL/fR(swing x)
+   · elbows eL/eR(bend) · hips hipL/hipR(swing x) + knees kL/kR(bend). Lerps to a target. */
+const KSTAND = {x:0,y:0,dz:0,roll:0,pitch:0, shL:.28,shR:-.28, fL:0,fR:0, eL:.25,eR:.25, kL:.1,kR:.1, hipL:0,hipR:0};
+// pro ready-stance: knees bent, slight forward lean, arms held away from the body with
+// elbows bent and the gloves open in front of the hips (feet widened separately below)
+const KREADY = {x:0,y:-.06,dz:.05,roll:0,pitch:.1, shL:-.5,shR:.5, fL:-.35,fR:-.35,
+                eL:-.8,eR:-.8, kL:.55,kR:.55, hipL:.15,hipR:.15};
+// anticipation gather: deep crouch & coil just before launching off the line
+const KLOAD  = {x:0,y:-.17,dz:.04,roll:0,pitch:.15, shL:.42,shR:-.42, fL:-.8,fR:-.8,
+                eL:-2.0,eR:-2.0, kL:1.05,kR:1.05, hipL:.42,hipR:.42};
+let kpose = {...KREADY}, ktarget = {...KREADY};
+let diveT = -1, divePeak = 0, diveAir = .42;                 // dive timeline
+let diveExt = null, diveLand = null;                          // extension + landing keyframes
+let diveLoad = {...KLOAD};                                     // directional power-step / gather
+let keeperLift = 0;                                           // persistent vertical lift
+let stanceSplay = 0;                                          // feet-apart width in the ready stance
+const LOAD_T = .11;                                           // anticipation (gather) duration
+const RISE_T = .2;                                            // spring-to-apex duration
+
+/* ---------- ball physics ---------- */
+let ballMode = 'lerp';                 // 'lerp' incoming shot · 'phys' bouncing deflection
+let ballCurve = 0;                     // mid-flight banana
+const ballVel = new THREE.Vector3();
+const GRAV = 16;
+
+/* ---------- tiny WebAudio bleeps ---------- */
+let AC = null;
+function beep(freq, dur=.12, type='square', vol=.15){
+  if(!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001, AC.currentTime+dur);
+  o.connect(g).connect(AC.destination);
+  o.start(); o.stop(AC.currentTime+dur);
+}
+
+/* ---------- HUD helpers ---------- */
+const savesEl = document.querySelector('#saves .val');
+const streakEl = document.querySelector('#streak .val');
+const gloveEls = document.querySelectorAll('.glove');
+const flashEl = document.getElementById('flash');
+function flash(text, color){
+  flashEl.textContent = text;
+  flashEl.style.color = color;
+  flashEl.classList.remove('pop');
+  void flashEl.offsetWidth;
+  flashEl.classList.add('pop');
+}
+function updateHUD(){
+  savesEl.textContent = saves;
+  streakEl.textContent = streak;
+  gloveEls.forEach((g,i)=> g.classList.toggle('lost', i < conceded));
+}
+
+/* =====================================================
+   ROUND FLOW
+   ===================================================== */
+function startRound(){
+  state = 'windup';
+  windupTimer = 1.05 + Math.random()*.6;
+  committed = false; playerZone = -1;
+  targetZone = Math.floor(Math.random()*6);
+  // keeper returns to the ready-crouch; cancel any dive arc
+  ktarget = {...KREADY}; diveT = -1;
+  // striker back to a neutral stance
+  setStrikerPose(0,0);
+  striker.group.rotation.set(0, strikerYaw, 0);
+  // ball back on the spot, incoming-shot mode
+  ballMode = 'lerp';
+  ball.position.set(.35,BALL_R,11.6);
+  // run-up start position (a few steps back & to the side)
+  striker.group.position.set(.9 + Math.random()*.4, 0, 13.2 + Math.random()*.8);
+}
+
+/* striker kick pose — wind = backswing load (0..1), swing = whip through ball (0..1).
+   Figure faces local +z, so the 'L' slot is HIS right (kicking) leg, 'R' his plant leg. */
+function setStrikerPose(wind, swing){
+  const L = striker.legs.L, R = striker.legs.R, AL = striker.arms.L, AR = striker.arms.R;
+  // kicking leg: hip cocks back & knee folds, then both whip forward, knee snapping straight
+  L.rotation.x = wind*.8 - swing*1.85;
+  L.userData.knee.rotation.x = wind*1.25*(1-swing) + .05;
+  // plant leg: bears the weight with a braced bend
+  R.rotation.x = -wind*.12 + swing*.06;
+  R.userData.knee.rotation.x = .18 + wind*.22;
+  // torso loads back, then drives down over the ball; hips open through contact
+  striker.group.rotation.x = wind*.12 - swing*.30;
+  striker.group.rotation.y = strikerYaw + swing*.16;
+  // arms counter-balance the kick (his left arm flings outward)
+  AL.rotation.set(wind*.6 - swing*.85, 0, -.25); AL.userData.elbow.rotation.x = -.3;
+  AR.rotation.set(-wind*.7 + swing*.95, 0, .25 + swing*.5); AR.userData.elbow.rotation.x = -.25;
+}
+
+/* run-up stride — alternating legs & arms, with a per-step bob */
+function strikerJog(t){
+  const L = striker.legs.L, R = striker.legs.R, AL = striker.arms.L, AR = striker.arms.R;
+  const s = Math.sin(t*9);
+  L.rotation.x =  s*.55; R.rotation.x = -s*.55;
+  L.userData.knee.rotation.x = Math.max(0,-s)*.9 + .15;   // lift the trailing knee
+  R.userData.knee.rotation.x = Math.max(0, s)*.9 + .15;
+  striker.group.rotation.set(.08, strikerYaw, 0);          // forward lean
+  AL.rotation.set(-s*.5, 0, -.3); AL.userData.elbow.rotation.x = -.7;
+  AR.rotation.set( s*.5, 0,  .3); AR.userData.elbow.rotation.x = -.7;
+  striker.group.position.y = Math.abs(s)*.05;              // bob with each step
+}
+
+function kick(){
+  state = 'flight'; flightT = 0;
+  round++;
+  const dc = DIFFICULTY[diff];
+  flightDur = Math.max(dc.floor, dc.base - round*dc.dec); // shot speed set by the chosen difficulty
+  const z = ZONES[targetZone];
+  const jitter = ()=> (Math.random()-.5)*.3;
+  ballFrom.copy(ball.position);
+  ballTo.set(z.x + jitter(), z.y + jitter()*.5, -.1);
+  ballTo.x = THREE.MathUtils.clamp(ballTo.x, -GOAL_W/2+.35, GOAL_W/2-.35);
+  ballTo.y = THREE.MathUtils.clamp(ballTo.y, .28, GOAL_H-.25);
+  arcH = targetZone < 3 ? .5 + Math.random()*.3 : .15 + Math.random()*.2; // flatter high shots stay in reach
+  ballCurve = (Math.random()-.5)*.7;   // bend the shot a little in flight
+  ballMode = 'lerp';
+  beep(180,.1,'triangle',.25);
+}
+
+function dive(zone){
+  if(state !== 'flight' && state !== 'windup' && state !== 'strike') return;
+  if(committed) return;
+  // keys/pad are screen-relative: when the camera has orbited to the striker's
+  // side, world x appears mirrored, so swap the left/right columns
+  if(Math.cos(orbit.theta) > 0) zone = [2,1,0,5,4,3][zone];
+  committed = true; playerZone = zone;
+  const z = ZONES[zone];
+  const side = Math.sign(z.x);                       // dive direction in world x
+  const lead = side > 0 ? 'R' : 'L';                 // leg on the dive side (tucks up)
+  const trail = side > 0 ? 'L' : 'R';                // far leg (drives the push-off)
+  // neutral airborne base, then shape per zone
+  const p = {x:0,y:0,dz:0,roll:0,pitch:0, shL:.28,shR:-.28, fL:0,fR:0, eL:.1,eR:.1, kL:.15,kR:.15, hipL:0,hipR:0};
+
+  if(zone === 4){
+    // S — collapsed barrier/smother: knees bent & together, chest folded forward over the
+    // ball, both hands reaching DOWN to the ground in front ("hands first, nose over the ball")
+    Object.assign(p, {y:-.15, dz:.18, pitch:.58, shL:.1,shR:-.1, fL:-.18,fR:-.18, eL:-.05,eR:-.05,
+                      kL:1.3,kR:1.3, hipL:.48,hipR:.48});
+    divePeak = .05;                                  // he drops into it rather than leaping
+  }
+  else if(zone === 1){
+    // W — vertical spring off both legs, arms stretched straight overhead
+    Object.assign(p, {y:.2, shL:3.0,shR:-3.0, eL:0,eR:0, kL:.12,kR:.12, hipL:-.12,hipR:-.12});
+    divePeak = .78; diveAir = .54;
+  }
+  else if(zone < 3){
+    // Q/E top corners — full flying dive: body rolls horizontal, arms past the head,
+    // trail leg driving straight while the lead leg tucks up
+    // sideways AND forward (~30°) to attack the ball; both hands lead, far arm a touch behind
+    Object.assign(p, {x:side*1.1, y:.3, dz:.24, roll:-side*1.15, shL:2.95,shR:-2.95, eL:.0,eR:.0});
+    p['hip'+lead] = .6;  p['k'+lead] = .75;
+    p['hip'+trail] = -.4; p['k'+trail] = .05;
+    p['sh'+trail] = (trail==='L'? 2.2 : -2.2);    // lead hand fully to the corner, far hand stays extended (no t-rex)
+    p['e'+trail] = -.35;
+    divePeak = .74; diveAir = .48;
+  }
+  else {
+    // A/D bottom corners — low diving save, sideways & forward toward the post
+    Object.assign(p, {x:side*1.05, y:-.04, dz:.26, roll:-side*1.5, shL:2.95,shR:-2.95, eL:.0,eR:.0});
+    p['hip'+lead] = .38;  p['k'+lead] = .55;
+    p['hip'+trail] = -.22; p['k'+trail] = .05;
+    p['sh'+trail] = (trail==='L'? 2.2 : -2.2);    // both hands attack, lead leads
+    p['e'+trail] = -.35;
+    divePeak = .26; diveAir = .42;
+  }
+  diveExt = p;
+  // POWER STEP — the gather is a directional plant: weight shifts toward the ball and the
+  // far (contralateral) leg loads deep, then drives the push-off (real GK diving mechanics)
+  if(zone === 1){            // W — even two-foot vertical load
+    diveLoad = {...KLOAD};
+  } else if(zone === 4){     // S — drop straight down into the low gather
+    diveLoad = {...KLOAD, pitch:.22, dz:.1};
+  } else {                   // corners — sidestep toward the ball, load the far leg
+    diveLoad = {x:side*.2, y:-.14, dz:.08, roll:-side*.2, pitch:.12,
+                shL:.4,shR:-.4, fL:-.5,fR:-.5, eL:-1.1,eR:-1.1, kL:.55,kR:.55, hipL:.1,hipR:.1};
+    diveLoad['hip'+lead]  = .35; diveLoad['k'+lead]  = .5;    // near foot steps toward the ball
+    diveLoad['hip'+trail] = -.1; diveLoad['k'+trail] = 1.15;  // far leg coils to push off
+  }
+  // landing keyframe: drop onto the turf, knees & body absorbing the impact
+  diveLand = {...p, y: p.y - .17, pitch: p.pitch*.7,
+              kL: Math.min(1.1, p.kL+.3), kR: Math.min(1.1, p.kR+.3),
+              hipL: p.hipL*.5, hipR: p.hipR*.5};
+  if(zone === 4) diveLand = {...p, y: p.y - .03}; // smother: stay down over the ball after the save
+  diveAir = THREE.MathUtils.clamp(.46 + divePeak*.42, .46, .74); // airtime scales with jump height
+  diveT = 0;                                         // launch the dive timeline
+  beep(420,.08,'square',.12);
+}
+
+function resolveShot(saved){
+  state = 'result'; resultTimer = 1.5; lastSaved = saved;
+  if(saved){
+    saves++; streak++;
+    flash(streak >= 3 ? 'SUPER SAVE!' : 'SAVED!', streak >= 3 ? 'var(--toy-pink)' : 'var(--toy-yellow)');
+    burstConfetti(ball.position.clone());
+    // parry: kick the ball into a bouncing, gravity-driven deflection out of the box
+    ballMode = 'phys';
+    ballVel.set((Math.random()-.5)*5, 4.5 + Math.random()*2, 4.5 + Math.random()*3);
+    beep(523,.1); setTimeout(()=>beep(660,.1),90); setTimeout(()=>beep(784,.16),180);
+  } else {
+    conceded++; streak = 0;
+    flash('GOAL...', '#9aa2b1');
+    // ball into the net (which will ripple on contact)
+    ballMode = 'lerp'; netHit = false;
+    ballFrom.copy(ball.position);
+    ballTo.set(ball.position.x, Math.max(BALL_R, ball.position.y*.5), -1.25);
+    flightT = 0;
+    beep(196,.25,'sawtooth',.2); setTimeout(()=>beep(147,.35,'sawtooth',.2),180);
+  }
+  updateHUD();
+  if(conceded >= 3){ setTimeout(endGame, 1200); }
+}
+
+function endGame(){
+  state = 'over';
+  document.getElementById('finalStats').textContent = `${saves} SAVES`;
+  const msg = saves >= 15 ? 'World-class! uhlsport is calling. 🧤' :
+              saves >= 8  ? 'Solid gloves! The Interprovincial scouts noticed.' :
+              saves >= 3  ? 'Good reflexes — keep training between the cones!' :
+                            'Even the best keepers have rough days. Again!';
+  document.getElementById('finalMsg').textContent = msg;
+  document.getElementById('endOverlay').classList.remove('hidden');
+}
+
+function resetGame(){
+  saves = 0; streak = 0; conceded = 0; round = 0;
+  updateHUD();
+  document.getElementById('endOverlay').classList.add('hidden');
+  startRound();
+}
+
+/* =====================================================
+   INPUT
+   ===================================================== */
+/* Map by PHYSICAL key position (e.code), not character (e.key),
+   so QWERTY, AZERTY, QWERTZ, Dvorak… all work identically:
+   the two left-hand key clusters always match the goal zones. */
+const KEYMAP = {KeyQ:0, KeyW:1, KeyE:2, KeyA:3, KeyS:4, KeyD:5};
+addEventListener('keydown', e=>{
+  const z = KEYMAP[e.code];
+  if(z !== undefined){ e.preventDefault(); dive(z); }
+});
+
+/* Show the user's actual key labels on the pad (Chromium only;
+   falls back to QWERTY letters elsewhere). On AZERTY this displays
+   A Z E / Q S D — the physically correct keys. */
+if(navigator.keyboard && navigator.keyboard.getLayoutMap){
+  navigator.keyboard.getLayoutMap().then(map=>{
+    document.querySelectorAll('#pad button').forEach(b=>{
+      const code = Object.keys(KEYMAP).find(c => KEYMAP[c] === +b.dataset.z);
+      const label = map.get(code);
+      if(label) b.querySelector('small').textContent = label.toUpperCase();
+    });
+    // also update the start-panel hint
+    const hint = document.querySelectorAll('#keysHint b');
+    ['KeyQ','KeyW','KeyE','KeyA','KeyS','KeyD'].forEach((c,i)=>{
+      const l = map.get(c);
+      if(l && hint[i]) hint[i].textContent = l.toUpperCase();
+    });
+  }).catch(()=>{});
+}
+document.querySelectorAll('#pad button').forEach(b=>{
+  b.addEventListener('pointerdown', ()=> dive(+b.dataset.z));
+});
+/* difficulty buttons (shared across both overlays) — only the shot speed changes */
+document.querySelectorAll('.diff-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    diff = b.dataset.diff;
+    document.querySelectorAll('.diff-btn').forEach(x=> x.classList.toggle('sel', x.dataset.diff === diff));
+  });
+});
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+  document.getElementById('startOverlay').classList.add('hidden');
+  startRound();
+});
+document.getElementById('retryBtn').addEventListener('click', resetGame);
+
+/* =====================================================
+   LOOP
+   ===================================================== */
+const clock = new THREE.Clock();
+function lerp(a,b,t){ return a+(b-a)*t; }
+function spinBall(dt, rate){ ball.rotation.x -= dt*rate; ball.rotation.y += dt*rate*.22; }
+
+/* A save only counts if the keeper actually gets a body part to the ball.
+   Sample world positions of gloves / arms / head / torso / boots and test each
+   against the ball as a sphere-sphere overlap. Returns the part that touched, or null. */
+const _wp = new THREE.Vector3();
+const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _v4 = new THREE.Vector3();
+const _box = new THREE.Box3();
+// shortest distance from the ball to segment a→b (limbs treated as capsules)
+function segDist(a, b){
+  const abx=b.x-a.x, aby=b.y-a.y, abz=b.z-a.z;
+  const apx=ball.position.x-a.x, apy=ball.position.y-a.y, apz=ball.position.z-a.z;
+  const len = abx*abx+aby*aby+abz*abz || 1;
+  let t = (apx*abx+apy*aby+apz*abz)/len; t = t<0?0:t>1?1:t;
+  const dx=apx-abx*t, dy=apy-aby*t, dz=apz-abz*t;
+  return Math.sqrt(dx*dx+dy*dy+dz*dz);
+}
+function keeperTouchesBall(){
+  keeper.group.updateMatrixWorld(true);
+  // arms as capsules: shoulder → elbow → glove (+ a little past the fingertips)
+  for(const s of ['L','R']){
+    keeper.arms[s].getWorldPosition(_v1);                 // shoulder
+    keeper.arms[s].userData.elbow.getWorldPosition(_v2);  // elbow
+    keeper.arms[s].userData.glove.getWorldPosition(_v3);  // glove
+    _v4.copy(_v3).sub(_v2).setLength(.15).add(_v3);       // fingertips
+    if(segDist(_v1,_v2) < .15+BALL_R) return true;        // upper arm
+    if(segDist(_v2,_v4) < .16+BALL_R) return true;        // forearm + hand reach
+  }
+  // legs as capsules: hip → knee → boot
+  for(const s of ['L','R']){
+    keeper.legs[s].getWorldPosition(_v1);
+    keeper.legs[s].userData.knee.getWorldPosition(_v2);
+    keeper.legs[s].userData.boot.getWorldPosition(_v3);
+    if(segDist(_v1,_v2) < .15+BALL_R) return true;        // thigh
+    if(segDist(_v2,_v3) < .16+BALL_R) return true;        // shin + boot
+  }
+  keeper.head.getWorldPosition(_v1); if(ball.position.distanceTo(_v1) < .20+BALL_R) return true;
+  _wp.set(0, 1.36, 0).applyMatrix4(keeper.group.matrixWorld);   // torso centre
+  return ball.position.distanceTo(_wp) < .30 + BALL_R;
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), .05);
+  const t = clock.elapsedTime;
+
+  /* ---- keeper: gather → explosive ballistic dive → land (no hovering) ---- */
+  const ballLive = (state==='windup' || state==='strike' || state==='flight');
+  let ks;
+  if(diveT >= 0){
+    diveT += dt;
+    const airborne = diveT < LOAD_T + diveAir;            // in the air for this dive
+    if(diveT < LOAD_T){                                   // power step: plant & load toward the ball
+      ktarget = diveLoad; ks = 1 - Math.pow(6e-5, dt);
+    } else if(ballLive && airborne){                      // exploding out & reaching, still up
+      ktarget = diveExt; ks = 1 - Math.pow(1.5e-6, dt);
+    } else {                                              // landed (or shot resolved) → on the deck
+      ktarget = diveLand; ks = 1 - Math.pow(1.2e-3, dt);
+    }
+  } else {
+    ks = 1 - Math.pow(7e-4, dt);                          // ease back to ready
+  }
+  for(const key in kpose) kpose[key] = lerp(kpose[key], ktarget[key], ks);
+
+  const ready = !committed;                               // waiting on the line
+  const breathe = ready ? Math.sin(t*2.5)*.018 : 0;
+  const sway    = ready ? Math.sin(t*1.25)*.12 : 0;
+
+  // realistic ballistic jump: after the gather he springs off the line, hangs only
+  // briefly at full stretch, then gravity brings him back down — airtime ≈ diveAir
+  if(diveT >= 0){
+    const u = (diveT - LOAD_T) / diveAir;                 // 0..1 across the airborne phase
+    keeperLift = (u <= 0 || u >= 1) ? 0 : divePeak * Math.pow(Math.sin(Math.PI*u), .62);
+  } else {
+    keeperLift = 0;
+  }
+
+  keeper.group.position.set(keeperHome.x + kpose.x + sway,
+                            kpose.y + breathe + keeperLift,
+                            keeperHome.z + kpose.dz);
+  keeper.group.rotation.z = kpose.roll - (ready ? sway*.25 : 0);
+  keeper.group.rotation.x = kpose.pitch;
+  keeper.group.scale.setScalar(KSCALE);
+  keeper.arms.L.rotation.z = kpose.shL; keeper.arms.L.rotation.x = kpose.fL + (ready?breathe*2.5:0);
+  keeper.arms.R.rotation.z = kpose.shR; keeper.arms.R.rotation.x = kpose.fR + (ready?breathe*2.5:0);
+  keeper.arms.L.userData.elbow.rotation.x = kpose.eL;
+  keeper.arms.R.userData.elbow.rotation.x = kpose.eR;
+  keeper.legs.L.rotation.x = kpose.hipL; keeper.legs.R.rotation.x = kpose.hipR;
+  keeper.legs.L.userData.knee.rotation.x = kpose.kL;
+  keeper.legs.R.userData.knee.rotation.x = kpose.kR;
+  // feet slightly wider than shoulders when set; tucks back in as he dives
+  stanceSplay = lerp(stanceSplay, ready ? .15 : 0, 1 - Math.pow(.02, dt));
+  keeper.legs.L.rotation.z = -stanceSplay; keeper.legs.R.rotation.z = stanceSplay;
+  keeper.head.rotation.y = ready ? Math.sin(t*.7)*.12         // glance around when waiting
+    : THREE.MathUtils.clamp((ball.position.x - keeper.group.position.x)*.34, -.85, .85); // drive chin & face to the ball
+
+  // keep every part above the turf: if the pose would sink him, lift the whole figure
+  keeper.group.updateMatrixWorld(true);
+  _box.setFromObject(keeper.group);
+  if(_box.min.y < 0) keeper.group.position.y -= _box.min.y;
+
+  /* striker head wobble */
+  striker.head.rotation.y = Math.sin(t*1.5)*.15;
+
+  if(state === 'windup'){
+    windupTimer -= dt;
+    striker.group.position.z = lerp(striker.group.position.z, 12.2, dt*2.6);
+    striker.group.position.x = lerp(striker.group.position.x, .19, dt*2.6);
+    if(windupTimer > .38){
+      strikerJog(t);                                    // stepping run-up
+    } else {
+      striker.group.position.y = 0;
+      setStrikerPose(THREE.MathUtils.clamp((.38-windupTimer)/.38, 0, 1), 0); // plant & load
+    }
+    if(windupTimer <= 0){ state = 'strike'; strikeT = 0; }
+  }
+  else if(state === 'strike'){
+    strikeT += dt;
+    const k = Math.min(strikeT/.14, 1);
+    setStrikerPose(1, k);                               // leg whips through the ball
+    if(k >= 1) kick();
+  }
+  else if(state === 'flight'){
+    flightT += dt / flightDur;
+    const k = Math.min(flightT, 1);
+    ball.position.lerpVectors(ballFrom, ballTo, k);
+    ball.position.y += Math.sin(k*Math.PI) * arcH;
+    ball.position.x += Math.sin(k*Math.PI) * ballCurve; // banana
+    spinBall(dt, 26);
+    if(keeperTouchesBall()) resolveShot(true);   // ANY body contact bounces it back — right key, wrong key, or none
+    else if(k >= 1) resolveShot(false);          // crossed the line untouched → goal
+  }
+  else if(state === 'result'){
+    resultTimer -= dt;
+    if(ballMode === 'phys'){
+      ballVel.y -= GRAV*dt;
+      ball.position.addScaledVector(ballVel, dt);
+      if(ball.position.y < BALL_R){                     // ground bounce + friction
+        ball.position.y = BALL_R;
+        ballVel.y *= -.62; ballVel.x *= .82; ballVel.z *= .82;
+        if(Math.abs(ballVel.y) < .6) ballVel.y = 0;
+      }
+      spinBall(dt, ballVel.length()*4);
+    } else {
+      flightT += dt / .5;
+      ball.position.lerpVectors(ballFrom, ballTo, Math.min(flightT,1));
+      spinBall(dt, 10);
+      if(!netHit && ball.position.z < -.9){ rippleNet(ball.position.x, ball.position.y, 15); netHit = true; }
+    }
+    if(resultTimer <= 0 && conceded < 3) startRound();
+  }
+
+  /* striker: follow-through in flight, then reacts to the outcome during the result */
+  if(state === 'flight'){
+    const relax = 1 - Math.pow(.015, dt);
+    striker.group.position.y  = lerp(striker.group.position.y, 0, relax);
+    striker.group.rotation.x  = lerp(striker.group.rotation.x, 0, relax);
+    striker.group.rotation.y  = lerp(striker.group.rotation.y, strikerYaw, relax);
+    for(const s of ['L','R']){
+      striker.legs[s].rotation.x = lerp(striker.legs[s].rotation.x, 0, relax);
+      striker.legs[s].userData.knee.rotation.x = lerp(striker.legs[s].userData.knee.rotation.x, .12, relax);
+      striker.arms[s].rotation.x = lerp(striker.arms[s].rotation.x, 0, relax);
+      striker.arms[s].rotation.z = lerp(striker.arms[s].rotation.z, s==='L'?-.25:.25, relax);
+      striker.arms[s].userData.elbow.rotation.x = lerp(striker.arms[s].userData.elbow.rotation.x, -.1, relax);
+    }
+  }
+  else if(state === 'result'){
+    const rx = 1 - Math.pow(.03, dt);
+    striker.group.position.y = lerp(striker.group.position.y, 0, rx);
+    for(const s of ['L','R']){                           // legs & arm-swing settle either way
+      striker.legs[s].rotation.x = lerp(striker.legs[s].rotation.x, 0, rx);
+      striker.legs[s].userData.knee.rotation.x = lerp(striker.legs[s].userData.knee.rotation.x, .14, rx);
+      striker.arms[s].rotation.x = lerp(striker.arms[s].rotation.x, 0, rx);
+    }
+    if(lastSaved){
+      // keeper saved it → dejection: slump, turn away a touch, hands toward the head
+      striker.group.rotation.x = lerp(striker.group.rotation.x, .12, rx);
+      striker.group.rotation.y = lerp(striker.group.rotation.y, strikerYaw + .3, rx);
+      striker.arms.L.rotation.z = lerp(striker.arms.L.rotation.z, -1.7, rx);
+      striker.arms.R.rotation.z = lerp(striker.arms.R.rotation.z, 1.7, rx);
+      striker.arms.L.userData.elbow.rotation.x = lerp(striker.arms.L.userData.elbow.rotation.x, -2.1, rx);
+      striker.arms.R.userData.elbow.rotation.x = lerp(striker.arms.R.userData.elbow.rotation.x, -2.1, rx);
+    } else {
+      // he scored → celebration: lean back, both arms thrown up
+      striker.group.rotation.x = lerp(striker.group.rotation.x, -.16, rx);
+      striker.group.rotation.y = lerp(striker.group.rotation.y, strikerYaw, rx);
+      striker.arms.L.rotation.z = lerp(striker.arms.L.rotation.z, -2.5, rx);
+      striker.arms.R.rotation.z = lerp(striker.arms.R.rotation.z, 2.5, rx);
+      striker.arms.L.userData.elbow.rotation.x = lerp(striker.arms.L.userData.elbow.rotation.x, -.15, rx);
+      striker.arms.R.userData.elbow.rotation.x = lerp(striker.arms.R.userData.elbow.rotation.x, -.15, rx);
+    }
+  }
+
+  /* confetti physics */
+  for(let i=confetti.length-1;i>=0;i--){
+    const c = confetti[i];
+    c.userData.life -= dt;
+    c.userData.v.y -= 9*dt;
+    c.position.addScaledVector(c.userData.v, dt);
+    c.rotation.x += c.userData.spin.x*dt;
+    c.rotation.y += c.userData.spin.y*dt;
+    c.material.opacity = Math.min(1, c.userData.life);
+    c.material.transparent = true;
+    if(c.userData.life <= 0){ scene.remove(c); confetti.splice(i,1); }
+  }
+
+  stepNet(dt);   // settle the goal net's ripple
+
+  /* camera orbit smoothing */
+  const camEase = 1 - Math.pow(.0005, dt);
+  orbit.theta  = lerp(orbit.theta,  orbitGoal.theta,  camEase);
+  orbit.phi    = lerp(orbit.phi,    orbitGoal.phi,    camEase);
+  orbit.radius = lerp(orbit.radius, orbitGoal.radius, camEase);
+  camera.position.setFromSpherical(_sph.set(orbit.radius, orbit.phi, orbit.theta)).add(camTarget);
+  camera.lookAt(camTarget);
+
+  renderer.render(scene, camera);
+}
+
+function resize(){
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth/innerHeight;
+  camera.fov = innerWidth < 600 ? 62 : 50; // wider on phones
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+ball.position.set(.35,BALL_R,11.6);
+animate();
+</script>
+</body>
+</html>
