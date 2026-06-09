@@ -72,6 +72,11 @@
   .diffs .diff-btn.sel{background:var(--toy-blue);color:#fff}
   .diffs .diff-btn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
   .difflbl{font-size:12px;color:#888;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:6px 0 0}
+  #muteBtn{position:fixed;left:14px;bottom:18px;z-index:6;width:46px;height:46px;line-height:1;
+        border:3px solid var(--ink);border-radius:14px;background:var(--card);font-size:20px;
+        cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
+  #muteBtn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
+  #muteBtn.off{opacity:.55}
   #finalStats{font-family:'Bungee';font-size:22px;color:var(--toy-blue);margin-top:6px}
   .hidden{display:none!important}
 </style>
@@ -87,6 +92,8 @@
 </div>
 
 <div id="flash"></div>
+
+<button id="muteBtn" aria-label="Toggle sound">🔊</button>
 
 <div id="pad">
   <button data-z="0">↖<small>Q</small></button>
@@ -771,17 +778,55 @@ let ballCurve = 0;                     // mid-flight banana
 const ballVel = new THREE.Vector3();
 const GRAV = 16;
 
-/* ---------- tiny WebAudio bleeps ---------- */
-let AC = null;
-function beep(freq, dur=.12, type='square', vol=.15){
-  if(!AC) return;
-  const o = AC.createOscillator(), g = AC.createGain();
-  o.type = type; o.frequency.value = freq;
-  g.gain.setValueAtTime(vol, AC.currentTime);
-  g.gain.exponentialRampToValueAtTime(.001, AC.currentTime+dur);
-  o.connect(g).connect(AC.destination);
-  o.start(); o.stop(AC.currentTime+dur);
+/* ---------- audio: soft, warm procedural sound ---------- */
+let AC = null, master = null, soundOn = true;
+function initAudio(){
+  if(AC) return;
+  AC = new (window.AudioContext||window.webkitAudioContext)();
+  master = AC.createGain(); master.gain.value = .85;
+  const lp = AC.createBiquadFilter();            // tame any harshness
+  lp.type = 'lowpass'; lp.frequency.value = 5000;
+  master.connect(lp).connect(AC.destination);
 }
+/* a soft enveloped tone, optional pitch glide */
+function tone(freq, dur, {type='sine', vol=.2, attack=.01, glideTo=null, delay=0}={}){
+  if(!AC || !soundOn) return;
+  const t0 = AC.currentTime + delay;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t0);
+  if(glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, t0+dur);
+  g.gain.setValueAtTime(.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0+attack);
+  g.gain.exponentialRampToValueAtTime(.0001, t0+dur);
+  o.connect(g).connect(master);
+  o.start(t0); o.stop(t0+dur+.02);
+}
+/* a short filtered-noise burst — thumps & whooshes */
+function noise(dur, {vol=.2, type='lowpass', f0=600, f1=null, q=1, delay=0}={}){
+  if(!AC || !soundOn) return;
+  const t0 = AC.currentTime + delay, n = Math.floor(AC.sampleRate*dur);
+  const buf = AC.createBuffer(1, n, AC.sampleRate), d = buf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i] = Math.random()*2-1;
+  const src = AC.createBufferSource(); src.buffer = buf;
+  const bp = AC.createBiquadFilter(); bp.type = type; bp.Q.value = q;
+  bp.frequency.setValueAtTime(f0, t0);
+  if(f1) bp.frequency.exponentialRampToValueAtTime(f1, t0+dur);
+  const g = AC.createGain();
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(.0001, t0+dur);
+  src.connect(bp).connect(g).connect(master);
+  src.start(t0); src.stop(t0+dur+.02);
+}
+const sndKick = ()=>{ noise(.07,{vol:.32,f0:1100,f1:280,q:.7}); tone(150,.12,{vol:.22,glideTo:70}); }; // leathery pock
+const sndDive = ()=>  noise(.2,{vol:.1,type:'bandpass',f0:850,f1:230,q:1.1});                          // gentle whoosh
+const sndSave = ()=>{ // soft catch + bright major arpeggio (C–E–G–C)
+  noise(.05,{vol:.18,f0:700,f1:200});
+  [523.25,659.25,783.99,1046.5].forEach((f,i)=> tone(f,.5-i*.05,{type:'triangle',vol:.15,delay:i*.075}));
+};
+const sndGoal = ()=>{ // soft, deflating "aww"
+  tone(330,.5,{vol:.18,glideTo:196,attack:.02});
+  tone(247,.62,{vol:.13,glideTo:147,attack:.02,delay:.12});
+};
 
 /* ---------- HUD helpers ---------- */
 const savesEl = document.querySelector('#saves .val');
@@ -866,7 +911,7 @@ function kick(){
   arcH = targetZone < 3 ? .5 + Math.random()*.3 : .15 + Math.random()*.2; // flatter high shots stay in reach
   ballCurve = (Math.random()-.5)*.7;   // bend the shot a little in flight
   ballMode = 'lerp';
-  beep(180,.1,'triangle',.25);
+  sndKick();
 }
 
 function dive(zone){
@@ -935,7 +980,7 @@ function dive(zone){
   if(zone === 4) diveLand = {...p, y: p.y - .03}; // smother: stay down over the ball after the save
   diveAir = THREE.MathUtils.clamp(.46 + divePeak*.42, .46, .74); // airtime scales with jump height
   diveT = 0;                                         // launch the dive timeline
-  beep(420,.08,'square',.12);
+  sndDive();
 }
 
 function resolveShot(saved){
@@ -947,7 +992,7 @@ function resolveShot(saved){
     // parry: kick the ball into a bouncing, gravity-driven deflection out of the box
     ballMode = 'phys';
     ballVel.set((Math.random()-.5)*5, 4.5 + Math.random()*2, 4.5 + Math.random()*3);
-    beep(523,.1); setTimeout(()=>beep(660,.1),90); setTimeout(()=>beep(784,.16),180);
+    sndSave();
   } else {
     conceded++; streak = 0;
     flash('GOAL...', '#9aa2b1');
@@ -956,7 +1001,7 @@ function resolveShot(saved){
     ballFrom.copy(ball.position);
     ballTo.set(ball.position.x, Math.max(BALL_R, ball.position.y*.5), -1.25);
     flightT = 0;
-    beep(196,.25,'sawtooth',.2); setTimeout(()=>beep(147,.35,'sawtooth',.2),180);
+    sndGoal();
   }
   updateHUD();
   if(conceded >= 3){ setTimeout(endGame, 1200); }
@@ -1021,11 +1066,18 @@ document.querySelectorAll('.diff-btn').forEach(b=>{
   });
 });
 document.getElementById('startBtn').addEventListener('click', ()=>{
-  AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+  initAudio();
   document.getElementById('startOverlay').classList.add('hidden');
   startRound();
 });
 document.getElementById('retryBtn').addEventListener('click', resetGame);
+const muteBtn = document.getElementById('muteBtn');
+muteBtn.addEventListener('click', ()=>{
+  soundOn = !soundOn;
+  muteBtn.textContent = soundOn ? '🔊' : '🔇';
+  muteBtn.classList.toggle('off', !soundOn);
+  if(soundOn) initAudio();           // (re)create the context if needed, on this user gesture
+});
 
 /* =====================================================
    LOOP
