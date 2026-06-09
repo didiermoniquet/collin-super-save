@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>COLLIN · Super Save!</title>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Bungee&display=swap" rel="stylesheet">
 <style>
@@ -13,11 +13,12 @@
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%;overflow:hidden;font-family:'Fredoka',sans-serif;background:#7ec8e3;user-select:none}
-  #c{position:fixed;inset:0;display:block}
+  #c{position:fixed;inset:0;display:block;touch-action:none}
 
   /* ---------- HUD ---------- */
   #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;
-       align-items:flex-start;padding:14px 16px;pointer-events:none;z-index:5}
+       align-items:flex-start;gap:8px;pointer-events:none;z-index:5;
+       padding:max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 12px max(14px,env(safe-area-inset-left))}
   .badge{background:var(--card);border:3px solid var(--ink);border-radius:16px;
          padding:8px 16px;box-shadow:0 4px 0 var(--ink);text-align:center;min-width:96px}
   .badge .lbl{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888}
@@ -39,9 +40,9 @@
     75%{opacity:1}100%{transform:translate(-50%,-46%) scale(1.05);opacity:0}}
 
   /* ---------- dive pad (mobile + click) ---------- */
-  #pad{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
-       display:grid;grid-template-columns:repeat(3,72px);grid-template-rows:repeat(2,58px);
-       gap:8px;z-index:5}
+  #pad{position:fixed;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
+       display:grid;grid-template-columns:repeat(3,clamp(56px,18vw,72px));grid-template-rows:repeat(2,clamp(44px,7vh,58px));
+       gap:8px;z-index:5;touch-action:manipulation}
   #pad button{font-family:'Bungee',cursive;font-size:18px;border:3px solid var(--ink);
        border-radius:14px;background:var(--card);color:var(--ink);cursor:pointer;
        box-shadow:0 4px 0 var(--ink);transition:transform .06s}
@@ -50,10 +51,10 @@
 
   /* ---------- overlays ---------- */
   .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-           background:rgba(27,27,31,.35);backdrop-filter:blur(3px);z-index:10}
+           overflow-y:auto;padding:16px;background:rgba(27,27,31,.35);backdrop-filter:blur(3px);z-index:10}
   .panel{background:var(--card);border:4px solid var(--ink);border-radius:28px;
-         padding:34px 38px;max-width:440px;width:90%;text-align:center;
-         box-shadow:0 10px 0 var(--ink);transform:rotate(-1deg)}
+         padding:clamp(20px,5vw,34px) clamp(22px,6vw,38px);max-width:440px;width:100%;text-align:center;
+         max-height:94vh;max-height:94dvh;overflow-y:auto;box-shadow:0 10px 0 var(--ink);transform:rotate(-1deg)}
   .panel h1{font-family:'Bungee',cursive;font-size:clamp(30px,6vw,44px);line-height:1.05;
             color:var(--toy-orange);-webkit-text-stroke:1.5px var(--ink)}
   .panel h1 span{color:var(--toy-pink)}
@@ -72,13 +73,37 @@
   .diffs .diff-btn.sel{background:var(--toy-blue);color:#fff}
   .diffs .diff-btn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
   .difflbl{font-size:12px;color:#888;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:6px 0 0}
-  #muteBtn{position:fixed;left:14px;bottom:18px;z-index:6;width:46px;height:46px;line-height:1;
+  #muteBtn{position:fixed;left:max(12px,env(safe-area-inset-left));bottom:max(16px,env(safe-area-inset-bottom));
+        z-index:6;width:46px;height:46px;line-height:1;
         border:3px solid var(--ink);border-radius:14px;background:var(--card);font-size:20px;
         cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
   #muteBtn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
   #muteBtn.off{opacity:.55}
   #finalStats{font-family:'Bungee';font-size:22px;color:var(--toy-blue);margin-top:6px}
   .hidden{display:none!important}
+
+  /* ---------- phones / short screens ---------- */
+  @media (max-width:430px){
+    .badge{min-width:0;padding:6px 11px}
+    .badge .val{font-size:22px}
+    .badge .lbl{font-size:10px}
+  }
+  @media (max-height:540px){     /* landscape phones — keep the pitch visible & panels compact */
+    #pad{grid-template-columns:repeat(3,clamp(48px,12vh,58px));grid-template-rows:repeat(2,clamp(38px,9vh,46px));gap:6px}
+    #pad button{font-size:15px}
+    .badge{padding:4px 9px;min-width:0}
+    .badge .val{font-size:18px}.badge .lbl{font-size:9px}
+    #lives{margin-top:2px}.glove{width:13px;height:13px}
+    #muteBtn{width:38px;height:38px;font-size:16px}
+    .panel{padding:14px 24px;transform:none}
+    .panel h1{font-size:clamp(22px,6vw,32px)}
+    .panel p{margin:6px 0 3px;font-size:12.5px;line-height:1.35}
+    .keys{margin:6px 0;grid-template-columns:repeat(3,32px)} .keys b{padding:3px 0;font-size:12px}
+    .diffs{margin:8px 0 2px} .difflbl{margin:2px 0 0}
+    .panel button{margin-top:10px;padding:10px 30px;font-size:18px}
+    #finalStats{font-size:18px}
+    .fineprint{display:none}     /* save vertical space on short screens */
+  }
 </style>
 </head>
 <body>
@@ -109,7 +134,7 @@
     <h1>COLLIN<br><span>SUPER SAVE!</span></h1>
     <p>The striker is lining up penalties.<br>Dive to the right zone before the ball hits the net!</p>
     <div class="keys" id="keysHint"><b>Q</b><b>W</b><b>E</b><b>A</b><b>S</b><b>D</b></div>
-    <p style="font-size:13px;color:#888">Top row = high dives · bottom row = low dives<br>(physical key positions — works on AZERTY too) …or tap the pad.<br>Drag = look around · scroll = zoom · double-click = reset view.<br>3 goals conceded = full time.</p>
+    <p class="fineprint" style="font-size:13px;color:#888">Top row = high dives · bottom row = low dives<br>(physical key positions — works on AZERTY too) …or tap the pad.<br>Drag = look around · pinch / scroll = zoom · double-tap = reset view.<br>3 goals conceded = full time.</p>
     <p class="difflbl">Difficulty — how fast he shoots</p>
     <div class="diffs">
       <button class="diff-btn" data-diff="easy">EASY</button>
@@ -163,30 +188,54 @@ const camHome = (()=>{
 const orbit = {...camHome};      // smoothed values applied to the camera
 const orbitGoal = {...camHome};  // where the user is steering to
 const _sph = new THREE.Spherical();
-let camDrag = false, camLX = 0, camLY = 0;
+let userZoomed = false;        // once the player pinches/scrolls, stop auto-framing on resize
+function fitRadius(){           // pull the camera back on tall/narrow screens so the goal fits
+  const a = innerWidth/innerHeight;
+  return a < 1.2 ? THREE.MathUtils.clamp(11/Math.max(a,.42), camHome.radius, 18) : camHome.radius;
+}
+/* one finger / mouse = orbit · two-finger pinch = zoom · wheel = zoom · double-tap = reset */
+const pointers = new Map();
+let pinchPrev = 0;
 canvas.style.cursor = 'grab';
+const pinchSpan = ()=>{ const p=[...pointers.values()]; return Math.hypot(p[0].x-p[1].x, p[0].y-p[1].y); };
 canvas.addEventListener('pointerdown', e=>{
-  camDrag = true; camLX = e.clientX; camLY = e.clientY;
-  canvas.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  try{ canvas.setPointerCapture(e.pointerId); }catch(_){}
+  if(pointers.size === 2) pinchPrev = pinchSpan();
   canvas.style.cursor = 'grabbing';
 });
 canvas.addEventListener('pointermove', e=>{
-  if(!camDrag) return;
-  orbitGoal.theta -= (e.clientX - camLX) * .005;
-  orbitGoal.phi   -= (e.clientY - camLY) * .005;
-  camLX = e.clientX; camLY = e.clientY;
-  // full 360° around the pitch (inputs auto-mirror on the striker's side) — just stay above the turf
-  orbitGoal.phi = THREE.MathUtils.clamp(orbitGoal.phi, .35, 1.5);
+  const p = pointers.get(e.pointerId);
+  if(!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y;
+  p.x = e.clientX; p.y = e.clientY;
+  if(pointers.size === 1){                              // orbit (stay above the turf)
+    orbitGoal.theta -= dx * .005;
+    orbitGoal.phi    = THREE.MathUtils.clamp(orbitGoal.phi - dy * .005, .35, 1.5);
+  } else if(pointers.size === 2){                       // pinch → zoom
+    const span = pinchSpan();
+    if(pinchPrev > 0){
+      orbitGoal.radius = THREE.MathUtils.clamp(orbitGoal.radius * (pinchPrev/span), 4, 20);
+      userZoomed = true;
+    }
+    pinchPrev = span;
+  }
 });
-const camDragEnd = ()=>{ camDrag = false; canvas.style.cursor = 'grab'; };
-canvas.addEventListener('pointerup', camDragEnd);
-canvas.addEventListener('pointercancel', camDragEnd);
+const dropPtr = e=>{
+  pointers.delete(e.pointerId);
+  if(pointers.size < 2) pinchPrev = 0;
+  if(pointers.size === 0) canvas.style.cursor = 'grab';
+};
+canvas.addEventListener('pointerup', dropPtr);
+canvas.addEventListener('pointercancel', dropPtr);
 canvas.addEventListener('wheel', e=>{
   e.preventDefault();
   orbitGoal.radius = THREE.MathUtils.clamp(orbitGoal.radius*(1 + e.deltaY*.001), 4, 20);
+  userZoomed = true;
 }, {passive:false});
 canvas.addEventListener('dblclick', ()=>{
   Object.assign(orbitGoal, camHome);
+  orbitGoal.radius = fitRadius(); userZoomed = false;
   // take the short way home, not several full spins
   orbitGoal.theta = camHome.theta + Math.round((orbit.theta - camHome.theta)/(Math.PI*2))*Math.PI*2;
 });
@@ -1305,11 +1354,14 @@ function animate(){
 
 function resize(){
   renderer.setSize(innerWidth, innerHeight);
-  camera.aspect = innerWidth/innerHeight;
-  camera.fov = innerWidth < 600 ? 62 : 50; // wider on phones
+  const a = innerWidth/innerHeight;
+  camera.aspect = a;
+  camera.fov = a < 1 ? 60 : (a < 1.5 ? 54 : 50);   // a touch wider on portrait / phones
   camera.updateProjectionMatrix();
+  if(!userZoomed){ orbitGoal.radius = orbit.radius = fitRadius(); }  // auto-frame so the goal fits
 }
 addEventListener('resize', resize);
+addEventListener('orientationchange', ()=> setTimeout(resize, 250));
 resize();
 ball.position.set(.35,BALL_R,11.6);
 animate();
