@@ -32,7 +32,7 @@
          padding:8px 16px;box-shadow:0 4px 0 var(--ink);text-align:center;min-width:96px}
   .badge .lbl{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888}
   .badge .val{font-family:'Bungee',cursive;font-size:26px;line-height:1;color:var(--ink)}
-  #saves .val{color:var(--toy-blue)} #streak .val{color:var(--toy-orange)}
+  #saves .val{color:var(--toy-blue)} #streak .val{color:var(--toy-orange)} #best .val{color:#2e9e3f}
   #lives{display:flex;gap:6px;justify-content:center;margin-top:4px}
   .glove{width:18px;height:18px;border-radius:50% 50% 40% 40%;background:var(--toy-blue);
          border:2px solid var(--ink);transition:all .3s}
@@ -95,6 +95,9 @@
   #fsBtn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
   #fsBtn.on{background:var(--toy-blue);color:#fff}
   #finalStats{font-family:'Bungee';font-size:22px;color:var(--toy-blue);margin-top:6px}
+  #recordBanner{font-family:'Bungee',cursive;font-size:18px;color:#2e9e3f;margin:8px 0 2px;
+        letter-spacing:.02em;text-shadow:0 2px 0 var(--ink);animation:recordpop .6s cubic-bezier(.2,1.6,.4,1)}
+  @keyframes recordpop{0%{transform:scale(0)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
   .hidden{display:none!important}
 
   /* ---------- phones / short screens ---------- */
@@ -126,6 +129,7 @@
 
 <div id="hud">
   <div class="badge" id="saves"><div class="lbl">Saves</div><div class="val">0</div></div>
+  <div class="badge" id="best"><div class="lbl">Best</div><div class="val">0</div></div>
   <div class="badge"><div class="lbl">Gloves</div><div id="lives">
     <div class="glove"></div><div class="glove"></div><div class="glove"></div></div></div>
   <div class="badge" id="streak"><div class="lbl">Streak</div><div class="val">0</div></div>
@@ -157,6 +161,7 @@
       <button class="diff-btn sel" data-diff="medium">MEDIUM</button>
       <button class="diff-btn" data-diff="hard">HARD</button>
     </div>
+    <p id="bestHint" class="difflbl"></p>
     <button id="startBtn">KICK OFF!</button>
   </div>
 </div>
@@ -165,6 +170,8 @@
   <div class="panel">
     <h1>FULL<br><span>TIME!</span></h1>
     <div id="finalStats"></div>
+    <div id="recordBanner" class="hidden">🏆 NEW HIGH SCORE!</div>
+    <p id="bestLine" class="difflbl"></p>
     <p id="finalMsg"></p>
     <p class="difflbl">Difficulty</p>
     <div class="diffs">
@@ -817,6 +824,13 @@ const DIFFICULTY = {
 };
 let diff = 'medium';
 
+/* ---------- high scores: one personal best (most saves) per difficulty ---------- */
+const HS_KEY = 'collinSuperSave.highScores';
+const highScores = {easy:0, medium:0, hard:0};
+try { Object.assign(highScores, JSON.parse(localStorage.getItem(HS_KEY) || '{}')); } catch(e){}
+function saveHighScores(){ try{ localStorage.setItem(HS_KEY, JSON.stringify(highScores)); }catch(e){} }
+const diffName = d => d.charAt(0).toUpperCase() + d.slice(1);
+
 /* ---------- keeper pose rig ----------
    position: x/y/dz · body: roll(z)/pitch(x) · shoulders shL/shR(splay z) + fL/fR(swing x)
    · elbows eL/eR(bend) · hips hipL/hipR(swing x) + knees kL/kR(bend). Lerps to a target. */
@@ -896,8 +910,15 @@ const sndGoal = ()=>{ // soft, deflating "aww"
 /* ---------- HUD helpers ---------- */
 const savesEl = document.querySelector('#saves .val');
 const streakEl = document.querySelector('#streak .val');
+const bestEl = document.querySelector('#best .val');
+const bestHintEl = document.getElementById('bestHint');
 const gloveEls = document.querySelectorAll('.glove');
 const flashEl = document.getElementById('flash');
+/* reflect the selected difficulty's best in the HUD badge + start-screen hint */
+function updateBest(){
+  bestEl.textContent = highScores[diff] || 0;
+  bestHintEl.textContent = `Best on ${diffName(diff)}: ${highScores[diff]||0} saves`;
+}
 function flash(text, color){
   flashEl.textContent = text;
   flashEl.style.color = color;
@@ -1074,7 +1095,14 @@ function resolveShot(saved){
 
 function endGame(){
   state = 'over';
+  // new personal best for this difficulty?
+  const isRecord = saves > (highScores[diff] || 0);
+  if(isRecord){ highScores[diff] = saves; saveHighScores(); updateBest(); }
   document.getElementById('finalStats').textContent = `${saves} SAVES`;
+  const banner = document.getElementById('recordBanner');
+  banner.classList.toggle('hidden', !isRecord);
+  document.getElementById('bestLine').textContent =
+    `Best on ${diffName(diff)}: ${highScores[diff]||0} saves`;
   const msg = saves >= 15 ? 'World-class! uhlsport is calling. 🧤' :
               saves >= 8  ? 'Solid gloves! The Interprovincial scouts noticed.' :
               saves >= 3  ? 'Good reflexes — keep training between the cones!' :
@@ -1128,8 +1156,10 @@ document.querySelectorAll('.diff-btn').forEach(b=>{
   b.addEventListener('click', ()=>{
     diff = b.dataset.diff;
     document.querySelectorAll('.diff-btn').forEach(x=> x.classList.toggle('sel', x.dataset.diff === diff));
+    updateBest();   // reflect the chosen difficulty's personal best
   });
 });
+updateBest();       // show the starting difficulty's best on load
 document.getElementById('startBtn').addEventListener('click', ()=>{
   initAudio();
   document.getElementById('startOverlay').classList.add('hidden');
