@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.0.0">
+<meta name="version" content="1.0.1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -194,7 +194,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -834,12 +834,27 @@ const DIFFICULTY = {
 };
 let diff = 'medium';
 
-/* ---------- high scores: one personal best (most saves) per difficulty ---------- */
+/* ---------- high scores: one personal best (most saves) per difficulty ----------
+   Persistence is best-effort across browsers & home-screen / private modes: we
+   store in BOTH localStorage and a 1-year cookie, and load the best of whatever
+   survived (some environments wipe one but keep the other). Records are also
+   written the instant they're beaten, mid-game — not only at full time. */
 const HS_KEY = 'collinSuperSave.highScores';
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function ckGet(k){ const m=document.cookie.match('(?:^|; )'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'=([^;]*)'); return m?decodeURIComponent(m[1]):null; }
+function ckSet(k,v){ try{ document.cookie=k+'='+encodeURIComponent(v)+'; max-age=31536000; path=/; samesite=lax'; }catch(e){} }
 const highScores = {easy:0, medium:0, hard:0};
-try { Object.assign(highScores, JSON.parse(localStorage.getItem(HS_KEY) || '{}')); } catch(e){}
-function saveHighScores(){ try{ localStorage.setItem(HS_KEY, JSON.stringify(highScores)); }catch(e){} }
+for(const raw of [lsGet(HS_KEY), ckGet(HS_KEY)]){
+  if(!raw) continue;
+  try{ const o=JSON.parse(raw); for(const k in highScores) highScores[k]=Math.max(highScores[k], +o[k]||0); }catch(e){}
+}
+function saveHighScores(){ const v=JSON.stringify(highScores); lsSet(HS_KEY,v); ckSet(HS_KEY,v); }
 const diffName = d => d.charAt(0).toUpperCase() + d.slice(1);
+let bestAtStart = 0;   // the record before the current game (for the "new record" banner)
+function recordBest(){ // call whenever the score climbs — persists the instant a record falls
+  if(saves > (highScores[diff]||0)){ highScores[diff]=saves; saveHighScores(); if(typeof updateBest==='function') updateBest(); }
+}
 
 /* ---------- keeper pose rig ----------
    position: x/y/dz · body: roll(z)/pitch(x) · shoulders shL/shR(splay z) + fL/fR(swing x)
@@ -1083,6 +1098,7 @@ function resolveShot(saved){
   state = 'result'; resultTimer = 1.5; lastSaved = saved;
   if(saved){
     saves++; streak++;
+    recordBest();   // persist immediately if this save sets a new personal best
     flash(streak >= 3 ? 'SUPER SAVE!' : 'SAVED!', streak >= 3 ? 'var(--toy-pink)' : 'var(--toy-yellow)');
     burstConfetti(ball.position.clone());
     // parry: kick the ball into a bouncing, gravity-driven deflection out of the box
@@ -1105,9 +1121,9 @@ function resolveShot(saved){
 
 function endGame(){
   state = 'over';
-  // new personal best for this difficulty?
-  const isRecord = saves > (highScores[diff] || 0);
-  if(isRecord){ highScores[diff] = saves; saveHighScores(); updateBest(); }
+  // did this game beat the record we started with? (records already persisted live)
+  const isRecord = saves > bestAtStart;
+  recordBest();   // safety: ensure the best is stored
   document.getElementById('finalStats').textContent = `${saves} SAVES`;
   const banner = document.getElementById('recordBanner');
   banner.classList.toggle('hidden', !isRecord);
@@ -1123,6 +1139,7 @@ function endGame(){
 
 function resetGame(){
   saves = 0; streak = 0; conceded = 0; round = 0;
+  bestAtStart = highScores[diff] || 0;   // remember the record going into this game
   updateHUD();
   document.getElementById('endOverlay').classList.add('hidden');
   startRound();
@@ -1172,6 +1189,7 @@ document.querySelectorAll('.diff-btn').forEach(b=>{
 updateBest();       // show the starting difficulty's best on load
 document.getElementById('startBtn').addEventListener('click', ()=>{
   initAudio();
+  bestAtStart = highScores[diff] || 0;   // remember the record going into this game
   document.getElementById('startOverlay').classList.add('hidden');
   startRound();
 });
