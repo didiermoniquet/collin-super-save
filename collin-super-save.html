@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.0.1">
+<meta name="version" content="1.0.2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -194,7 +194,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.0.1';
+const VERSION = '1.0.2';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -835,21 +835,40 @@ const DIFFICULTY = {
 let diff = 'medium';
 
 /* ---------- high scores: one personal best (most saves) per difficulty ----------
-   Persistence is best-effort across browsers & home-screen / private modes: we
-   store in BOTH localStorage and a 1-year cookie, and load the best of whatever
-   survived (some environments wipe one but keep the other). Records are also
-   written the instant they're beaten, mid-game — not only at full time. */
+   iOS "Add to Home Screen" (standalone) apps are known to drop localStorage &
+   cookies between launches, but IndexedDB survives — so IndexedDB is the primary
+   store, with localStorage + a 1-year cookie as fallbacks. The best across all of
+   them wins, and a record is written the instant it's beaten (not only at full time). */
 const HS_KEY = 'collinSuperSave.highScores';
+const highScores = {easy:0, medium:0, hard:0};
+function mergeRaw(raw){ if(!raw) return; try{ const o=JSON.parse(raw);
+  for(const k in highScores) highScores[k]=Math.max(highScores[k], +o[k]||0); }catch(e){} }
+/* localStorage + cookie (synchronous) */
 function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 function ckGet(k){ const m=document.cookie.match('(?:^|; )'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'=([^;]*)'); return m?decodeURIComponent(m[1]):null; }
 function ckSet(k,v){ try{ document.cookie=k+'='+encodeURIComponent(v)+'; max-age=31536000; path=/; samesite=lax'; }catch(e){} }
-const highScores = {easy:0, medium:0, hard:0};
-for(const raw of [lsGet(HS_KEY), ckGet(HS_KEY)]){
-  if(!raw) continue;
-  try{ const o=JSON.parse(raw); for(const k in highScores) highScores[k]=Math.max(highScores[k], +o[k]||0); }catch(e){}
-}
-function saveHighScores(){ const v=JSON.stringify(highScores); lsSet(HS_KEY,v); ckSet(HS_KEY,v); }
+/* IndexedDB (async, the durable one on iOS standalone) */
+let idb = null;
+function idbReady(){ return new Promise(res=>{ try{
+  const r = indexedDB.open('collinSuperSave', 1);
+  r.onupgradeneeded = ()=> r.result.createObjectStore('kv');
+  r.onsuccess = ()=>{ idb = r.result; res(idb); };
+  r.onerror = ()=> res(null);
+}catch(e){ res(null); } }); }
+function idbGet(k){ return new Promise(res=>{ if(!idb) return res(null);
+  try{ const q=idb.transaction('kv').objectStore('kv').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>res(null); }
+  catch(e){ res(null); } }); }
+function idbPut(k,v){ try{ if(idb) idb.transaction('kv','readwrite').objectStore('kv').put(v,k); }catch(e){} }
+/* initial synchronous load from ls + cookie */
+mergeRaw(lsGet(HS_KEY)); mergeRaw(ckGet(HS_KEY));
+function saveHighScores(){ const v=JSON.stringify(highScores); lsSet(HS_KEY,v); ckSet(HS_KEY,v); idbPut(HS_KEY,v); }
+/* then merge IndexedDB's (more durable) value and mirror the best back to every store */
+idbReady().then(()=> idbGet(HS_KEY)).then(raw=>{
+  mergeRaw(raw); saveHighScores(); if(typeof updateBest==='function') updateBest();
+});
+/* ask the browser to keep our data (best-effort; ignored where unsupported) */
+try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
 const diffName = d => d.charAt(0).toUpperCase() + d.slice(1);
 let bestAtStart = 0;   // the record before the current game (for the "new record" banner)
 function recordBest(){ // call whenever the score climbs — persists the instant a record falls
