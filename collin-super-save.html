@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.1.3">
+<meta name="version" content="1.2.0">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -136,7 +136,7 @@
     padding:10px 14px;background:var(--toy-yellow);color:var(--ink)}
   details.sect>summary::-webkit-details-marker{display:none}
   .sectbody{padding:12px 14px}
-  #kitPreview{display:block;width:100%;height:170px;border:3px solid var(--ink);border-radius:14px;
+  #kitPreview,#strPreview{display:block;width:100%;height:170px;border:3px solid var(--ink);border-radius:14px;
     background:linear-gradient(#bfe3ff,#dff3c8);box-shadow:0 3px 0 var(--ink);margin-bottom:12px;touch-action:none}
   .cosrow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:2px dashed rgba(27,27,31,.16)}
   .cosrow:first-child{padding-top:2px}
@@ -148,8 +148,9 @@
     padding:0;margin:0;font-size:0;cursor:pointer;box-shadow:0 3px 0 var(--ink);transition:transform .06s}
   .swatches .swatch.sel{outline:3px solid var(--toy-blue);outline-offset:3px;transform:scale(1.12)}
   .swatches .swatch:active{transform:translateY(3px);box-shadow:0 0 0 var(--ink)}
-  #nameInput{font-family:'Bungee',cursive;font-size:15px;text-align:center;width:150px;
+  #nameInput,#strNameInput,#strNumInput{font-family:'Bungee',cursive;font-size:15px;text-align:center;width:150px;
     border:3px solid var(--ink);border-radius:10px;padding:6px 8px;text-transform:uppercase;box-shadow:0 3px 0 var(--ink)}
+  #strNumInput{width:64px}
   .heat{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:6px 0 2px}
   .heat .cell{aspect-ratio:1.6;border:2px solid var(--ink);border-radius:8px;display:flex;
     align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#1b1b1f}
@@ -196,7 +197,7 @@
     .panel button{margin-top:10px;padding:10px 30px;font-size:18px}
     #finalStats{font-size:18px}
     .fineprint{display:none}     /* save vertical space on short screens */
-    #kitPreview{height:120px;margin-bottom:8px}
+    #kitPreview,#strPreview{height:120px;margin-bottom:8px}
   }
 </style>
 </head>
@@ -259,6 +260,20 @@
         <div class="cosrow"><span class="cl">Boots</span><div class="swatches" id="bootSwatches"></div></div>
       </div>
     </details>
+    <details class="sect" id="strSect">
+      <summary>⚽ Striker kit</summary>
+      <div class="sectbody">
+        <canvas id="strPreview"></canvas>
+        <div class="cosrow"><span class="cl">Name</span>
+          <input id="strNameInput" maxlength="9" placeholder="TIMOTHY"></div>
+        <div class="cosrow"><span class="cl">Number</span>
+          <input id="strNumInput" maxlength="2" inputmode="numeric" placeholder="9"></div>
+        <div class="cosrow"><span class="cl">Jersey</span><div class="swatches" id="strShirtSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Shorts</span><div class="swatches" id="strShortsSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Socks</span><div class="swatches" id="strSockSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Boots</span><div class="swatches" id="strBootSwatches"></div></div>
+      </div>
+    </details>
     <details class="sect" id="statSect">
       <summary>📊 Stats</summary>
       <div class="sectbody" id="statsBox"></div>
@@ -309,7 +324,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.1.3';
+const VERSION = '1.2.0';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -720,7 +735,11 @@ tn.font = '700 36px Fredoka, sans-serif';   tn.fillText('TIMOTHY', 128, 52);
 tn.font = '700 132px Fredoka, sans-serif';  tn.fillText('9', 128, 178);
 const tNameMat = new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(tNameCanvas), transparent:true});
 
-const striker = buildFigure({shirt:M.royal, shorts:M.royal, boots:M.redBoot,
+/* striker-exclusive kit materials so the player can recolour each part independently */
+const strShirtMat  = new THREE.MeshStandardMaterial({color:0x1d49cf, roughness:.3}); // jersey
+const strShortsMat = new THREE.MeshStandardMaterial({color:0x1d49cf, roughness:.3}); // shorts
+const strSockMat   = new THREE.MeshStandardMaterial({color:0x1d49cf, roughness:.3}); // sock cuffs
+const striker = buildFigure({shirt:strShirtMat, shorts:strShortsMat, boots:M.redBoot,
                              gloves:M.black, legs:M.greyLeg, cuffs:M.black});
 striker.group.scale.setScalar(1.72/2.35);
 striker.group.position.set(.7,0,12.4);
@@ -754,7 +773,7 @@ striker.group.position.set(.7,0,12.4);
   // parented to the shin so they follow the knee bend through the kick
   for(const sx of [-1,1]){
     const knee = striker.legs[sx<0?'L':'R'].userData.knee;
-    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(.135,.125,.18,12), M.royal);
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(.135,.125,.18,12), strSockMat);
     cuff.position.set(0, -.05, 0); knee.add(cuff);
     const ankle = new THREE.Mesh(new THREE.CylinderGeometry(.12,.13,.10,12), M.white);
     ankle.position.set(0, -.26, 0); knee.add(ankle);
@@ -965,7 +984,8 @@ function blankStat(){ return {saves:0, shots:0, bestStreak:0, bestReaction:null,
 const DATA = {
   scores: {normal:{easy:0,medium:0,hard:0}, sudden:{easy:0,medium:0,hard:0}},
   stats:  {easy:blankStat(), medium:blankStat(), hard:blankStat()},
-  cosmetics: {shirt:'#1b1b1f', shorts:'#1b1b1f', socks:'#9aa0a8', glove:'#ffd23f', boot:'#ff5fb4', name:'COLLIN'},
+  cosmetics: {shirt:'#1b1b1f', shorts:'#1b1b1f', socks:'#9aa0a8', glove:'#ffd23f', boot:'#ff5fb4', name:'COLLIN',
+              striker: {shirt:'#1f6bff', shorts:'#1f6bff', socks:'#1f6bff', boot:'#e23b2e', name:'TIMOTHY', num:'9'}},
 };
 function mergeScores(into, from){ if(!from) return;
   for(const d of DIFFS) into[d] = Math.max(into[d]||0, +from[d]||0); }
@@ -1014,6 +1034,7 @@ idbReady().then(async ()=>{
   saveData();
   if(typeof updateBest==='function') updateBest();
   if(typeof applyCosmetics==='function') applyCosmetics();
+  if(typeof applyStrikerCosmetics==='function') applyStrikerCosmetics();
   if(typeof syncCosmeticUI==='function') syncCosmeticUI();
   if(typeof renderStats==='function') renderStats();
 });
@@ -1029,31 +1050,40 @@ function recordBest(){ // call whenever the score climbs — persists the instan
   if(saves > curBest()){ DATA.scores[mode][diff] = saves; saveData(); if(typeof updateBest==='function') updateBest(); }
 }
 
-/* ---------- shooters: each favours different zones, with a kit colour & disguise ----------
+/* ---------- shot styles: how the striker shoots (the look is the player's custom kit) ----------
    weights bias the 6 target zones (0..2 high L/C/R, 3..5 low L/C/R, screen-relative);
-   disguise scales the plant-foot "tell" (lower = sneakier); speedMul tweaks shot pace. */
-const SHOOTERS = [
-  {name:'TIMOTHY', num:9,  shirt:0x1d49cf, weights:[1,1,1,1,1,1],             speedMul:1.00, disguise:1.00, note:'spreads it around'},
-  {name:'SVEN',    num:7,  shirt:0xc8332a, weights:[1.8,0.7,1.8,1.1,0.5,1.1], speedMul:1.00, disguise:1.10, note:'loves the top corners'},
-  {name:'LARS',    num:11, shirt:0x1f9e57, weights:[0.6,0.6,0.6,2.2,1.3,2.2], speedMul:0.95, disguise:0.85, note:'drills it low & hard'},
-  {name:'MATTEO',  num:10, shirt:0x7a2bd0, weights:[1.3,0.4,1.3,1.3,0.4,1.3], speedMul:1.05, disguise:1.30, note:'hunts the corners, hides it well'},
+   disguise scales the plant-foot "tell" (lower = sneakier); speedMul tweaks shot pace.
+   One random style is drawn per match for variety, applied to your single customised striker. */
+const SHOT_STYLES = [
+  {weights:[1,1,1,1,1,1],             speedMul:1.00, disguise:1.00, note:'spreads it around'},
+  {weights:[1.8,0.7,1.8,1.1,0.5,1.1], speedMul:1.00, disguise:1.10, note:'loves the top corners'},
+  {weights:[0.6,0.6,0.6,2.2,1.3,2.2], speedMul:0.95, disguise:0.85, note:'drills it low & hard'},
+  {weights:[1.3,0.4,1.3,1.3,0.4,1.3], speedMul:1.05, disguise:1.30, note:'hunts the corners, hides it well'},
 ];
-let shooter = SHOOTERS[0];
-function pickShooter(){ return SHOOTERS[Math.floor(Math.random()*SHOOTERS.length)]; }
+let shotStyle = SHOT_STYLES[0];
+function pickStyle(){ return SHOT_STYLES[Math.floor(Math.random()*SHOT_STYLES.length)]; }
 function pickZone(weights){
   let total=0; for(const w of weights) total+=w;
   let r = Math.random()*total;
   for(let i=0;i<6;i++){ r-=weights[i]; if(r<=0) return i; }
   return 5;
 }
-function applyShooter(s){
-  shooter = s;
-  M.royal.color.setHex(s.shirt);            // striker kit (shirt + shorts + socks share M.royal)
-  tn.clearRect(0,0,256,256);                // redraw the back-of-shirt "NAME / NUM" decal
+/* the striker's "NAME / NUMBER" back-of-shirt decal */
+function drawStrikerName(){
+  const s = DATA.cosmetics.striker;
+  tn.clearRect(0,0,256,256);
   tn.fillStyle = '#ffffff'; tn.textAlign = 'center';
-  tn.font = '700 36px Fredoka, sans-serif';  tn.fillText(s.name, 128, 52);
-  tn.font = '700 132px Fredoka, sans-serif'; tn.fillText(String(s.num), 128, 178);
+  tn.font = '700 36px Fredoka, sans-serif';  tn.fillText(s.name || 'TIMOTHY', 128, 52);
+  tn.font = '700 132px Fredoka, sans-serif'; tn.fillText(String(s.num || '9'), 128, 178);
   tNameMat.map.needsUpdate = true;
+}
+function applyStrikerCosmetics(){
+  const s = DATA.cosmetics.striker;
+  try{ strShirtMat.color.set(s.shirt); }catch(e){}    // jersey
+  try{ strShortsMat.color.set(s.shorts); }catch(e){}  // shorts
+  try{ strSockMat.color.set(s.socks); }catch(e){}     // sock cuffs
+  try{ M.redBoot.color.set(s.boot); }catch(e){}       // boots
+  drawStrikerName();
 }
 
 /* ---------- reaction timing & the striker's directional "tell" ---------- */
@@ -1061,7 +1091,7 @@ let kickAt = 0;            // performance.now() when the ball left the foot
 let lastReaction = null;   // seconds from kick → commit (null if no dive / a read)
 let divedEarly = false;    // committed before the strike (an anticipatory read)
 const TELL_BY_DIFF = {easy:.24, medium:.15, hard:.08};
-function tellAmount(){ return (TELL_BY_DIFF[diff]||.15) * shooter.disguise; }
+function tellAmount(){ return (TELL_BY_DIFF[diff]||.15) * shotStyle.disguise; }
 function showReaction(){
   const el = document.getElementById('reaction');
   if(divedEarly){ el.textContent = 'READ! ⚡'; el.style.color = 'var(--toy-pink)'; }
@@ -1230,7 +1260,7 @@ function startRound(){
   windupTimer = 1.05 + Math.random()*.6;
   committed = false; playerZone = -1;
   lastReaction = null; divedEarly = false;
-  targetZone = pickZone(shooter.weights);
+  targetZone = pickZone(shotStyle.weights);
   // keeper returns to the ready-crouch; cancel any dive arc
   ktarget = {...KREADY}; diveT = -1;
   // striker back to a neutral stance
@@ -1281,7 +1311,7 @@ function kick(){
   const dc = DIFFICULTY[diff];
   let fd = dc.base - round*dc.dec;
   if(mode==='sudden') fd -= round*dc.dec*.7;                  // ramps up faster in sudden death
-  flightDur = Math.max(dc.floor*(mode==='sudden'?.85:1), fd) / shooter.speedMul; // pace by difficulty, mode & shooter
+  flightDur = Math.max(dc.floor*(mode==='sudden'?.85:1), fd) / shotStyle.speedMul; // pace by difficulty, mode & style
   const z = ZONES[targetZone];
   const jitter = ()=> (Math.random()-.5)*.3;
   ballFrom.copy(ball.position);
@@ -1419,7 +1449,8 @@ function endGame(){
               saves >= 3  ? 'Good reflexes — keep training between the cones!' :
                             'Even the best keepers have rough days. Again!';
   document.getElementById('finalMsg').textContent = msg;
-  document.getElementById('endShooter').textContent = `Shooter: ${shooter.name} #${shooter.num} — ${shooter.note}`;
+  const sk = DATA.cosmetics.striker;
+  document.getElementById('endShooter').textContent = `Striker: ${sk.name} #${sk.num} — ${shotStyle.note}`;
   saveData();                 // flush this game's stats to disk
   renderStats();
   document.getElementById('replayBtn').classList.toggle('hidden', !bestReplay);
@@ -1429,8 +1460,8 @@ function endGame(){
 function beginGame(){
   gameActive = true;
   document.getElementById('homeBtn').classList.remove('hidden');
-  applyShooter(pickShooter());
-  toast(`⚽ ${shooter.name} #${shooter.num} steps up`);
+  shotStyle = pickStyle();
+  toast(`⚽ ${DATA.cosmetics.striker.name} #${DATA.cosmetics.striker.num} steps up — ${shotStyle.note}`);
   saves = 0; streak = 0; conceded = 0; round = 0;
   bestAtStart = curBest();                // remember the record going into this game
   bestReplay = null; bestReplayStreak = -1; pendingReplayAt = -1;
@@ -1517,11 +1548,16 @@ function nearestKitColor(hex){
     const d=(r-cr)*(r-cr)+(g-cg)*(g-cg)+(b-cb)*(b-cb); if(d<bd){ bd=d; best=c; } }
   return best;
 }
-function normalizeCosmetics(){    // snap any saved kit colour into the 10-colour palette
+function normalizeCosmetics(){    // snap any saved kit colour (keeper + striker) into the 10-colour palette
   let changed=false;
   for(const k of ['shirt','shorts','socks','glove','boot']){
     const cur=String(DATA.cosmetics[k]||'').toLowerCase();
     if(!KIT_COLORS.includes(cur)){ DATA.cosmetics[k]=nearestKitColor(cur); changed=true; }
+  }
+  const s = DATA.cosmetics.striker;
+  if(s) for(const k of ['shirt','shorts','socks','boot']){
+    const cur=String(s[k]||'').toLowerCase();
+    if(!KIT_COLORS.includes(cur)){ s[k]=nearestKitColor(cur); changed=true; }
   }
   return changed;
 }
@@ -1548,8 +1584,17 @@ function syncCosmeticUI(){
     const val = String(DATA.cosmetics[row.key]).toLowerCase();
     cont.querySelectorAll('.swatch').forEach(s=> s.classList.toggle('sel', s.dataset.col.toLowerCase() === val));
   }
+  for(const row of STRIKER_ROWS){
+    const cont = document.getElementById(row.id); if(!cont) continue;
+    const val = String(DATA.cosmetics.striker[row.key]).toLowerCase();
+    cont.querySelectorAll('.swatch').forEach(s=> s.classList.toggle('sel', s.dataset.col.toLowerCase() === val));
+  }
   const ni = document.getElementById('nameInput');
   if(ni && document.activeElement !== ni) ni.value = DATA.cosmetics.name;
+  const sn = document.getElementById('strNameInput');
+  if(sn && document.activeElement !== sn) sn.value = DATA.cosmetics.striker.name;
+  const snum = document.getElementById('strNumInput');
+  if(snum && document.activeElement !== snum) snum.value = DATA.cosmetics.striker.num;
 }
 function applyCosmetics(){
   if(normalizeCosmetics()) saveData();                                           // keep colours within the palette
@@ -1598,36 +1643,82 @@ if(_nameInput){
 }
 COSMETIC_ROWS.forEach(r=> buildSwatches(document.getElementById(r.id), KIT_COLORS, r.key));
 
-/* ---------- live kit preview: a small spinning Collin that shares the real materials ----------
-   It's a clone of the keeper (clone shares geometry + material objects), so any colour change
-   to the shared kit materials shows up here instantly. Rendered by its own small renderer. */
-const kitCanvas = document.getElementById('kitPreview');
-const kitSectEl = document.getElementById('kitSect');
-let kitRenderer = null, kitScene = null, kitCam = null, kitFigure = null;
-function initKitPreview(){
-  if(kitRenderer || !kitCanvas) return;
-  kitRenderer = new THREE.WebGLRenderer({canvas:kitCanvas, antialias:true, alpha:true});
-  kitRenderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  kitScene = new THREE.Scene();
-  kitScene.add(new THREE.HemisphereLight(0xffffff, 0x4d7a2a, 1.05));
-  const dl = new THREE.DirectionalLight(0xfff3d6, 1.1); dl.position.set(2,4,3); kitScene.add(dl);
-  kitFigure = keeper.group.clone(true);
-  kitFigure.position.set(0,0,0); kitFigure.rotation.set(0,0,0); kitFigure.scale.setScalar(KSCALE);
-  kitScene.add(kitFigure);
-  kitCam = new THREE.PerspectiveCamera(34, 1, .1, 50);
-  kitCam.position.set(0, .95, 3.25); kitCam.lookAt(0, .85, 0);
-  sizeKitPreview();
+/* ---------- striker cosmetics: same 10-colour palette, plus a name & number ---------- */
+const STRIKER_ROWS = [
+  {id:'strShirtSwatches',  key:'shirt'},
+  {id:'strShortsSwatches', key:'shorts'},
+  {id:'strSockSwatches',   key:'socks'},
+  {id:'strBootSwatches',   key:'boot'},
+];
+STRIKER_ROWS.forEach(r=>{
+  const cont = document.getElementById(r.id); if(!cont) return;
+  cont.innerHTML = '';
+  KIT_COLORS.forEach(col=>{
+    const s = document.createElement('button');
+    s.className = 'swatch'; s.style.background = col; s.dataset.col = col;
+    s.addEventListener('click', ()=>{ DATA.cosmetics.striker[r.key] = col; saveData(); applyStrikerCosmetics(); syncCosmeticUI(); });
+    cont.appendChild(s);
+  });
+});
+const _strName = document.getElementById('strNameInput');
+if(_strName){
+  _strName.addEventListener('input', ()=>{
+    const v = _strName.value.toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,9);
+    _strName.value = v;
+    DATA.cosmetics.striker.name = v || 'TIMOTHY';
+    applyStrikerCosmetics(); saveData();
+  });
 }
-function sizeKitPreview(){
-  if(!kitRenderer || !kitCanvas) return;
-  const w = kitCanvas.clientWidth || 240, h = kitCanvas.clientHeight || 170;
-  kitRenderer.setSize(w, h, false);
-  kitCam.aspect = w/h; kitCam.updateProjectionMatrix();
+const _strNum = document.getElementById('strNumInput');
+if(_strNum){
+  _strNum.addEventListener('input', ()=>{
+    const v = _strNum.value.replace(/[^0-9]/g,'').slice(0,2);
+    _strNum.value = v;
+    DATA.cosmetics.striker.num = v || '9';
+    applyStrikerCosmetics(); saveData();
+  });
 }
-function kitPreviewVisible(){
-  return !!(kitSectEl && kitSectEl.open && !document.getElementById('startOverlay').classList.contains('hidden'));
+
+/* ---------- live kit previews: small spinning figures that share the real materials ----------
+   Each preview is a clone of a built figure (clone shares geometry + material objects), so any
+   colour change to the shared kit materials shows up instantly. The figure is cloned now (in a
+   clean standing pose); its own tiny renderer is created the first time its panel opens. */
+function createPreview(canvasId, figureGroup, sectionId){
+  const canvas = document.getElementById(canvasId);
+  const sectionEl = document.getElementById(sectionId);
+  const figure = figureGroup.clone(true);          // capture a neutral pose; shares materials
+  figure.position.set(0,0,0); figure.rotation.set(0,0,0); figure.scale.copy(figureGroup.scale);
+  let renderer = null, scene = null, cam = null;
+  function init(){
+    if(renderer || !canvas) return;
+    renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+    renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+    scene = new THREE.Scene();
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x4d7a2a, 1.05));
+    const dl = new THREE.DirectionalLight(0xfff3d6, 1.1); dl.position.set(2,4,3); scene.add(dl);
+    scene.add(figure);
+    cam = new THREE.PerspectiveCamera(34, 1, .1, 50);
+    cam.position.set(0, 1.0, 3.5); cam.lookAt(0, .9, 0);
+    size();
+  }
+  function size(){
+    if(!renderer || !canvas) return;
+    const w = canvas.clientWidth || 240, h = canvas.clientHeight || 170;
+    renderer.setSize(w, h, false); cam.aspect = w/h; cam.updateProjectionMatrix();
+  }
+  function visible(){
+    return !!(sectionEl && sectionEl.open && !document.getElementById('startOverlay').classList.contains('hidden'));
+  }
+  function render(t){ if(!visible()) return; init(); figure.rotation.y = t*0.7; renderer.render(scene, cam); }
+  if(sectionEl) sectionEl.addEventListener('toggle', ()=>{ if(sectionEl.open){ init(); size(); } });
+  return {render, size};
 }
-if(kitSectEl) kitSectEl.addEventListener('toggle', ()=>{ if(kitSectEl.open){ initKitPreview(); sizeKitPreview(); } });
+const previews = [
+  createPreview('kitPreview', keeper.group,  'kitSect'),
+  createPreview('strPreview', striker.group, 'strSect'),
+];
+function renderPreviews(t){ for(const p of previews) p.render(t); }
+function sizePreviews(){ for(const p of previews) p.size(); }
 
 /* ---------- stats panel (per difficulty) with a 6-zone save-rate heat map ---------- */
 function renderStats(){
@@ -1649,7 +1740,7 @@ function renderStats(){
     `<div class="heat">${cells}</div>`;
 }
 
-applyCosmetics(); syncCosmeticUI(); renderStats();
+applyCosmetics(); applyStrikerCosmetics(); syncCosmeticUI(); renderStats();
 updateBest();       // show the starting difficulty's best on load
 document.getElementById('startBtn').addEventListener('click', ()=>{
   initAudio();
@@ -1957,12 +2048,8 @@ function animate(){
 
   renderer.render(scene, camera);
 
-  /* live kit preview (small spinning Collin) — only while the kit panel is open on the menu */
-  if(kitPreviewVisible()){
-    initKitPreview();
-    if(kitFigure) kitFigure.rotation.y = t*0.7;
-    kitRenderer.render(kitScene, kitCam);
-  }
+  /* live kit previews (spinning Collin / striker) — each renders only while its panel is open */
+  renderPreviews(t);
 }
 
 function resize(){
@@ -1972,7 +2059,7 @@ function resize(){
   camera.fov = a < 1 ? 60 : (a < 1.5 ? 54 : 50);   // a touch wider on portrait / phones
   camera.updateProjectionMatrix();
   if(!userZoomed){ orbitGoal.radius = orbit.radius = fitRadius(); }  // auto-frame so the goal fits
-  sizeKitPreview();
+  sizePreviews();
 }
 addEventListener('resize', resize);
 addEventListener('orientationchange', ()=> setTimeout(resize, 250));

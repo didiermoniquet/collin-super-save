@@ -7,6 +7,14 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] — 2026-06-11
+
+### Added
+- **Striker customisation.** A new "⚽ Striker kit" section lets you dress your opponent like the keeper — jersey, shorts, socks, and boots from the same 10-colour palette, plus a custom name and number, with a live spinning preview.
+
+### Changed
+- The four rotating shooters are now a single striker **you** customise. Their distinct shot styles (top-corner, low-and-hard, disguised, etc.) are kept and assigned at random each match for variety — so matches still play differently, against one consistent, customised opponent. The kick-off toast and Full Time screen show your striker's name/number plus that match's style.
+
 ## [1.1.3] — 2026-06-11
 
 ### Fixed
