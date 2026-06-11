@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.1.3] — 2026-06-11
+
+### Fixed
+- The keeper **name field** wouldn't accept the letters Q, W, E, A, S, or D — the global dive-key handler was intercepting them (and calling `preventDefault`) even while typing. It now ignores the dive keys whenever a text field is focused.
+
 ## [1.1.2] — 2026-06-11
 
 ### Changed

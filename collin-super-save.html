@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.1.2">
+<meta name="version" content="1.1.3">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -309,7 +309,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.1.2';
+const VERSION = '1.1.3';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1452,6 +1452,9 @@ function resetGame(){
    the two left-hand key clusters always match the goal zones. */
 const KEYMAP = {KeyQ:0, KeyW:1, KeyE:2, KeyA:3, KeyS:4, KeyD:5};
 addEventListener('keydown', e=>{
+  // don't hijack the dive keys (Q/W/E/A/S/D) while the player is typing a name
+  const el = e.target;
+  if(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
   const z = KEYMAP[e.code];
   if(z !== undefined){ e.preventDefault(); dive(z); }
 });
