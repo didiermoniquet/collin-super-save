@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.0.2">
+<meta name="version" content="1.1.0">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -96,10 +96,80 @@
         cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
   #fsBtn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
   #fsBtn.on{background:var(--toy-blue);color:#fff}
+  #homeBtn{position:fixed;left:max(12px,env(safe-area-inset-left));
+        bottom:calc(max(16px,env(safe-area-inset-bottom)) + 56px);
+        z-index:6;width:46px;height:46px;line-height:1;
+        border:3px solid var(--ink);border-radius:14px;background:var(--card);font-size:20px;
+        cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
+  #homeBtn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
+  #menuBtn{background:#fff}
   #finalStats{font-family:'Bungee';font-size:22px;color:var(--toy-blue);margin-top:6px}
   #recordBanner{font-family:'Bungee',cursive;font-size:18px;color:#2e9e3f;margin:8px 0 2px;
         letter-spacing:.02em;text-shadow:0 2px 0 var(--ink);animation:recordpop .6s cubic-bezier(.2,1.6,.4,1)}
   @keyframes recordpop{0%{transform:scale(0)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+  /* ---------- reaction-time readout ---------- */
+  #reaction{position:fixed;top:52%;left:50%;transform:translate(-50%,-50%) scale(.6);
+    font-family:'Bungee',cursive;font-size:clamp(16px,3.4vw,24px);color:var(--toy-blue);
+    z-index:6;pointer-events:none;opacity:0;-webkit-text-stroke:2px var(--ink);text-shadow:0 3px 0 var(--ink)}
+  #reaction.show{animation:rt .9s ease-out forwards}
+  @keyframes rt{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}
+    20%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    70%{opacity:1}100%{opacity:0;transform:translate(-50%,-58%) scale(1)}}
+  /* ---------- shooter toast ---------- */
+  #toast{position:fixed;top:calc(env(safe-area-inset-top) + 78px);left:50%;
+    transform:translateX(-50%) translateY(-8px);background:var(--card);border:3px solid var(--ink);
+    border-radius:14px;padding:7px 16px;font-family:'Bungee',cursive;font-size:13px;color:var(--ink);
+    box-shadow:0 4px 0 var(--ink);z-index:6;pointer-events:none;opacity:0;white-space:nowrap}
+  #toast.show{animation:toast 2.4s ease-out forwards}
+  @keyframes toast{0%{opacity:0;transform:translateX(-50%) translateY(-8px)}
+    10%{opacity:1;transform:translateX(-50%) translateY(0)}
+    80%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
+  /* ---------- mode / cosmetics / stats inside panels ---------- */
+  .modes{display:flex;gap:8px;justify-content:center;margin:6px 0 2px}
+  .modes .mode-btn{margin:0;font-family:'Bungee',cursive;font-size:13px;padding:8px 14px;
+    border:3px solid var(--ink);border-radius:13px;background:#fff;color:var(--ink);
+    cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
+  .modes .mode-btn.sel{background:var(--toy-orange);color:#fff}
+  .modes .mode-btn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
+  details.sect{margin:12px 0 0;text-align:left;border:3px solid var(--ink);border-radius:14px;background:#fff;overflow:hidden}
+  details.sect>summary{list-style:none;cursor:pointer;font-family:'Bungee',cursive;font-size:13px;
+    padding:10px 14px;background:var(--toy-yellow);color:var(--ink)}
+  details.sect>summary::-webkit-details-marker{display:none}
+  .sectbody{padding:12px 14px}
+  #kitPreview{display:block;width:100%;height:170px;border:3px solid var(--ink);border-radius:14px;
+    background:linear-gradient(#bfe3ff,#dff3c8);box-shadow:0 3px 0 var(--ink);margin-bottom:12px;touch-action:none}
+  .cosrow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:2px dashed rgba(27,27,31,.16)}
+  .cosrow:first-child{padding-top:2px}
+  .cosrow:last-child{border-bottom:none;padding-bottom:2px}
+  .cosrow .cl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#888;width:62px}
+  .swatches{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  /* scoped to beat the generic `.panel button` rule (else swatches become big pills) */
+  .swatches .swatch{width:32px;height:32px;min-width:32px;border-radius:50%;border:3px solid var(--ink);
+    padding:0;margin:0;font-size:0;cursor:pointer;box-shadow:0 3px 0 var(--ink);transition:transform .06s}
+  .swatches .swatch.sel{outline:3px solid var(--toy-blue);outline-offset:3px;transform:scale(1.12)}
+  .swatches .swatch:active{transform:translateY(3px);box-shadow:0 0 0 var(--ink)}
+  #nameInput{font-family:'Bungee',cursive;font-size:15px;text-align:center;width:150px;
+    border:3px solid var(--ink);border-radius:10px;padding:6px 8px;text-transform:uppercase;box-shadow:0 3px 0 var(--ink)}
+  .heat{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:6px 0 2px}
+  .heat .cell{aspect-ratio:1.6;border:2px solid var(--ink);border-radius:8px;display:flex;
+    align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#1b1b1f}
+  .statline{font-size:13px;font-weight:600;color:#444;margin:5px 0}
+  .statline b{color:var(--toy-blue)}
+  /* ---------- replay ---------- */
+  #replayBtn{margin-top:10px;background:var(--toy-pink);color:#fff}
+  #replayOverlay{position:fixed;inset:0;z-index:12;pointer-events:none}
+  #replayOverlay.hidden{display:none!important}
+  #replayOverlay .rbar{position:absolute;top:max(12px,env(safe-area-inset-top));left:0;right:0;
+    display:flex;justify-content:center;gap:10px;align-items:center}
+  #replayOverlay .rtag{background:var(--card);border:3px solid var(--ink);border-radius:14px;
+    padding:7px 14px;font-family:'Bungee',cursive;font-size:13px;box-shadow:0 4px 0 var(--ink)}
+  #replayClose{pointer-events:auto;font-family:'Bungee',cursive;font-size:13px;padding:8px 16px;
+    border:3px solid var(--ink);border-radius:14px;background:var(--toy-yellow);cursor:pointer;
+    box-shadow:0 4px 0 var(--ink);transition:transform .06s}
+  #replayClose:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
+  #replayHint{position:absolute;bottom:max(20px,env(safe-area-inset-bottom));left:50%;
+    transform:translateX(-50%);font-weight:600;color:#fff;font-size:12px;
+    text-shadow:0 1px 3px rgba(0,0,0,.6)}
   .hidden{display:none!important}
 
   /* ---------- phones / short screens ---------- */
@@ -114,7 +184,8 @@
     .badge{padding:4px 9px;min-width:0}
     .badge .val{font-size:18px}.badge .lbl{font-size:9px}
     #lives{margin-top:2px}.glove{width:13px;height:13px}
-    #muteBtn,#fsBtn{width:38px;height:38px;font-size:17px}
+    #muteBtn,#fsBtn,#homeBtn{width:38px;height:38px;font-size:17px}
+    #homeBtn{bottom:calc(max(16px,env(safe-area-inset-bottom)) + 46px)}
     .panel{padding:14px 24px;transform:none}
     .panel h1{font-size:clamp(22px,6vw,32px)}
     .panel p{margin:6px 0 3px;font-size:12.5px;line-height:1.35}
@@ -123,6 +194,7 @@
     .panel button{margin-top:10px;padding:10px 30px;font-size:18px}
     #finalStats{font-size:18px}
     .fineprint{display:none}     /* save vertical space on short screens */
+    #kitPreview{height:120px;margin-bottom:8px}
   }
 </style>
 </head>
@@ -138,9 +210,12 @@
 </div>
 
 <div id="flash"></div>
+<div id="reaction"></div>
+<div id="toast"></div>
 
 <button id="muteBtn" aria-label="Toggle sound">🔊</button>
 <button id="fsBtn" aria-label="Fullscreen" title="Fullscreen">⛶</button>
+<button id="homeBtn" class="hidden" aria-label="Home menu" title="Back to menu">🏠</button>
 
 <div id="pad">
   <button data-z="0">↖<small>Q</small></button>
@@ -157,6 +232,11 @@
     <p>The striker is lining up penalties.<br>Dive to the right zone before the ball hits the net!</p>
     <div class="keys" id="keysHint"><b>Q</b><b>W</b><b>E</b><b>A</b><b>S</b><b>D</b></div>
     <p class="fineprint" style="font-size:13px;color:#888">Top row = high dives · bottom row = low dives<br>(physical key positions — works on AZERTY too) …or tap the pad.<br>Drag = look around · pinch / scroll = zoom · double-tap = reset view.<br>3 goals conceded = full time.</p>
+    <p class="difflbl">Mode</p>
+    <div class="modes">
+      <button class="mode-btn sel" data-mode="normal">NORMAL</button>
+      <button class="mode-btn" data-mode="sudden">SUDDEN DEATH</button>
+    </div>
     <p class="difflbl">Difficulty — how fast he shoots</p>
     <div class="diffs">
       <button class="diff-btn" data-diff="easy">EASY</button>
@@ -164,6 +244,23 @@
       <button class="diff-btn" data-diff="hard">HARD</button>
     </div>
     <p id="bestHint" class="difflbl"></p>
+    <details class="sect" id="kitSect">
+      <summary>🎨 Keeper kit</summary>
+      <div class="sectbody">
+        <canvas id="kitPreview"></canvas>
+        <div class="cosrow"><span class="cl">Name</span>
+          <input id="nameInput" maxlength="9" placeholder="COLLIN"></div>
+        <div class="cosrow"><span class="cl">Jersey</span><div class="swatches" id="shirtSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Shorts</span><div class="swatches" id="shortsSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Socks</span><div class="swatches" id="sockSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Gloves</span><div class="swatches" id="gloveSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Boots</span><div class="swatches" id="bootSwatches"></div></div>
+      </div>
+    </details>
+    <details class="sect" id="statSect">
+      <summary>📊 Stats</summary>
+      <div class="sectbody" id="statsBox"></div>
+    </details>
     <button id="startBtn">KICK OFF!</button>
     <div class="ver"></div>
   </div>
@@ -176,15 +273,31 @@
     <div id="recordBanner" class="hidden">🏆 NEW HIGH SCORE!</div>
     <p id="bestLine" class="difflbl"></p>
     <p id="finalMsg"></p>
+    <p id="endShooter" class="difflbl"></p>
+    <p class="difflbl">Mode</p>
+    <div class="modes">
+      <button class="mode-btn sel" data-mode="normal">NORMAL</button>
+      <button class="mode-btn" data-mode="sudden">SUDDEN DEATH</button>
+    </div>
     <p class="difflbl">Difficulty</p>
     <div class="diffs">
       <button class="diff-btn" data-diff="easy">EASY</button>
       <button class="diff-btn sel" data-diff="medium">MEDIUM</button>
       <button class="diff-btn" data-diff="hard">HARD</button>
     </div>
+    <button id="replayBtn" class="hidden">▶ WATCH BEST SAVE</button>
     <button id="retryBtn">PLAY AGAIN</button>
+    <button id="menuBtn">⌂ MENU</button>
     <div class="ver"></div>
   </div>
+</div>
+
+<div id="replayOverlay" class="hidden">
+  <div class="rbar">
+    <div class="rtag">★ BEST SAVE — slow-mo</div>
+    <button id="replayClose">CLOSE</button>
+  </div>
+  <div id="replayHint">drag to look around · pinch / scroll to zoom</div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -194,7 +307,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.0.2';
+const VERSION = '1.1.0';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -508,7 +621,11 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt})
 }
 
 /* ---------- COLLIN the keeper ---------- */
-const keeper = buildFigure({shirt:M.camo, shorts:M.black, boots:M.pink, gloves:M.volt, cuffs:M.blue});
+/* keeper-exclusive kit materials so recolouring never touches the striker / others */
+const kitBottomsMat    = new THREE.MeshStandardMaterial({color:0x222226, roughness:.4}); // shorts + leggings
+const kitSockMat       = new THREE.MeshStandardMaterial({color:0x3a3a42, roughness:.4}); // sock cuffs
+const kitBootStripeMat = new THREE.MeshStandardMaterial({color:0xd63a8f, roughness:.3});  // boot swoosh
+const keeper = buildFigure({shirt:M.camo, shorts:kitBottomsMat, boots:M.pink, gloves:M.volt, legs:kitBottomsMat, cuffs:M.blue});
 /* figure is ~2.35 units tall as built → scale to 1.60 m */
 const KSCALE = 1.6/2.35;
 keeper.group.scale.setScalar(KSCALE);
@@ -547,15 +664,13 @@ const keeperHome = new THREE.Vector3(0,0,.6);
 
   // pink boots: darker swoosh + white sole, plus sock cuff below the knee —
   // all parented to the shin so they follow the bend of the keeper's knees
-  const pinkStripeMat = new THREE.MeshStandardMaterial({color:0xd63a8f, roughness:.3});
-  const sockMat = new THREE.MeshStandardMaterial({color:0x3a3a42, roughness:.4});
   for(const sx of [-1,1]){
     const knee = keeper.legs[sx<0?'L':'R'].userData.knee;
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(.28,.05,.22), pinkStripeMat);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(.28,.05,.22), kitBootStripeMat);
     stripe.position.set(0,-.27,.11); knee.add(stripe);
     const sole = new THREE.Mesh(new THREE.BoxGeometry(.28,.045,.46), M.white);
     sole.position.set(0,-.40,.07); knee.add(sole);
-    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.125,.03,8,14), sockMat);
+    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.125,.03,8,14), kitSockMat);
     cuff.position.set(0,-.04,0); cuff.rotation.x = Math.PI/2; knee.add(cuff);
   }
 
@@ -834,15 +949,41 @@ const DIFFICULTY = {
 };
 let diff = 'medium';
 
-/* ---------- high scores: one personal best (most saves) per difficulty ----------
-   iOS "Add to Home Screen" (standalone) apps are known to drop localStorage &
-   cookies between launches, but IndexedDB survives — so IndexedDB is the primary
-   store, with localStorage + a 1-year cookie as fallbacks. The best across all of
-   them wins, and a record is written the instant it's beaten (not only at full time). */
-const HS_KEY = 'collinSuperSave.highScores';
-const highScores = {easy:0, medium:0, hard:0};
-function mergeRaw(raw){ if(!raw) return; try{ const o=JSON.parse(raw);
-  for(const k in highScores) highScores[k]=Math.max(highScores[k], +o[k]||0); }catch(e){} }
+/* ---------- persistent save data ----------
+   One JSON blob holds: best scores (per mode × difficulty), lifetime stats
+   (per difficulty), and keeper cosmetics. iOS "Add to Home Screen" apps drop
+   localStorage & cookies between launches but keep IndexedDB, so IndexedDB is the
+   durable primary with localStorage + a 1-year cookie as fallbacks; the best of all
+   three wins and records are written the instant they fall. */
+const SAVE_KEY = 'collinSuperSave.v2';
+const HS_KEY   = 'collinSuperSave.highScores';   // legacy v1 store — migrated on load
+const DIFFS = ['easy','medium','hard'];
+function blankStat(){ return {saves:0, shots:0, bestStreak:0, bestReaction:null,
+  zoneSaved:[0,0,0,0,0,0], zoneShots:[0,0,0,0,0,0]}; }
+const DATA = {
+  scores: {normal:{easy:0,medium:0,hard:0}, sudden:{easy:0,medium:0,hard:0}},
+  stats:  {easy:blankStat(), medium:blankStat(), hard:blankStat()},
+  cosmetics: {shirt:'#16161a', shorts:'#222226', socks:'#3a3a42', glove:'#d8ff2e', boot:'#ff5fb4', name:'COLLIN'},
+};
+function mergeScores(into, from){ if(!from) return;
+  for(const d of DIFFS) into[d] = Math.max(into[d]||0, +from[d]||0); }
+function mergeStat(into, from){ if(!from) return;
+  into.saves = Math.max(into.saves, +from.saves||0);
+  into.shots = Math.max(into.shots, +from.shots||0);
+  into.bestStreak = Math.max(into.bestStreak, +from.bestStreak||0);
+  if(from.bestReaction!=null) into.bestReaction = into.bestReaction==null
+    ? +from.bestReaction : Math.min(into.bestReaction, +from.bestReaction);
+  for(let i=0;i<6;i++){
+    if(from.zoneSaved) into.zoneSaved[i] = Math.max(into.zoneSaved[i], +from.zoneSaved[i]||0);
+    if(from.zoneShots) into.zoneShots[i] = Math.max(into.zoneShots[i], +from.zoneShots[i]||0);
+  } }
+function mergeData(raw){ if(!raw) return; let o; try{ o=JSON.parse(raw); }catch(e){ return; }
+  if(o.scores){ mergeScores(DATA.scores.normal, o.scores.normal); mergeScores(DATA.scores.sudden, o.scores.sudden); }
+  if(o.stats) for(const d of DIFFS) mergeStat(DATA.stats[d], o.stats[d]);
+  if(o.cosmetics) for(const k in DATA.cosmetics) if(o.cosmetics[k]!=null) DATA.cosmetics[k]=o.cosmetics[k];
+}
+function mergeLegacy(raw){ if(!raw) return; try{ const o=JSON.parse(raw);  // v1 flat {easy,medium,hard} → normal mode
+  mergeScores(DATA.scores.normal, o); }catch(e){} }
 /* localStorage + cookie (synchronous) */
 function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
@@ -860,19 +1001,121 @@ function idbGet(k){ return new Promise(res=>{ if(!idb) return res(null);
   try{ const q=idb.transaction('kv').objectStore('kv').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>res(null); }
   catch(e){ res(null); } }); }
 function idbPut(k,v){ try{ if(idb) idb.transaction('kv','readwrite').objectStore('kv').put(v,k); }catch(e){} }
-/* initial synchronous load from ls + cookie */
-mergeRaw(lsGet(HS_KEY)); mergeRaw(ckGet(HS_KEY));
-function saveHighScores(){ const v=JSON.stringify(highScores); lsSet(HS_KEY,v); ckSet(HS_KEY,v); idbPut(HS_KEY,v); }
-/* then merge IndexedDB's (more durable) value and mirror the best back to every store */
-idbReady().then(()=> idbGet(HS_KEY)).then(raw=>{
-  mergeRaw(raw); saveHighScores(); if(typeof updateBest==='function') updateBest();
+/* initial synchronous load (new + legacy, from ls + cookie) */
+mergeData(lsGet(SAVE_KEY)); mergeData(ckGet(SAVE_KEY));
+mergeLegacy(lsGet(HS_KEY)); mergeLegacy(ckGet(HS_KEY));
+function saveData(){ const v=JSON.stringify(DATA); lsSet(SAVE_KEY,v); ckSet(SAVE_KEY,v); idbPut(SAVE_KEY,v); }
+/* then merge IndexedDB's durable copies (new + legacy) and mirror the best back to every store */
+idbReady().then(async ()=>{
+  mergeData(await idbGet(SAVE_KEY));
+  mergeLegacy(await idbGet(HS_KEY));
+  saveData();
+  if(typeof updateBest==='function') updateBest();
+  if(typeof applyCosmetics==='function') applyCosmetics();
+  if(typeof syncCosmeticUI==='function') syncCosmeticUI();
+  if(typeof renderStats==='function') renderStats();
 });
 /* ask the browser to keep our data (best-effort; ignored where unsupported) */
 try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
 const diffName = d => d.charAt(0).toUpperCase() + d.slice(1);
-let bestAtStart = 0;   // the record before the current game (for the "new record" banner)
+let mode = 'normal';                       // 'normal' (3 goals) | 'sudden' (1 goal)
+let gameActive = false;                    // true between kick-off and full time / quit
+const maxLives = ()=> mode==='sudden' ? 1 : 3;
+let bestAtStart = 0;                        // the record before the current game (for the banner)
+function curBest(){ return DATA.scores[mode][diff] || 0; }
 function recordBest(){ // call whenever the score climbs — persists the instant a record falls
-  if(saves > (highScores[diff]||0)){ highScores[diff]=saves; saveHighScores(); if(typeof updateBest==='function') updateBest(); }
+  if(saves > curBest()){ DATA.scores[mode][diff] = saves; saveData(); if(typeof updateBest==='function') updateBest(); }
+}
+
+/* ---------- shooters: each favours different zones, with a kit colour & disguise ----------
+   weights bias the 6 target zones (0..2 high L/C/R, 3..5 low L/C/R, screen-relative);
+   disguise scales the plant-foot "tell" (lower = sneakier); speedMul tweaks shot pace. */
+const SHOOTERS = [
+  {name:'TIMOTHY', num:9,  shirt:0x1d49cf, weights:[1,1,1,1,1,1],             speedMul:1.00, disguise:1.00, note:'spreads it around'},
+  {name:'SVEN',    num:7,  shirt:0xc8332a, weights:[1.8,0.7,1.8,1.1,0.5,1.1], speedMul:1.00, disguise:1.10, note:'loves the top corners'},
+  {name:'LARS',    num:11, shirt:0x1f9e57, weights:[0.6,0.6,0.6,2.2,1.3,2.2], speedMul:0.95, disguise:0.85, note:'drills it low & hard'},
+  {name:'MATTEO',  num:10, shirt:0x7a2bd0, weights:[1.3,0.4,1.3,1.3,0.4,1.3], speedMul:1.05, disguise:1.30, note:'hunts the corners, hides it well'},
+];
+let shooter = SHOOTERS[0];
+function pickShooter(){ return SHOOTERS[Math.floor(Math.random()*SHOOTERS.length)]; }
+function pickZone(weights){
+  let total=0; for(const w of weights) total+=w;
+  let r = Math.random()*total;
+  for(let i=0;i<6;i++){ r-=weights[i]; if(r<=0) return i; }
+  return 5;
+}
+function applyShooter(s){
+  shooter = s;
+  M.royal.color.setHex(s.shirt);            // striker kit (shirt + shorts + socks share M.royal)
+  tn.clearRect(0,0,256,256);                // redraw the back-of-shirt "NAME / NUM" decal
+  tn.fillStyle = '#ffffff'; tn.textAlign = 'center';
+  tn.font = '700 36px Fredoka, sans-serif';  tn.fillText(s.name, 128, 52);
+  tn.font = '700 132px Fredoka, sans-serif'; tn.fillText(String(s.num), 128, 178);
+  tNameMat.map.needsUpdate = true;
+}
+
+/* ---------- reaction timing & the striker's directional "tell" ---------- */
+let kickAt = 0;            // performance.now() when the ball left the foot
+let lastReaction = null;   // seconds from kick → commit (null if no dive / a read)
+let divedEarly = false;    // committed before the strike (an anticipatory read)
+const TELL_BY_DIFF = {easy:.24, medium:.15, hard:.08};
+function tellAmount(){ return (TELL_BY_DIFF[diff]||.15) * shooter.disguise; }
+function showReaction(){
+  const el = document.getElementById('reaction');
+  if(divedEarly){ el.textContent = 'READ! ⚡'; el.style.color = 'var(--toy-pink)'; }
+  else if(lastReaction != null){ el.textContent = lastReaction.toFixed(2)+'s'; el.style.color = 'var(--toy-blue)'; }
+  else return;
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+}
+function toast(msg){
+  const el = document.getElementById('toast'); el.textContent = msg;
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+}
+
+/* ---------- replay recorder: a rolling window of skeleton snapshots ---------- */
+let recNodes = null;
+function recList(){ return recNodes || (recNodes = [
+  ball, keeper.group,
+  keeper.arms.L, keeper.arms.L.userData.elbow, keeper.arms.R, keeper.arms.R.userData.elbow,
+  keeper.legs.L, keeper.legs.L.userData.knee, keeper.legs.R, keeper.legs.R.userData.knee,
+  keeper.head, striker.group,
+  striker.legs.L, striker.legs.L.userData.knee, striker.legs.R, striker.legs.R.userData.knee,
+  striker.arms.L, striker.arms.L.userData.elbow, striker.arms.R, striker.arms.R.userData.elbow,
+]); }
+function snapshot(){
+  const nodes = recList(), a = new Float32Array(nodes.length*6);
+  for(let i=0;i<nodes.length;i++){ const n=nodes[i], o=i*6;
+    a[o]=n.position.x; a[o+1]=n.position.y; a[o+2]=n.position.z;
+    a[o+3]=n.rotation.x; a[o+4]=n.rotation.y; a[o+5]=n.rotation.z; }
+  return a;
+}
+function applySnapshot(a){
+  const nodes = recList();
+  for(let i=0;i<nodes.length;i++){ const n=nodes[i], o=i*6;
+    n.position.set(a[o],a[o+1],a[o+2]); n.rotation.set(a[o+3],a[o+4],a[o+5]); }
+  keeper.group.scale.setScalar(KSCALE);
+}
+let recBuf = [], recClock = 0;
+const REC_WINDOW = 3.0, REPLAY_LEN = 2.6, REPLAY_SPEED = .4;
+let pendingReplayAt = -1, bestReplay = null, bestReplayStreak = -1;
+let replaying = false, replayIdx = 0, replayAcc = 0;
+function stepReplay(dt){
+  const frames = bestReplay; if(!frames || !frames.length){ closeReplay(); return; }
+  replayAcc += dt*REPLAY_SPEED; const per = 1/60;
+  while(replayAcc >= per){ replayAcc -= per; replayIdx++; if(replayIdx >= frames.length) replayIdx = 0; }
+  applySnapshot(frames[Math.min(replayIdx, frames.length-1)]);
+}
+function startReplay(){
+  if(!bestReplay || !bestReplay.length) return;
+  replaying = true; replayIdx = 0; replayAcc = 0;
+  document.getElementById('pad').style.visibility = 'hidden';
+  document.getElementById('replayOverlay').classList.remove('hidden');
+}
+function closeReplay(){
+  replaying = false;
+  document.getElementById('replayOverlay').classList.add('hidden');
+  document.getElementById('pad').style.visibility = '';
+  document.getElementById('endOverlay').classList.remove('hidden');
 }
 
 /* ---------- keeper pose rig ----------
@@ -960,8 +1203,8 @@ const gloveEls = document.querySelectorAll('.glove');
 const flashEl = document.getElementById('flash');
 /* reflect the selected difficulty's best in the HUD badge + start-screen hint */
 function updateBest(){
-  bestEl.textContent = highScores[diff] || 0;
-  bestHintEl.textContent = `Best on ${diffName(diff)}: ${highScores[diff]||0} saves`;
+  bestEl.textContent = curBest();
+  bestHintEl.textContent = `Best — ${diffName(diff)} · ${mode==='sudden'?'Sudden Death':'Normal'}: ${curBest()} saves`;
 }
 function flash(text, color){
   flashEl.textContent = text;
@@ -973,7 +1216,8 @@ function flash(text, color){
 function updateHUD(){
   savesEl.textContent = saves;
   streakEl.textContent = streak;
-  gloveEls.forEach((g,i)=> g.classList.toggle('lost', i < conceded));
+  const lives = maxLives();   // sudden death shows a single glove
+  gloveEls.forEach((g,i)=>{ g.classList.toggle('hidden', i >= lives); g.classList.toggle('lost', i < conceded); });
 }
 
 /* =====================================================
@@ -983,7 +1227,8 @@ function startRound(){
   state = 'windup';
   windupTimer = 1.05 + Math.random()*.6;
   committed = false; playerZone = -1;
-  targetZone = Math.floor(Math.random()*6);
+  lastReaction = null; divedEarly = false;
+  targetZone = pickZone(shooter.weights);
   // keeper returns to the ready-crouch; cancel any dive arc
   ktarget = {...KREADY}; diveT = -1;
   // striker back to a neutral stance
@@ -1012,6 +1257,7 @@ function setStrikerPose(wind, swing){
   // arms counter-balance the kick (his left arm flings outward)
   AL.rotation.set(wind*.6 - swing*.85, 0, -.25); AL.userData.elbow.rotation.x = -.3;
   AR.rotation.set(-wind*.7 + swing*.95, 0, .25 + swing*.5); AR.userData.elbow.rotation.x = -.25;
+  striker.group.rotation.z = 0; R.rotation.z = 0;    // cleared each frame; the plant "tell" re-applies it
 }
 
 /* run-up stride — alternating legs & arms, with a per-step bob */
@@ -1031,7 +1277,9 @@ function kick(){
   state = 'flight'; flightT = 0;
   round++;
   const dc = DIFFICULTY[diff];
-  flightDur = Math.max(dc.floor, dc.base - round*dc.dec); // shot speed set by the chosen difficulty
+  let fd = dc.base - round*dc.dec;
+  if(mode==='sudden') fd -= round*dc.dec*.7;                  // ramps up faster in sudden death
+  flightDur = Math.max(dc.floor*(mode==='sudden'?.85:1), fd) / shooter.speedMul; // pace by difficulty, mode & shooter
   const z = ZONES[targetZone];
   const jitter = ()=> (Math.random()-.5)*.3;
   ballFrom.copy(ball.position);
@@ -1041,6 +1289,7 @@ function kick(){
   arcH = targetZone < 3 ? .5 + Math.random()*.3 : .15 + Math.random()*.2; // flatter high shots stay in reach
   ballCurve = (Math.random()-.5)*.7;   // bend the shot a little in flight
   ballMode = 'lerp';
+  kickAt = performance.now();          // start the reaction-time clock
   sndKick();
 }
 
@@ -1051,6 +1300,10 @@ function dive(zone){
   // side, world x appears mirrored, so swap the left/right columns
   if(Math.cos(orbit.theta) > 0) zone = [2,1,0,5,4,3][zone];
   committed = true; playerZone = zone;
+  // reaction time from the kick; committing before the strike is an anticipatory "read"
+  if(state === 'flight' && kickAt > 0){ lastReaction = (performance.now()-kickAt)/1000; divedEarly = false; }
+  else { lastReaction = null; divedEarly = true; }
+  showReaction();
   const z = ZONES[zone];
   const side = Math.sign(z.x);                       // dive direction in world x
   const lead = side > 0 ? 'R' : 'L';                 // leg on the dive side (tucks up)
@@ -1118,6 +1371,7 @@ function resolveShot(saved){
   if(saved){
     saves++; streak++;
     recordBest();   // persist immediately if this save sets a new personal best
+    if(streak > bestReplayStreak){ bestReplayStreak = streak; pendingReplayAt = recClock + 1.0; } // grab this as the highlight
     flash(streak >= 3 ? 'SUPER SAVE!' : 'SAVED!', streak >= 3 ? 'var(--toy-pink)' : 'var(--toy-yellow)');
     burstConfetti(ball.position.clone());
     // parry: kick the ball into a bouncing, gravity-driven deflection out of the box
@@ -1134,11 +1388,21 @@ function resolveShot(saved){
     flightT = 0;
     sndGoal();
   }
+  // per-difficulty lifetime stats + zone heat-map
+  const st = DATA.stats[diff];
+  st.shots++; st.zoneShots[targetZone]++;
+  if(saved){ st.saves++; st.zoneSaved[targetZone]++;
+    st.bestStreak = Math.max(st.bestStreak, streak);
+    if(lastReaction!=null && (st.bestReaction==null || lastReaction<st.bestReaction)) st.bestReaction = lastReaction;
+  }
   updateHUD();
-  if(conceded >= 3){ setTimeout(endGame, 1200); }
+  if(conceded >= maxLives()){ setTimeout(endGame, 1200); }
 }
 
 function endGame(){
+  if(!gameActive) return;                  // ignore a queued end-game after the player quit to menu
+  gameActive = false;
+  document.getElementById('homeBtn').classList.add('hidden');
   state = 'over';
   // did this game beat the record we started with? (records already persisted live)
   const isRecord = saves > bestAtStart;
@@ -1147,21 +1411,35 @@ function endGame(){
   const banner = document.getElementById('recordBanner');
   banner.classList.toggle('hidden', !isRecord);
   document.getElementById('bestLine').textContent =
-    `Best on ${diffName(diff)}: ${highScores[diff]||0} saves`;
+    `Best — ${diffName(diff)} · ${mode==='sudden'?'Sudden Death':'Normal'}: ${curBest()} saves`;
   const msg = saves >= 15 ? 'World-class! uhlsport is calling. 🧤' :
               saves >= 8  ? 'Solid gloves! The Interprovincial scouts noticed.' :
               saves >= 3  ? 'Good reflexes — keep training between the cones!' :
                             'Even the best keepers have rough days. Again!';
   document.getElementById('finalMsg').textContent = msg;
+  document.getElementById('endShooter').textContent = `Shooter: ${shooter.name} #${shooter.num} — ${shooter.note}`;
+  saveData();                 // flush this game's stats to disk
+  renderStats();
+  document.getElementById('replayBtn').classList.toggle('hidden', !bestReplay);
   document.getElementById('endOverlay').classList.remove('hidden');
 }
 
-function resetGame(){
+function beginGame(){
+  gameActive = true;
+  document.getElementById('homeBtn').classList.remove('hidden');
+  applyShooter(pickShooter());
+  toast(`⚽ ${shooter.name} #${shooter.num} steps up`);
   saves = 0; streak = 0; conceded = 0; round = 0;
-  bestAtStart = highScores[diff] || 0;   // remember the record going into this game
-  updateHUD();
-  document.getElementById('endOverlay').classList.add('hidden');
+  bestAtStart = curBest();                // remember the record going into this game
+  bestReplay = null; bestReplayStreak = -1; pendingReplayAt = -1;
+  recBuf = []; recClock = 0;
+  lastReaction = null; divedEarly = false;
+  updateHUD(); updateBest(); renderStats();
   startRound();
+}
+function resetGame(){
+  document.getElementById('endOverlay').classList.add('hidden');
+  beginGame();
 }
 
 /* =====================================================
@@ -1202,17 +1480,186 @@ document.querySelectorAll('.diff-btn').forEach(b=>{
   b.addEventListener('click', ()=>{
     diff = b.dataset.diff;
     document.querySelectorAll('.diff-btn').forEach(x=> x.classList.toggle('sel', x.dataset.diff === diff));
-    updateBest();   // reflect the chosen difficulty's personal best
+    updateBest(); renderStats();   // reflect the chosen difficulty's best + stats
   });
 });
+
+/* mode selector (Normal vs Sudden Death) — shared across both overlays */
+document.querySelectorAll('.mode-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    mode = b.dataset.mode;
+    document.querySelectorAll('.mode-btn').forEach(x=> x.classList.toggle('sel', x.dataset.mode === mode));
+    updateBest();
+  });
+});
+
+/* ---------- keeper cosmetics: colour the whole kit + a custom name ---------- */
+function shade(hex, f){    // f in [-1,1]: + lightens toward white, − darkens toward black
+  hex = String(hex).replace('#','');
+  if(hex.length===3) hex = hex.split('').map(c=>c+c).join('');
+  let r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
+  const t = f<0?0:255, a=Math.abs(f);
+  r=Math.round(r+(t-r)*a); g=Math.round(g+(t-g)*a); b=Math.round(b+(t-b)*a);
+  return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+const SHIRT_COLORS  = ['#16161a','#1f6bff','#c8332a','#1f9e57','#7a2bd0','#f5b81e'];
+const SHORTS_COLORS = ['#222226','#ffffff','#1f6bff','#c8332a','#1f9e57','#e23b2e'];
+const SOCK_COLORS   = ['#3a3a42','#ffffff','#d8ff2e','#ff5fb4','#1f6bff','#222226'];
+const GLOVE_COLORS  = ['#d8ff2e','#ff5a1f','#1f6bff','#ff5fb4','#2ee6a8','#ffd23f'];
+const BOOT_COLORS   = ['#ff5fb4','#222226','#ff5a1f','#1f6bff','#ffffff','#d8ff2e'];
+const COSMETIC_ROWS = [
+  {id:'shirtSwatches',  key:'shirt',  colors:SHIRT_COLORS},
+  {id:'shortsSwatches', key:'shorts', colors:SHORTS_COLORS},
+  {id:'sockSwatches',   key:'socks',  colors:SOCK_COLORS},
+  {id:'gloveSwatches',  key:'glove',  colors:GLOVE_COLORS},
+  {id:'bootSwatches',   key:'boot',   colors:BOOT_COLORS},
+];
+function buildSwatches(container, colors, kind){
+  if(!container) return;
+  container.innerHTML = '';
+  colors.forEach(col=>{
+    const s = document.createElement('button');
+    s.className = 'swatch'; s.style.background = col; s.dataset.col = col;
+    s.addEventListener('click', ()=>{ DATA.cosmetics[kind] = col; saveData(); applyCosmetics(); syncCosmeticUI(); });
+    container.appendChild(s);
+  });
+}
+function syncCosmeticUI(){
+  for(const row of COSMETIC_ROWS){
+    const cont = document.getElementById(row.id); if(!cont) continue;
+    const val = String(DATA.cosmetics[row.key]).toLowerCase();
+    cont.querySelectorAll('.swatch').forEach(s=> s.classList.toggle('sel', s.dataset.col.toLowerCase() === val));
+  }
+  const ni = document.getElementById('nameInput');
+  if(ni && document.activeElement !== ni) ni.value = DATA.cosmetics.name;
+}
+function applyCosmetics(){
+  try{ M.volt.color.set(DATA.cosmetics.glove); }catch(e){}                       // gloves
+  try{ M.pink.color.set(DATA.cosmetics.boot); }catch(e){}                        // boots
+  try{ kitBootStripeMat.color.set(shade(DATA.cosmetics.boot, -.22)); }catch(e){} // boot swoosh
+  try{ kitBottomsMat.color.set(DATA.cosmetics.shorts); }catch(e){}               // shorts + leggings
+  try{ kitSockMat.color.set(DATA.cosmetics.socks); }catch(e){}                   // socks
+  drawKeeperShirt(DATA.cosmetics.shirt || '#16161a');                            // jersey (camo texture)
+  drawKeeperName(DATA.cosmetics.name || 'COLLIN');
+}
+function drawKeeperShirt(base){
+  cc.fillStyle = base; cc.fillRect(0,0,256,256);
+  cc.lineCap = 'round';
+  for(let i=0;i<80;i++){
+    const x = Math.random()*320-50, y = Math.random()*256, len = 26+Math.random()*70;
+    cc.strokeStyle = Math.random()<.5 ? shade(base,.16) : shade(base,-.10);
+    cc.lineWidth = 2+Math.random()*5;
+    cc.globalAlpha = .4+Math.random()*.5;
+    cc.beginPath(); cc.moveTo(x,y); cc.lineTo(x+len*.45, y+len); cc.stroke();
+  }
+  cc.globalAlpha = 1;
+  camoTex.needsUpdate = true;
+}
+function drawKeeperName(name){
+  nc.clearRect(0,0,256,256);                                 // back of shirt: NAME / 1 / uhlsport
+  nc.fillStyle = '#ffffff'; nc.textAlign = 'center';
+  nc.font = '700 38px Fredoka, sans-serif';   nc.fillText(name, 128, 52);
+  nc.font = '700 132px Fredoka, sans-serif';  nc.fillText('1', 128, 178);
+  nc.font = 'italic 700 30px Fredoka, sans-serif'; nc.fillText('uhlsport', 128, 232);
+  nameTex.needsUpdate = true;
+  chc.clearRect(0,0,128,128);                                // left chest: uhlsport / NAME
+  chc.fillStyle = '#ffffff'; chc.textAlign = 'left';
+  chc.font = 'italic 700 22px Fredoka, sans-serif'; chc.fillText('uhlsport', 6, 56);
+  chc.font = '700 30px Fredoka, sans-serif';        chc.fillText(name, 6, 86);
+  chestMat.map.needsUpdate = true;
+}
+const _nameInput = document.getElementById('nameInput');
+if(_nameInput){
+  _nameInput.addEventListener('input', ()=>{
+    const v = _nameInput.value.toUpperCase().replace(/[^A-Z0-9 ]/g,'').slice(0,9);
+    _nameInput.value = v;
+    DATA.cosmetics.name = v || 'COLLIN';
+    applyCosmetics(); saveData();
+  });
+}
+COSMETIC_ROWS.forEach(r=> buildSwatches(document.getElementById(r.id), r.colors, r.key));
+
+/* ---------- live kit preview: a small spinning Collin that shares the real materials ----------
+   It's a clone of the keeper (clone shares geometry + material objects), so any colour change
+   to the shared kit materials shows up here instantly. Rendered by its own small renderer. */
+const kitCanvas = document.getElementById('kitPreview');
+const kitSectEl = document.getElementById('kitSect');
+let kitRenderer = null, kitScene = null, kitCam = null, kitFigure = null;
+function initKitPreview(){
+  if(kitRenderer || !kitCanvas) return;
+  kitRenderer = new THREE.WebGLRenderer({canvas:kitCanvas, antialias:true, alpha:true});
+  kitRenderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  kitScene = new THREE.Scene();
+  kitScene.add(new THREE.HemisphereLight(0xffffff, 0x4d7a2a, 1.05));
+  const dl = new THREE.DirectionalLight(0xfff3d6, 1.1); dl.position.set(2,4,3); kitScene.add(dl);
+  kitFigure = keeper.group.clone(true);
+  kitFigure.position.set(0,0,0); kitFigure.rotation.set(0,0,0); kitFigure.scale.setScalar(KSCALE);
+  kitScene.add(kitFigure);
+  kitCam = new THREE.PerspectiveCamera(34, 1, .1, 50);
+  kitCam.position.set(0, .95, 3.25); kitCam.lookAt(0, .85, 0);
+  sizeKitPreview();
+}
+function sizeKitPreview(){
+  if(!kitRenderer || !kitCanvas) return;
+  const w = kitCanvas.clientWidth || 240, h = kitCanvas.clientHeight || 170;
+  kitRenderer.setSize(w, h, false);
+  kitCam.aspect = w/h; kitCam.updateProjectionMatrix();
+}
+function kitPreviewVisible(){
+  return !!(kitSectEl && kitSectEl.open && !document.getElementById('startOverlay').classList.contains('hidden'));
+}
+if(kitSectEl) kitSectEl.addEventListener('toggle', ()=>{ if(kitSectEl.open){ initKitPreview(); sizeKitPreview(); } });
+
+/* ---------- stats panel (per difficulty) with a 6-zone save-rate heat map ---------- */
+function renderStats(){
+  const box = document.getElementById('statsBox'); if(!box) return;
+  const st = DATA.stats[diff];
+  const pct = st.shots ? Math.round(st.saves/st.shots*100) : 0;
+  const rt  = st.bestReaction != null ? st.bestReaction.toFixed(2)+'s' : '—';
+  let cells = '';
+  for(let i=0;i<6;i++){
+    const shots = st.zoneShots[i], rate = shots ? st.zoneSaved[i]/shots : -1;
+    const bg  = rate<0 ? '#eee' : `hsl(${Math.round(rate*120)} 70% ${78-rate*16}%)`;
+    const lab = shots ? Math.round(rate*100)+'%' : '·';
+    cells += `<div class="cell" style="background:${bg}">${lab}</div>`;
+  }
+  box.innerHTML =
+    `<div class="statline">Save rate: <b>${pct}%</b> &nbsp;<span style="color:#999">(${st.saves}/${st.shots})</span></div>`+
+    `<div class="statline">Best streak: <b>${st.bestStreak}</b> &nbsp;·&nbsp; Best reaction: <b>${rt}</b></div>`+
+    `<div class="statline" style="margin-top:8px;color:#888">Save rate by zone (${diffName(diff)})</div>`+
+    `<div class="heat">${cells}</div>`;
+}
+
+applyCosmetics(); syncCosmeticUI(); renderStats();
 updateBest();       // show the starting difficulty's best on load
 document.getElementById('startBtn').addEventListener('click', ()=>{
   initAudio();
-  bestAtStart = highScores[diff] || 0;   // remember the record going into this game
   document.getElementById('startOverlay').classList.add('hidden');
-  startRound();
+  beginGame();
 });
 document.getElementById('retryBtn').addEventListener('click', resetGame);
+document.getElementById('replayBtn').addEventListener('click', ()=>{
+  document.getElementById('endOverlay').classList.add('hidden');
+  startReplay();
+});
+document.getElementById('replayClose').addEventListener('click', closeReplay);
+
+/* quit the current match and return to the start menu (kit, mode, difficulty, stats) */
+function goHome(){
+  gameActive = false;
+  state = 'over'; diveT = -1; committed = true;   // halt round logic
+  ktarget = {...KREADY};
+  replaying = false;
+  saveData();                                     // flush any in-progress stats
+  document.getElementById('replayOverlay').classList.add('hidden');
+  document.getElementById('endOverlay').classList.add('hidden');
+  document.getElementById('homeBtn').classList.add('hidden');
+  document.getElementById('pad').style.visibility = '';
+  updateBest(); renderStats(); syncCosmeticUI();
+  document.getElementById('startOverlay').classList.remove('hidden');
+}
+document.getElementById('homeBtn').addEventListener('click', goHome);
+document.getElementById('menuBtn').addEventListener('click', goHome);
 const muteBtn = document.getElementById('muteBtn');
 muteBtn.addEventListener('click', ()=>{
   soundOn = !soundOn;
@@ -1286,6 +1733,19 @@ function animate(){
   const dt = Math.min(clock.getDelta(), .05);
   const t = clock.elapsedTime;
 
+  /* ---- slow-mo replay: drive the scene from recorded snapshots, game logic frozen ---- */
+  if(replaying){
+    stepReplay(dt);
+    const ce = 1 - Math.pow(.0005, dt);
+    orbit.theta  = lerp(orbit.theta,  orbitGoal.theta,  ce);
+    orbit.phi    = lerp(orbit.phi,    orbitGoal.phi,    ce);
+    orbit.radius = lerp(orbit.radius, orbitGoal.radius, ce);
+    camera.position.setFromSpherical(_sph.set(orbit.radius, orbit.phi, orbit.theta)).add(camTarget);
+    camera.lookAt(camTarget);
+    renderer.render(scene, camera);
+    return;
+  }
+
   /* ---- keeper: gather → explosive ballistic dive → land (no hovering) ---- */
   const ballLive = (state==='windup' || state==='strike' || state==='flight');
   let ks;
@@ -1352,7 +1812,15 @@ function animate(){
       strikerJog(t);                                    // stepping run-up
     } else {
       striker.group.position.y = 0;
-      setStrikerPose(THREE.MathUtils.clamp((.38-windupTimer)/.38, 0, 1), 0); // plant & load
+      const planted = THREE.MathUtils.clamp((.38-windupTimer)/.38, 0, 1);
+      setStrikerPose(planted, 0);                         // plant & load
+      // plant-foot / hip "tell" — he opens toward the side (and tilts for height) he'll shoot
+      const side = Math.sign(ZONES[targetZone].x) || 0, high = targetZone < 3 ? 1 : -1;
+      const amt = tellAmount() * planted;
+      striker.group.rotation.y = strikerYaw - side*amt;
+      striker.group.rotation.z = side*amt*.45;
+      striker.group.rotation.x += high*amt*.20;
+      striker.legs.R.rotation.z = side*amt*.9;
     }
     if(windupTimer <= 0){ state = 'strike'; strikeT = 0; }
   }
@@ -1389,7 +1857,7 @@ function animate(){
       spinBall(dt, 10);
       if(!netHit && ball.position.z < -.9){ rippleNet(ball.position.x, ball.position.y, 15); netHit = true; }
     }
-    if(resultTimer <= 0 && conceded < 3) startRound();
+    if(resultTimer <= 0 && conceded < maxLives()) startRound();
   }
 
   /* striker: follow-through in flight, then reacts to the outcome during the result */
@@ -1456,7 +1924,26 @@ function animate(){
   camera.position.setFromSpherical(_sph.set(orbit.radius, orbit.phi, orbit.theta)).add(camTarget);
   camera.lookAt(camTarget);
 
+  /* record the action so we can replay the game's best save in slow-mo */
+  recClock += dt;
+  if(state==='windup' || state==='strike' || state==='flight' || state==='result'){
+    recBuf.push({t:recClock, f:snapshot()});
+    while(recBuf.length && recClock - recBuf[0].t > REC_WINDOW) recBuf.shift();
+  }
+  if(pendingReplayAt >= 0 && recClock >= pendingReplayAt){   // capture the trailing window as the highlight
+    const start = recClock - REPLAY_LEN;
+    bestReplay = recBuf.filter(s=> s.t >= start).map(s=> s.f);
+    pendingReplayAt = -1;
+  }
+
   renderer.render(scene, camera);
+
+  /* live kit preview (small spinning Collin) — only while the kit panel is open on the menu */
+  if(kitPreviewVisible()){
+    initKitPreview();
+    if(kitFigure) kitFigure.rotation.y = t*0.7;
+    kitRenderer.render(kitScene, kitCam);
+  }
 }
 
 function resize(){
@@ -1466,6 +1953,7 @@ function resize(){
   camera.fov = a < 1 ? 60 : (a < 1.5 ? 54 : 50);   // a touch wider on portrait / phones
   camera.updateProjectionMatrix();
   if(!userZoomed){ orbitGoal.radius = orbit.radius = fitRadius(); }  // auto-frame so the goal fits
+  sizeKitPreview();
 }
 addEventListener('resize', resize);
 addEventListener('orientationchange', ()=> setTimeout(resize, 250));
