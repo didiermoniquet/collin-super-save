@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.1.1">
+<meta name="version" content="1.1.2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -142,7 +142,7 @@
   .cosrow:first-child{padding-top:2px}
   .cosrow:last-child{border-bottom:none;padding-bottom:2px}
   .cosrow .cl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#888;width:62px}
-  .swatches{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .swatches{display:grid;grid-template-columns:repeat(5,32px);gap:8px;justify-content:start;align-items:center}
   /* scoped to beat the generic `.panel button` rule (else swatches become big pills) */
   .swatches .swatch{width:32px;height:32px;min-width:32px;border-radius:50%;border:3px solid var(--ink);
     padding:0;margin:0;font-size:0;cursor:pointer;box-shadow:0 3px 0 var(--ink);transition:transform .06s}
@@ -177,6 +177,8 @@
     .badge{min-width:0;padding:6px 11px}
     .badge .val{font-size:22px}
     .badge .lbl{font-size:10px}
+    .swatches{grid-template-columns:repeat(5,28px);gap:6px}
+    .swatches .swatch{width:28px;height:28px;min-width:28px}
   }
   @media (max-height:540px){     /* landscape phones — keep the pitch visible & panels compact */
     #pad{grid-template-columns:repeat(3,clamp(48px,12vh,58px));grid-template-rows:repeat(2,clamp(38px,9vh,46px));gap:6px}
@@ -307,7 +309,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.1.1';
+const VERSION = '1.1.2';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -963,7 +965,7 @@ function blankStat(){ return {saves:0, shots:0, bestStreak:0, bestReaction:null,
 const DATA = {
   scores: {normal:{easy:0,medium:0,hard:0}, sudden:{easy:0,medium:0,hard:0}},
   stats:  {easy:blankStat(), medium:blankStat(), hard:blankStat()},
-  cosmetics: {shirt:'#16161a', shorts:'#222226', socks:'#3a3a42', glove:'#d8ff2e', boot:'#ff5fb4', name:'COLLIN'},
+  cosmetics: {shirt:'#1b1b1f', shorts:'#1b1b1f', socks:'#9aa0a8', glove:'#ffd23f', boot:'#ff5fb4', name:'COLLIN'},
 };
 function mergeScores(into, from){ if(!from) return;
   for(const d of DIFFS) into[d] = Math.max(into[d]||0, +from[d]||0); }
@@ -1502,17 +1504,30 @@ function shade(hex, f){    // f in [-1,1]: + lightens toward white, − darkens 
   r=Math.round(r+(t-r)*a); g=Math.round(g+(t-g)*a); b=Math.round(b+(t-b)*a);
   return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
 }
-const SHIRT_COLORS  = ['#16161a','#1f6bff','#c8332a','#1f9e57','#7a2bd0','#f5b81e'];
-const SHORTS_COLORS = ['#222226','#ffffff','#1f6bff','#c8332a','#1f9e57','#e23b2e'];
-const SOCK_COLORS   = ['#3a3a42','#ffffff','#d8ff2e','#ff5fb4','#1f6bff','#222226'];
-const GLOVE_COLORS  = ['#d8ff2e','#ff5a1f','#1f6bff','#ff5fb4','#2ee6a8','#ffd23f'];
-const BOOT_COLORS   = ['#ff5fb4','#222226','#ff5a1f','#1f6bff','#ffffff','#d8ff2e'];
+/* one shared palette of 10 common colours, used by every kit part */
+const KIT_COLORS = ['#e23b2e','#ff7a1f','#ffd23f','#2eaf4e','#1f6bff','#7a2bd0','#ff5fb4','#1b1b1f','#ffffff','#9aa0a8'];
+function _rgb(h){ h=String(h).replace('#',''); if(h.length===3) h=h.split('').map(c=>c+c).join('');
+  return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
+function nearestKitColor(hex){
+  const [r,g,b]=_rgb(hex); let best=KIT_COLORS[0], bd=Infinity;
+  for(const c of KIT_COLORS){ const [cr,cg,cb]=_rgb(c);
+    const d=(r-cr)*(r-cr)+(g-cg)*(g-cg)+(b-cb)*(b-cb); if(d<bd){ bd=d; best=c; } }
+  return best;
+}
+function normalizeCosmetics(){    // snap any saved kit colour into the 10-colour palette
+  let changed=false;
+  for(const k of ['shirt','shorts','socks','glove','boot']){
+    const cur=String(DATA.cosmetics[k]||'').toLowerCase();
+    if(!KIT_COLORS.includes(cur)){ DATA.cosmetics[k]=nearestKitColor(cur); changed=true; }
+  }
+  return changed;
+}
 const COSMETIC_ROWS = [
-  {id:'shirtSwatches',  key:'shirt',  colors:SHIRT_COLORS},
-  {id:'shortsSwatches', key:'shorts', colors:SHORTS_COLORS},
-  {id:'sockSwatches',   key:'socks',  colors:SOCK_COLORS},
-  {id:'gloveSwatches',  key:'glove',  colors:GLOVE_COLORS},
-  {id:'bootSwatches',   key:'boot',   colors:BOOT_COLORS},
+  {id:'shirtSwatches',  key:'shirt'},
+  {id:'shortsSwatches', key:'shorts'},
+  {id:'sockSwatches',   key:'socks'},
+  {id:'gloveSwatches',  key:'glove'},
+  {id:'bootSwatches',   key:'boot'},
 ];
 function buildSwatches(container, colors, kind){
   if(!container) return;
@@ -1534,6 +1549,7 @@ function syncCosmeticUI(){
   if(ni && document.activeElement !== ni) ni.value = DATA.cosmetics.name;
 }
 function applyCosmetics(){
+  if(normalizeCosmetics()) saveData();                                           // keep colours within the palette
   try{ M.volt.color.set(DATA.cosmetics.glove); }catch(e){}                       // gloves
   try{ M.pink.color.set(DATA.cosmetics.boot); }catch(e){}                        // boots
   try{ kitBootStripeMat.color.set(shade(DATA.cosmetics.boot, -.22)); }catch(e){} // boot swoosh
@@ -1577,7 +1593,7 @@ if(_nameInput){
     applyCosmetics(); saveData();
   });
 }
-COSMETIC_ROWS.forEach(r=> buildSwatches(document.getElementById(r.id), r.colors, r.key));
+COSMETIC_ROWS.forEach(r=> buildSwatches(document.getElementById(r.id), KIT_COLORS, r.key));
 
 /* ---------- live kit preview: a small spinning Collin that shares the real materials ----------
    It's a clone of the keeper (clone shares geometry + material objects), so any colour change

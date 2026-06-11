@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.1.2] — 2026-06-11
+
+### Changed
+- The keeper-kit pickers (jersey, shorts, socks, gloves, boots) now all share **one palette of 10 common colours** (red, orange, yellow, green, blue, purple, pink, black, white, grey), shown as a 5×2 grid. The default kit maps to the nearest of these, and any previously-saved colour is snapped into the palette so a swatch is always highlighted.
+
 ## [1.1.1] — 2026-06-11
 
 ### Added
