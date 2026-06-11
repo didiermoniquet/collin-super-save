@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.1.0">
+<meta name="version" content="1.1.1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -307,7 +307,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.1.0';
+const VERSION = '1.1.1';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1960,6 +1960,14 @@ addEventListener('orientationchange', ()=> setTimeout(resize, 250));
 resize();
 ball.position.set(.35,BALL_R,11.6);
 animate();
+</script>
+
+<script>
+  /* Register the service worker — offline play + auto-update so the iOS
+     home-screen app picks up new deploys on launch (network-first HTML). */
+  if('serviceWorker' in navigator){
+    addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+  }
 </script>
 </body>
 </html>

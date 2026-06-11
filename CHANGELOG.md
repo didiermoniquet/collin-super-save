@@ -7,6 +7,14 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.1.1] — 2026-06-11
+
+### Added
+- **Service worker** for offline play and reliable updates. The game now launches instantly offline, and new deploys appear on the next launch — including in the iOS "Add to Home Screen" app, which previously held a stale snapshot. The page is fetched **network-first** (latest when online, cached when offline); three.js, fonts, and icons use **stale-while-revalidate**.
+
+### Note
+- After updating to this version once (re-add the Home Screen icon a final time to pick up the service worker), future updates no longer need a manual refresh.
+
 ## [1.1.0] — 2026-06-11
 
 A big gameplay update — six new features.
