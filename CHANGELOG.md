@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] — 2026-06-12
+
+### Changed
+- **More human players (part 1).** The figures now have **articulated ankles and wrists** on top of the existing hips, knees, shoulders, elbows and neck — feet flex and point through kicks, run-ups and dives, and the gloves/hands break naturally at the wrist instead of being rigid. Boot soles/stripes and glove stripes follow the new joints. (A spine/waist bend and the two-goal "play as a striker" view are coming next.)
+
 ## [1.3.0] — 2026-06-12
 
 ### Added

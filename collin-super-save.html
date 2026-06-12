@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.3.0">
+<meta name="version" content="1.3.1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -333,7 +333,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.3.0';
+const VERSION = '1.3.1';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -586,9 +586,11 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt})
     knee.position.y = -.40; hip.add(knee);
     const shin = new THREE.Mesh(new THREE.CylinderGeometry(.12,.105,.34,12), legs);
     shin.position.y = -.17; knee.add(shin);
+    const ankle = new THREE.Group();                 // ankle pivot — the foot flexes & points
+    ankle.position.y = -.30; knee.add(ankle);
     const boot = new THREE.Mesh(new THREE.BoxGeometry(.26,.16,.44), boots);
-    boot.position.set(0,-.30,.07); knee.add(boot);
-    hip.userData.knee = knee; hip.userData.boot = boot;
+    boot.position.set(0,0,.07); ankle.add(boot);
+    hip.userData.knee = knee; hip.userData.ankle = ankle; hip.userData.boot = boot;
     g.add(hip);
     legsP[side<0?'L':'R'] = hip;
   }
@@ -614,12 +616,14 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt})
     elbow.position.y = -.34; sh.add(elbow);
     const fore = new THREE.Mesh(new THREE.CylinderGeometry(.09,.082,.30,10), shirt);
     fore.position.y = -.15; elbow.add(fore);
-    const glove = new THREE.Mesh(new THREE.SphereGeometry(.15,12,10), gloves);
-    glove.position.y = -.34; glove.scale.set(1,1.1,.8); elbow.add(glove);
     const cuff = new THREE.Mesh(new THREE.TorusGeometry(.105,.035,8,14), cuffs);
     cuff.position.y = -.20; cuff.rotation.x = Math.PI/2; elbow.add(cuff);
+    const wrist = new THREE.Group();                 // wrist pivot — the hand articulates
+    wrist.position.y = -.30; elbow.add(wrist);
+    const glove = new THREE.Mesh(new THREE.SphereGeometry(.15,12,10), gloves);
+    glove.position.y = -.04; glove.scale.set(1,1.1,.8); wrist.add(glove);
     sh.rotation.z = side * .25;
-    sh.userData.elbow = elbow; sh.userData.glove = glove;
+    sh.userData.elbow = elbow; sh.userData.wrist = wrist; sh.userData.glove = glove;
     g.add(sh);
     arms[side<0?'L':'R'] = sh;
   }
@@ -678,24 +682,24 @@ const keeperHome = new THREE.Vector3(0,0,.6);
     new THREE.MeshBasicMaterial({color:0x2e7d4f}));
   badgeDot.position.set(-.2, 1.5, .408); keeper.group.add(badgeDot);
 
-  // gloves: black tiger-stripe bars raked across the volt backhand (photo)
+  // gloves: black tiger-stripe bars raked across the volt backhand (photo) — on the wrist so they follow the hand
   for(const k of ['L','R']){
     for(let s=-1;s<=1;s++){
       const stripe = new THREE.Mesh(new THREE.BoxGeometry(.025,.085,.14), M.black);
-      stripe.position.set(s*.06, -.32, .10);
+      stripe.position.set(s*.06, -.02, .10);
       stripe.rotation.z = .45 + s*.18;
-      keeper.arms[k].userData.elbow.add(stripe);
+      keeper.arms[k].userData.wrist.add(stripe);
     }
   }
 
-  // pink boots: darker swoosh + white sole, plus sock cuff below the knee —
-  // all parented to the shin so they follow the bend of the keeper's knees
+  // pink boots: darker swoosh + white sole on the ankle (follow the foot), sock cuff on the shin
   for(const sx of [-1,1]){
     const knee = keeper.legs[sx<0?'L':'R'].userData.knee;
+    const ankle = keeper.legs[sx<0?'L':'R'].userData.ankle;
     const stripe = new THREE.Mesh(new THREE.BoxGeometry(.28,.05,.22), kitBootStripeMat);
-    stripe.position.set(0,-.27,.11); knee.add(stripe);
+    stripe.position.set(0,.03,.11); ankle.add(stripe);
     const sole = new THREE.Mesh(new THREE.BoxGeometry(.28,.045,.46), M.white);
-    sole.position.set(0,-.40,.07); knee.add(sole);
+    sole.position.set(0,-.10,.07); ankle.add(sole);
     const cuff = new THREE.Mesh(new THREE.TorusGeometry(.125,.03,8,14), kitSockMat);
     cuff.position.set(0,-.04,0); cuff.rotation.x = Math.PI/2; knee.add(cuff);
   }
@@ -786,10 +790,11 @@ striker.group.position.set(.7,0,12.4);
     cuff.position.set(0, -.05, 0); knee.add(cuff);
     const ankle = new THREE.Mesh(new THREE.CylinderGeometry(.12,.13,.10,12), M.white);
     ankle.position.set(0, -.26, 0); knee.add(ankle);
+    const ankG = striker.legs[sx<0?'L':'R'].userData.ankle;
     const stripe = new THREE.Mesh(new THREE.BoxGeometry(.28,.05,.18), M.white);
-    stripe.position.set(0, -.30, .08); knee.add(stripe);          // adidas white boot stripes
+    stripe.position.set(0, 0, .08); ankG.add(stripe);             // adidas white boot stripes (on the ankle)
     const sole = new THREE.Mesh(new THREE.BoxGeometry(.28,.045,.46), M.white);
-    sole.position.set(0, -.40, .07); knee.add(sole);              // white sole
+    sole.position.set(0, -.10, .07); ankG.add(sole);              // white sole (on the ankle)
   }
 
   // tousled brown hair tufts (same hairstyle as the photo)
@@ -1331,6 +1336,12 @@ function setStrikerPose(wind, swing){
   AL.rotation.set(wind*.6 - swing*.85, 0, -.25); AL.userData.elbow.rotation.x = -.3;
   AR.rotation.set(-wind*.7 + swing*.95, 0, .25 + swing*.5); AR.userData.elbow.rotation.x = -.25;
   striker.group.rotation.z = 0; R.rotation.z = 0;    // cleared each frame; the plant "tell" re-applies it
+  // ankles: kicking foot (L) snaps to point through contact; plant foot (R) braces & flexes
+  L.userData.ankle.rotation.x = swing*.95 - wind*.15;
+  R.userData.ankle.rotation.x = -.12 - wind*.18;
+  // wrists trail the arm swing
+  AL.userData.wrist.rotation.x = -.2 - swing*.3;
+  AR.userData.wrist.rotation.x = -.2 + swing*.2;
 }
 
 /* run-up stride — alternating legs & arms, with a per-step bob */
@@ -1344,6 +1355,10 @@ function strikerJog(t){
   AL.rotation.set(-s*.5, 0, -.3); AL.userData.elbow.rotation.x = -.7;
   AR.rotation.set( s*.5, 0,  .3); AR.userData.elbow.rotation.x = -.7;
   striker.group.position.y = Math.abs(s)*.05;              // bob with each step
+  // ankles roll through the stride — point on push-off, flex on the lift
+  L.userData.ankle.rotation.x = .15 + s*.45;
+  R.userData.ankle.rotation.x = .15 - s*.45;
+  AL.userData.wrist.rotation.x = -.25; AR.userData.wrist.rotation.x = -.25;
 }
 
 function kick(){
@@ -2012,6 +2027,12 @@ function animate(){
   keeper.legs.L.rotation.x = kpose.hipL; keeper.legs.R.rotation.x = kpose.hipR;
   keeper.legs.L.userData.knee.rotation.x = kpose.kL;
   keeper.legs.R.userData.knee.rotation.x = kpose.kR;
+  // ankles point the feet when the legs extend in a dive; wrists open the hands toward the ball
+  const diving = (diveT >= 0);
+  keeper.legs.L.userData.ankle.rotation.x = diving ? THREE.MathUtils.clamp(.6 - kpose.kL*.5, 0, .6) : Math.sin(t*2.5)*.05;
+  keeper.legs.R.userData.ankle.rotation.x = diving ? THREE.MathUtils.clamp(.6 - kpose.kR*.5, 0, .6) : Math.sin(t*2.5)*.05;
+  keeper.arms.L.userData.wrist.rotation.x = diving ? -.35 : -.08;
+  keeper.arms.R.userData.wrist.rotation.x = diving ? -.35 : -.08;
   // feet slightly wider than shoulders when set; tucks back in as he dives
   stanceSplay = lerp(stanceSplay, ready ? .15 : 0, 1 - Math.pow(.02, dt));
   keeper.legs.L.rotation.z = -stanceSplay; keeper.legs.R.rotation.z = stanceSplay;
