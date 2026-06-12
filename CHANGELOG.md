@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.9] — 2026-06-12
+
+### Changed
+- **Spectacular full-stretch low diving saves.** Modelled on the iconic Courtois full-stretch save: on a bottom-corner shot the keeper now launches into a **fully horizontal, airborne flying save** — the whole body stretched out in one long straight line off the ground, the gloves reaching down to the low ball, the legs trailing straight with the toes pointed — and then comes down to **land on its side** (hip on the turf). It's a clean plank in the air, not a flat slide, and it applies to both Collin and the opponent keeper. (v1.4.8 grounded the low save; this makes it dramatic again while still landing properly.)
+
 ## [1.4.8] — 2026-06-12
 
 ### Fixed

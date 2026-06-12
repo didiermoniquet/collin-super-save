@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.4.8">
+<meta name="version" content="1.4.9">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -346,7 +346,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.4.8';
+const VERSION = '1.4.9';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1617,17 +1617,20 @@ function makeDivePose(zone){
     p['e'+trail] = -.3;
     peak = .76;
   } else {
-    // A/D bottom corners — low diving save: the keeper lays out FLAT ALONG THE GROUND on the
-    // dive side, the hip and side of the torso skimming the turf, the body a long line toward
-    // the post, the lower arm reaching the low ball. Spine stays straight (small wz) so it
-    // lies flat instead of piking, and it barely leaves the floor.
-    Object.assign(p, {x:side*1.16, y:-.2, dz:.16, roll:-side*1.46, pitch:0, wz:-side*.1,
-                      shL:2.55,shR:-2.55, fL:-.2,fR:-.2, eL:.05,eR:.05});
-    p['hip'+lead] = .22;  p['k'+lead] = .4;      // top leg slightly tucked
-    p['hip'+trail] = -.12; p['k'+trail] = .03;   // lower leg extended — the long line
-    p['sh'+trail] = (trail==='L'? 1.95 : -1.95);
-    p['e'+trail] = -.2;
-    peak = .08;                                  // skims the ground, no real leap
+    // A/D bottom corners — SPECTACULAR full-stretch flying save (Courtois-style): the body
+    // flies fully HORIZONTAL and airborne, stretched in one long straight line, the lead hand
+    // reaching DOWN to the low ball while the top hand trails for balance, legs extended
+    // straight behind with the toes pointed. Spine stays straight (small wz) so it's a clean
+    // plank, not a pike; it then lands down onto the side.
+    Object.assign(p, {x:side*1.32, y:.06, dz:.3, roll:-side*1.44, pitch:-.06, wz:-side*.12,
+                      shL:2.7,shR:-2.7, fL:-.35,fR:-.35, eL:.0,eR:.0});
+    p['hip'+lead] = .1;   p['k'+lead] = .12;     // legs nearly straight — the long trailing line
+    p['hip'+trail] = -.34; p['k'+trail] = .03;
+    p['sh'+lead]  = (lead==='L'?  3.05 : -3.05); // lead arm thrown out & down to the low ball
+    p['sh'+trail] = (trail==='L'? 1.85 : -1.85); // top hand trails behind for balance
+    p['f'+lead]   = -.5;  p['e'+lead]  = .0;     // lead arm forward, straight to the ball
+    p['e'+trail]  = -.2;
+    peak = .42;                                  // airborne full stretch, then lands
   }
   // POWER STEP — directional plant: weight to the ball-side foot, contralateral leg
   // coils deep then drives. Even two-foot load for the vertical / low smother.
