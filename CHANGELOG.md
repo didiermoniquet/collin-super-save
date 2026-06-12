@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.2] — 2026-06-12
+
+### Changed
+- **More dramatic far-net ripple.** The opponent goal's net now billows much deeper and wobbles longer when you score — a harder impulse over a wider area with a softer spring.
+
 ## [1.4.1] — 2026-06-12
 
 ### Changed
