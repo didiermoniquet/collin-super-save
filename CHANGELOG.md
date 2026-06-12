@@ -7,6 +7,12 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.1] — 2026-06-12
+
+### Changed
+- **Punchier opponent keeper dive.** In the two-goal view the opponent keeper now performs a full flying save — a ballistic jump, the body rolling horizontal, the spine curling, arms reaching with the gloves presented, and the legs driving off the floor (using the new ankle/wrist/spine articulation) — instead of a flat lunge.
+- **Far net ripples.** The opponent's goal net is now deformable and billows into the goal when you score, matching the near goal.
+
 ## [1.4.0] — 2026-06-12
 
 ### Added

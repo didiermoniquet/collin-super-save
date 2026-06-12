@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.4.0">
+<meta name="version" content="1.4.1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -346,7 +346,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.4.0';
+const VERSION = '1.4.1';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -928,17 +928,32 @@ const oppGroup = new THREE.Group();
   mkPost(-GOAL_W/2); mkPost(GOAL_W/2);
   const ob=new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_W+POST_R*2,16),postMat);
   ob.rotation.z=Math.PI/2; ob.position.set(0,GOAL_H,OPP_GZ); ob.castShadow=true; oppGroup.add(ob);
-  // simple sloped back net (static grid of lines)
-  const cols=13, rows=7, D=1.3, pts=[];
-  const node=(c,r)=>{ const x=-GOAL_W/2+(c/(cols-1))*GOAL_W, y=(r/(rows-1))*GOAL_H;
-    return new THREE.Vector3(x,y,OPP_GZ+.15+(1-y/GOAL_H)*D); };
-  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
-    if(c<cols-1) pts.push(node(c,r), node(c+1,r));
-    if(r<rows-1) pts.push(node(c,r), node(c,r+1));
-  }
-  oppGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),
-    new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:.7})));
 }
+/* deformable far net — billows into the goal when you score */
+const oppCols=15, oppRows=8, oppD=1.3, oppNetNodes=[];
+for(let r=0;r<oppRows;r++) for(let c=0;c<oppCols;c++){
+  const x=-GOAL_W/2+(c/(oppCols-1))*GOAL_W, y=(r/(oppRows-1))*GOAL_H;
+  oppNetNodes.push({x, y, rz:OPP_GZ+.15+(1-y/GOAL_H)*oppD, z:OPP_GZ+.15+(1-y/GOAL_H)*oppD, vz:0});
+}
+const oppNetIdx=(r,c)=>r*oppCols+c;
+const oppNetPos=new Float32Array(oppNetNodes.length*3);
+function writeOppNet(){ for(let i=0;i<oppNetNodes.length;i++){ const n=oppNetNodes[i]; oppNetPos[i*3]=n.x; oppNetPos[i*3+1]=n.y; oppNetPos[i*3+2]=n.z; } }
+writeOppNet();
+const oppNetAttr=new THREE.BufferAttribute(oppNetPos,3);
+const oppLinePairs=[];
+for(let r=0;r<oppRows;r++) for(let c=0;c<oppCols;c++){
+  if(c<oppCols-1) oppLinePairs.push(oppNetIdx(r,c),oppNetIdx(r,c+1));
+  if(r<oppRows-1) oppLinePairs.push(oppNetIdx(r,c),oppNetIdx(r+1,c));
+}
+const oppLineGeo=new THREE.BufferGeometry(); oppLineGeo.setAttribute('position',oppNetAttr); oppLineGeo.setIndex(oppLinePairs);
+oppGroup.add(new THREE.LineSegments(oppLineGeo, new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.8})));
+const oppTris=[];
+for(let r=0;r<oppRows-1;r++) for(let c=0;c<oppCols-1;c++){ const a=oppNetIdx(r,c),b=oppNetIdx(r,c+1),d=oppNetIdx(r+1,c),e=oppNetIdx(r+1,c+1); oppTris.push(a,d,b,b,d,e); }
+const oppSurfGeo=new THREE.BufferGeometry(); oppSurfGeo.setAttribute('position',oppNetAttr); oppSurfGeo.setIndex(oppTris); oppSurfGeo.computeVertexNormals();
+oppGroup.add(new THREE.Mesh(oppSurfGeo, new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:.13,side:THREE.DoubleSide,depthWrite:false,roughness:.9})));
+function updateOppNet(){ writeOppNet(); oppNetAttr.needsUpdate=true; oppSurfGeo.computeVertexNormals(); }
+function rippleOppNet(bx,by,power){ for(const n of oppNetNodes){ const d2=(n.x-bx)*(n.x-bx)+(n.y-by)*(n.y-by); n.vz += power*Math.exp(-d2/1.1); } } // +z billow into the goal
+function stepOppNet(dt){ let moved=false; for(const n of oppNetNodes){ n.vz += ((n.rz-n.z)*55 - n.vz*4)*dt; n.z += n.vz*dt; if(Math.abs(n.vz)>2e-3||Math.abs(n.z-n.rz)>2e-3) moved=true; } if(moved) updateOppNet(); }
 oppGroup.visible = false;
 scene.add(oppGroup);
 /* opponent keeper — wears the customised striker kit, faces the shooter */
@@ -1364,8 +1379,7 @@ function startRound(){
       aiDiveZone = Math.floor(Math.random()*6);    // the opponent keeper's guess
       targetZone = aiDiveZone;                      // fallback aim
       oppGroup.visible = true; oppKeeper.group.visible = true; striker.group.visible = false;
-      oppKeeper.group.position.copy(oppHome); oppKeeper.group.rotation.set(0, Math.PI, 0);
-      oppKeeper.arms.L.rotation.z = .28; oppKeeper.arms.R.rotation.z = -.28;
+      resetOppKeeper();
       ball.position.set(0, BALL_R, 1.0);            // launch from your goal mouth
       setG2GView('far');
       flash('AIM!', 'var(--toy-blue)');
@@ -1599,24 +1613,57 @@ function fireShot(){
   attackFlightDur = THREE.MathUtils.lerp(1.2, .62, lockedPower); // faster shot at higher power
   const z = ZONES[targetZone];
   ballFrom.copy(ball.position);
-  ballTo.set(z.x, z.y, OPP_GZ - .25);
+  ballTo.set(z.x, z.y, g2gShotSaved ? OPP_GZ - .55 : OPP_GZ + .3);  // save stops at the keeper; goal into the net
   arcH = .35 + (1 - lockedPower)*.6;                            // weak shots loop more
   flightT = 0; ballMode = 'lerp'; g2gAttackShot = true; state = 'flight';
   sndKick();
 }
+/* full goalkeeper dive for the opponent — ballistic jump, body roll, reach, leg drive */
+function resetOppKeeper(){
+  oppKeeper.group.position.copy(oppHome);
+  oppKeeper.group.rotation.set(0, Math.PI, 0);
+  oppKeeper.waist.rotation.set(0,0,0);
+  oppKeeper.arms.L.rotation.set(0,0,.28);  oppKeeper.arms.R.rotation.set(0,0,-.28);
+  oppKeeper.arms.L.userData.elbow.rotation.x = .25; oppKeeper.arms.R.userData.elbow.rotation.x = .25;
+  oppKeeper.arms.L.userData.wrist.rotation.x = -.08; oppKeeper.arms.R.userData.wrist.rotation.x = -.08;
+  for(const s of ['L','R']){
+    oppKeeper.legs[s].rotation.set(0,0,0);
+    oppKeeper.legs[s].userData.knee.rotation.x = .12;
+    oppKeeper.legs[s].userData.ankle.rotation.x = 0;
+  }
+}
 function poseOppKeeper(k){
   const z = ZONES[g2gKeeperZone], side = Math.sign(z.x) || 0, high = g2gKeeperZone < 3;
-  const ext = Math.sin(Math.min(k,1) * Math.PI * .75);
-  oppKeeper.group.position.set(oppHome.x + side*1.15*ext, oppHome.y + (high?.55:.08)*ext, oppHome.z);
-  oppKeeper.group.rotation.set(0, Math.PI, -side*1.2*ext * (high?.45:1));
-  oppKeeper.arms.L.rotation.z =  .28 + ext*2.4;
-  oppKeeper.arms.R.rotation.z = -.28 - ext*2.4;
+  const kk = Math.min(k,1);
+  const ext  = Math.sin(kk * Math.PI * .8);                         // reach 0→1
+  const lift = Math.sin(Math.min(kk*1.15,1) * Math.PI) * (high ? .85 : .32) * (side||high ? 1 : .35); // jump arc
+  oppKeeper.group.position.set(oppHome.x + side*1.35*ext, oppHome.y + lift, oppHome.z + .12*ext);
+  oppKeeper.group.rotation.set(0, Math.PI, -side*(high?1.05:1.5)*ext);   // roll the body horizontal
+  oppKeeper.waist.rotation.set((high?-.12:.28)*ext, 0, side*.32*ext);    // spine curls into the dive
+  // arms thrown toward the ball; elbows straighten, wrists open to present the gloves
+  oppKeeper.arms.L.rotation.z =  .28 + (side>0 ? 2.8 : side<0 ? 2.0 : 2.8)*ext;
+  oppKeeper.arms.R.rotation.z = -.28 - (side<0 ? 2.8 : side>0 ? 2.0 : 2.8)*ext;
+  oppKeeper.arms.L.rotation.x = (high?-.3:.12)*ext;
+  oppKeeper.arms.R.rotation.x = (high?-.3:.12)*ext;
+  oppKeeper.arms.L.userData.elbow.rotation.x = .25 - .25*ext;
+  oppKeeper.arms.R.userData.elbow.rotation.x = .25 - .25*ext;
+  oppKeeper.arms.L.userData.wrist.rotation.x = -.35*ext;
+  oppKeeper.arms.R.userData.wrist.rotation.x = -.35*ext;
+  // legs: leading leg tucks, trailing leg drives straight off the floor; feet point
+  const lead = side>=0 ? 'L':'R', trail = side>=0 ? 'R':'L';
+  oppKeeper.legs[lead].rotation.x  = .5*ext;  oppKeeper.legs[lead].userData.knee.rotation.x  = .12 + .8*ext;
+  oppKeeper.legs[trail].rotation.x = -.22*ext; oppKeeper.legs[trail].userData.knee.rotation.x = .12 - .04*ext;
+  oppKeeper.legs.L.userData.ankle.rotation.x = .5*ext;
+  oppKeeper.legs.R.userData.ankle.rotation.x = .5*ext;
 }
 function resolveG2GAttack(){
   g2gAttackShot = false;
   state = 'result'; resultTimer = 1.4; ballMode = 'phys';
   if(g2gShotSaved){ sndSave(); ballVel.set((Math.random()-.5)*4, 3+Math.random()*2, -(4+Math.random()*3)); }
-  else { sndGoal(); ballVel.set((Math.random()-.5)*1.2, 1.2, 2.2); }   // trickle into the net
+  else {                                                    // goal — billow the far net
+    sndGoal(); ballVel.set((Math.random()-.5)*1.2, 1.2, 2.2);
+    rippleOppNet(ball.position.x, ball.position.y, 14);
+  }
   g2gResolve(g2gShotSaved);
 }
 
@@ -2332,6 +2379,7 @@ function animate(){
   }
 
   stepNet(dt);   // settle the goal net's ripple
+  if(oppGroup.visible) stepOppNet(dt);   // settle the opponent goal's net ripple
 
   /* camera orbit smoothing */
   const camEase = 1 - Math.pow(.0005, dt);
