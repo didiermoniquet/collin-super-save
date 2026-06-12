@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] — 2026-06-12
+
+### Added
+- **Goal to Goal** — a new 1v1 goalkeeper-duel mode (a.k.a. "Goalie Wars"), based on the real pickup-game rules: two keepers take turns; you shoot, the opponent saves, then they shoot and you dive. **First to 5, win by 2.** On **your shot**, pick a corner (Q/W/E/A/S/D or the pad) — the opponent keeper leans toward the corner it's about to cover, so read it and aim away (harder difficulties hide the lean and "read" you more often). On **their shot**, dive to save as usual. A top scoreboard shows the duel score and whose turn it is, and your match wins are tracked. Select it from the **Mode** row.
+
 ## [1.2.0] — 2026-06-11
 
 ### Added

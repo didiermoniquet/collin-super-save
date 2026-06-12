@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.2.0">
+<meta name="version" content="1.3.0">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -125,7 +125,13 @@
     10%{opacity:1;transform:translateX(-50%) translateY(0)}
     80%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
   /* ---------- mode / cosmetics / stats inside panels ---------- */
-  .modes{display:flex;gap:8px;justify-content:center;margin:6px 0 2px}
+  .modes{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:6px 0 2px}
+  #g2gBar{position:fixed;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;gap:2px;z-index:5;pointer-events:none;
+    background:var(--card);border:3px solid var(--ink);border-radius:16px;padding:8px 20px;box-shadow:0 4px 0 var(--ink)}
+  #g2gBar .g2gscore{font-family:'Bungee',cursive;font-size:22px;color:var(--ink);line-height:1}
+  #g2gBar .g2gscore b{color:var(--toy-blue)}
+  #g2gBar .g2gturn{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--toy-orange)}
   .modes .mode-btn{margin:0;font-family:'Bungee',cursive;font-size:13px;padding:8px 14px;
     border:3px solid var(--ink);border-radius:13px;background:#fff;color:var(--ink);
     cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
@@ -215,6 +221,7 @@
 <div id="flash"></div>
 <div id="reaction"></div>
 <div id="toast"></div>
+<div id="g2gBar" class="hidden"></div>
 
 <button id="muteBtn" aria-label="Toggle sound">🔊</button>
 <button id="fsBtn" aria-label="Fullscreen" title="Fullscreen">⛶</button>
@@ -239,6 +246,7 @@
     <div class="modes">
       <button class="mode-btn sel" data-mode="normal">NORMAL</button>
       <button class="mode-btn" data-mode="sudden">SUDDEN DEATH</button>
+      <button class="mode-btn" data-mode="goal2goal">GOAL TO GOAL</button>
     </div>
     <p class="difflbl">Difficulty — how fast he shoots</p>
     <div class="diffs">
@@ -295,6 +303,7 @@
     <div class="modes">
       <button class="mode-btn sel" data-mode="normal">NORMAL</button>
       <button class="mode-btn" data-mode="sudden">SUDDEN DEATH</button>
+      <button class="mode-btn" data-mode="goal2goal">GOAL TO GOAL</button>
     </div>
     <p class="difflbl">Difficulty</p>
     <div class="diffs">
@@ -324,7 +333,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -982,7 +991,7 @@ const DIFFS = ['easy','medium','hard'];
 function blankStat(){ return {saves:0, shots:0, bestStreak:0, bestReaction:null,
   zoneSaved:[0,0,0,0,0,0], zoneShots:[0,0,0,0,0,0]}; }
 const DATA = {
-  scores: {normal:{easy:0,medium:0,hard:0}, sudden:{easy:0,medium:0,hard:0}},
+  scores: {normal:{easy:0,medium:0,hard:0}, sudden:{easy:0,medium:0,hard:0}, goal2goal:0},
   stats:  {easy:blankStat(), medium:blankStat(), hard:blankStat()},
   cosmetics: {shirt:'#1b1b1f', shorts:'#1b1b1f', socks:'#9aa0a8', glove:'#ffd23f', boot:'#ff5fb4', name:'COLLIN',
               striker: {shirt:'#1f6bff', shorts:'#1f6bff', socks:'#1f6bff', boot:'#e23b2e', name:'TIMOTHY', num:'9'}},
@@ -1000,7 +1009,8 @@ function mergeStat(into, from){ if(!from) return;
     if(from.zoneShots) into.zoneShots[i] = Math.max(into.zoneShots[i], +from.zoneShots[i]||0);
   } }
 function mergeData(raw){ if(!raw) return; let o; try{ o=JSON.parse(raw); }catch(e){ return; }
-  if(o.scores){ mergeScores(DATA.scores.normal, o.scores.normal); mergeScores(DATA.scores.sudden, o.scores.sudden); }
+  if(o.scores){ mergeScores(DATA.scores.normal, o.scores.normal); mergeScores(DATA.scores.sudden, o.scores.sudden);
+    if(o.scores.goal2goal!=null) DATA.scores.goal2goal = Math.max(DATA.scores.goal2goal||0, +o.scores.goal2goal||0); }
   if(o.stats) for(const d of DIFFS) mergeStat(DATA.stats[d], o.stats[d]);
   if(o.cosmetics) for(const k in DATA.cosmetics) if(o.cosmetics[k]!=null) DATA.cosmetics[k]=o.cosmetics[k];
 }
@@ -1045,7 +1055,15 @@ let mode = 'normal';                       // 'normal' (3 goals) | 'sudden' (1 g
 let gameActive = false;                    // true between kick-off and full time / quit
 const maxLives = ()=> mode==='sudden' ? 1 : 3;
 let bestAtStart = 0;                        // the record before the current game (for the banner)
-function curBest(){ return DATA.scores[mode][diff] || 0; }
+
+/* ---------- Goal to Goal (1v1 keeper duel) ---------- */
+const G2G_TARGET = 5;                       // first to 5, win by 2
+let youScore = 0, oppScore = 0;             // duel score
+let g2gTurn = 'attack';                     // 'attack' (you shoot) | 'defend' (you save)
+let g2gOver = null;                         // 'win' | 'lose' once the duel ends
+let aimed = false, aiDiveZone = 0;          // your shot-aim lock + the opponent keeper's chosen dive
+function matchOver(){ return mode==='goal2goal' ? g2gOver!=null : conceded >= maxLives(); }
+function curBest(){ return mode==='goal2goal' ? (DATA.scores.goal2goal||0) : (DATA.scores[mode][diff] || 0); }
 function recordBest(){ // call whenever the score climbs — persists the instant a record falls
   if(saves > curBest()){ DATA.scores[mode][diff] = saves; saveData(); if(typeof updateBest==='function') updateBest(); }
 }
@@ -1235,6 +1253,11 @@ const gloveEls = document.querySelectorAll('.glove');
 const flashEl = document.getElementById('flash');
 /* reflect the selected difficulty's best in the HUD badge + start-screen hint */
 function updateBest(){
+  if(mode === 'goal2goal'){
+    bestEl.textContent = curBest();
+    bestHintEl.textContent = `Goal to Goal — first to ${G2G_TARGET}, win by 2 · Wins: ${curBest()}`;
+    return;
+  }
   bestEl.textContent = curBest();
   bestHintEl.textContent = `Best — ${diffName(diff)} · ${mode==='sudden'?'Sudden Death':'Normal'}: ${curBest()} saves`;
 }
@@ -1246,6 +1269,15 @@ function flash(text, color){
   flashEl.classList.add('pop');
 }
 function updateHUD(){
+  if(mode === 'goal2goal'){
+    const bar = document.getElementById('g2gBar');
+    if(bar){
+      const turn = matchOver() ? '' : (g2gTurn === 'attack' ? 'YOUR SHOT' : 'SAVE IT!');
+      bar.innerHTML = `<span class="g2gscore"><b>${youScore}</b> YOU &nbsp;–&nbsp; OPP <b>${oppScore}</b></span>`
+                    + `<span class="g2gturn">${turn}</span>`;
+    }
+    return;
+  }
   savesEl.textContent = saves;
   streakEl.textContent = streak;
   const lives = maxLives();   // sudden death shows a single glove
@@ -1260,7 +1292,6 @@ function startRound(){
   windupTimer = 1.05 + Math.random()*.6;
   committed = false; playerZone = -1;
   lastReaction = null; divedEarly = false;
-  targetZone = pickZone(shotStyle.weights);
   // keeper returns to the ready-crouch; cancel any dive arc
   ktarget = {...KREADY}; diveT = -1;
   // striker back to a neutral stance
@@ -1271,6 +1302,16 @@ function startRound(){
   ball.position.set(.35,BALL_R,11.6);
   // run-up start position (a few steps back & to the side)
   striker.group.position.set(.9 + Math.random()*.4, 0, 13.2 + Math.random()*.8);
+  if(mode === 'goal2goal' && g2gTurn === 'attack'){
+    aimed = false;
+    aiDiveZone = Math.floor(Math.random()*6);   // the opponent keeper's guess (world zone)
+    targetZone = Math.floor(Math.random()*6);   // fallback aim if you don't pick in time
+    flash('YOUR SHOT!', 'var(--toy-blue)');
+  } else {
+    targetZone = pickZone(shotStyle.weights);    // opponent (or penalty striker) aims
+    if(mode === 'goal2goal') flash('SAVE IT!', 'var(--toy-orange)');
+  }
+  if(mode === 'goal2goal') updateHUD();
 }
 
 /* striker kick pose — wind = backswing load (0..1), swing = whip through ball (0..1).
@@ -1323,19 +1364,28 @@ function kick(){
   ballMode = 'lerp';
   kickAt = performance.now();          // start the reaction-time clock
   sndKick();
+  if(mode === 'goal2goal' && g2gTurn === 'attack'){
+    // the opponent keeper commits: its guess, or a difficulty-based "read" of your aim
+    const readChance = {easy:.12, medium:.32, hard:.55}[diff] || .32;
+    if(Math.random() < readChance) aiDiveZone = targetZone;
+    aiDive(aiDiveZone);
+  }
 }
 
-function dive(zone){
+function dive(zone, raw, isAI){
   if(state !== 'flight' && state !== 'windup' && state !== 'strike') return;
   if(committed) return;
   // keys/pad are screen-relative: when the camera has orbited to the striker's
-  // side, world x appears mirrored, so swap the left/right columns
-  if(Math.cos(orbit.theta) > 0) zone = [2,1,0,5,4,3][zone];
+  // side, world x appears mirrored, so swap the left/right columns.
+  // AI dives (Goal-to-Goal opponent) pass a world zone (raw) and skip the mirror.
+  if(!raw && Math.cos(orbit.theta) > 0) zone = [2,1,0,5,4,3][zone];
   committed = true; playerZone = zone;
-  // reaction time from the kick; committing before the strike is an anticipatory "read"
-  if(state === 'flight' && kickAt > 0){ lastReaction = (performance.now()-kickAt)/1000; divedEarly = false; }
-  else { lastReaction = null; divedEarly = true; }
-  showReaction();
+  if(!isAI){
+    // reaction time from the kick; committing before the strike is an anticipatory "read"
+    if(state === 'flight' && kickAt > 0){ lastReaction = (performance.now()-kickAt)/1000; divedEarly = false; }
+    else { lastReaction = null; divedEarly = true; }
+    showReaction();
+  }
   const z = ZONES[zone];
   const side = Math.sign(z.x);                       // dive direction in world x
   const lead = side > 0 ? 'R' : 'L';                 // leg on the dive side (tucks up)
@@ -1398,27 +1448,62 @@ function dive(zone){
   sndDive();
 }
 
+/* ---------- Goal to Goal helpers ---------- */
+function aiDive(z){ dive(z, true, true); }            // opponent keeper dive (world zone, no readout)
+/* on your attack turn a zone press AIMS the shot instead of diving */
+function setAim(z){
+  if(state !== 'windup' && state !== 'strike') return;   // lock the aim before the ball is struck
+  if(aimed) return;
+  if(Math.cos(orbit.theta) > 0) z = [2,1,0,5,4,3][z];    // same screen→world mirror as a dive
+  targetZone = z; aimed = true;
+}
+/* route a zone press: aim on your shot, dive otherwise */
+function onZone(z){
+  if(mode === 'goal2goal' && g2gTurn === 'attack') setAim(z);
+  else dive(z);
+}
+/* score, alternate turns, and check the win condition for a resolved duel shot */
+function g2gResolve(saved){
+  const attacking = (g2gTurn === 'attack');
+  if(attacking){
+    if(saved){ flash('SAVED!', 'var(--toy-yellow)'); }                           // keeper denied you
+    else { youScore++; flash('GOAL!', 'var(--toy-pink)'); burstConfetti(ball.position.clone()); }
+  } else {
+    if(saved){ flash('SAVED!', 'var(--toy-yellow)'); burstConfetti(ball.position.clone()); } // you saved
+    else { oppScore++; flash('GOAL...', '#9aa2b1'); }                            // conceded
+  }
+  const won  = youScore >= G2G_TARGET && youScore - oppScore >= 2;
+  const lost = oppScore >= G2G_TARGET && oppScore - youScore >= 2;
+  if(won || lost){ g2gOver = won ? 'win' : 'lose'; setTimeout(endGame, 1300); }
+  else { g2gTurn = attacking ? 'defend' : 'attack'; }                            // alternate turns
+  updateHUD();
+}
+
 function resolveShot(saved){
   state = 'result'; resultTimer = 1.5; lastSaved = saved;
+  // ball reaction (same for both modes): a save parries it away, a goal carries it into the net
+  if(saved){
+    ballMode = 'phys';
+    ballVel.set((Math.random()-.5)*5, 4.5 + Math.random()*2, 4.5 + Math.random()*3);
+    sndSave();
+  } else {
+    ballMode = 'lerp'; netHit = false;
+    ballFrom.copy(ball.position);
+    ballTo.set(ball.position.x, Math.max(BALL_R, ball.position.y*.5), -1.25);
+    flightT = 0;
+    sndGoal();
+  }
+  if(mode === 'goal2goal'){ g2gResolve(saved); return; }
+  // ---- penalty scoring ----
   if(saved){
     saves++; streak++;
     recordBest();   // persist immediately if this save sets a new personal best
     if(streak > bestReplayStreak){ bestReplayStreak = streak; pendingReplayAt = recClock + 1.0; } // grab this as the highlight
     flash(streak >= 3 ? 'SUPER SAVE!' : 'SAVED!', streak >= 3 ? 'var(--toy-pink)' : 'var(--toy-yellow)');
     burstConfetti(ball.position.clone());
-    // parry: kick the ball into a bouncing, gravity-driven deflection out of the box
-    ballMode = 'phys';
-    ballVel.set((Math.random()-.5)*5, 4.5 + Math.random()*2, 4.5 + Math.random()*3);
-    sndSave();
   } else {
     conceded++; streak = 0;
     flash('GOAL...', '#9aa2b1');
-    // ball into the net (which will ripple on contact)
-    ballMode = 'lerp'; netHit = false;
-    ballFrom.copy(ball.position);
-    ballTo.set(ball.position.x, Math.max(BALL_R, ball.position.y*.5), -1.25);
-    flightT = 0;
-    sndGoal();
   }
   // per-difficulty lifetime stats + zone heat-map
   const st = DATA.stats[diff];
@@ -1436,11 +1521,28 @@ function endGame(){
   gameActive = false;
   document.getElementById('homeBtn').classList.add('hidden');
   state = 'over';
+  if(mode === 'goal2goal'){
+    const win = (g2gOver === 'win');
+    if(win){ DATA.scores.goal2goal = (DATA.scores.goal2goal||0) + 1; saveData(); updateBest(); }
+    document.getElementById('finalStats').textContent = `YOU ${youScore} — ${oppScore} OPP`;
+    const b = document.getElementById('recordBanner');
+    b.textContent = win ? '🏆 DUEL WON!' : '🧤 DUEL LOST';
+    b.classList.remove('hidden');
+    document.getElementById('bestLine').textContent = `Goal-to-Goal wins: ${DATA.scores.goal2goal||0}`;
+    document.getElementById('finalMsg').textContent = win
+      ? 'You out-duelled the opponent keeper. Champion of the goalmouth! 🧤'
+      : 'Edged out in the duel — line up a rematch.';
+    document.getElementById('endShooter').textContent = '';
+    document.getElementById('replayBtn').classList.add('hidden');
+    document.getElementById('endOverlay').classList.remove('hidden');
+    return;
+  }
   // did this game beat the record we started with? (records already persisted live)
   const isRecord = saves > bestAtStart;
   recordBest();   // safety: ensure the best is stored
   document.getElementById('finalStats').textContent = `${saves} SAVES`;
   const banner = document.getElementById('recordBanner');
+  banner.textContent = '🏆 NEW HIGH SCORE!';
   banner.classList.toggle('hidden', !isRecord);
   document.getElementById('bestLine').textContent =
     `Best — ${diffName(diff)} · ${mode==='sudden'?'Sudden Death':'Normal'}: ${curBest()} saves`;
@@ -1460,8 +1562,16 @@ function endGame(){
 function beginGame(){
   gameActive = true;
   document.getElementById('homeBtn').classList.remove('hidden');
+  const g2g = (mode === 'goal2goal');
+  document.getElementById('hud').classList.toggle('hidden', g2g);
+  document.getElementById('g2gBar').classList.toggle('hidden', !g2g);
   shotStyle = pickStyle();
-  toast(`⚽ ${DATA.cosmetics.striker.name} #${DATA.cosmetics.striker.num} steps up — ${shotStyle.note}`);
+  if(g2g){
+    youScore = 0; oppScore = 0; g2gOver = null; g2gTurn = 'attack'; aimed = false;
+    toast(`⚽ Goal to Goal — first to ${G2G_TARGET}, win by 2. You shoot first!`);
+  } else {
+    toast(`⚽ ${DATA.cosmetics.striker.name} #${DATA.cosmetics.striker.num} steps up — ${shotStyle.note}`);
+  }
   saves = 0; streak = 0; conceded = 0; round = 0;
   bestAtStart = curBest();                // remember the record going into this game
   bestReplay = null; bestReplayStreak = -1; pendingReplayAt = -1;
@@ -1487,7 +1597,7 @@ addEventListener('keydown', e=>{
   const el = e.target;
   if(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
   const z = KEYMAP[e.code];
-  if(z !== undefined){ e.preventDefault(); dive(z); }
+  if(z !== undefined){ e.preventDefault(); onZone(z); }
 });
 
 /* Show the user's actual key labels on the pad (Chromium only;
@@ -1509,7 +1619,7 @@ if(navigator.keyboard && navigator.keyboard.getLayoutMap){
   }).catch(()=>{});
 }
 document.querySelectorAll('#pad button').forEach(b=>{
-  b.addEventListener('pointerdown', ()=> dive(+b.dataset.z));
+  b.addEventListener('pointerdown', ()=> onZone(+b.dataset.z));
 });
 /* difficulty buttons (shared across both overlays) — only the shot speed changes */
 document.querySelectorAll('.diff-btn').forEach(b=>{
@@ -1765,6 +1875,8 @@ function goHome(){
   document.getElementById('endOverlay').classList.add('hidden');
   document.getElementById('homeBtn').classList.add('hidden');
   document.getElementById('pad').style.visibility = '';
+  document.getElementById('hud').classList.remove('hidden');
+  document.getElementById('g2gBar').classList.add('hidden');
   updateBest(); renderStats(); syncCosmeticUI();
   document.getElementById('startOverlay').classList.remove('hidden');
 }
@@ -1924,13 +2036,20 @@ function animate(){
       striker.group.position.y = 0;
       const planted = THREE.MathUtils.clamp((.38-windupTimer)/.38, 0, 1);
       setStrikerPose(planted, 0);                         // plant & load
-      // plant-foot / hip "tell" — he opens toward the side (and tilts for height) he'll shoot
+      // plant-foot / hip "tell" — telegraphs the shot (skipped on your own attack turn)
+      const attacking = (mode === 'goal2goal' && g2gTurn === 'attack');
       const side = Math.sign(ZONES[targetZone].x) || 0, high = targetZone < 3 ? 1 : -1;
-      const amt = tellAmount() * planted;
+      const amt = attacking ? 0 : tellAmount() * planted;
       striker.group.rotation.y = strikerYaw - side*amt;
       striker.group.rotation.z = side*amt*.45;
       striker.group.rotation.x += high*amt*.20;
       striker.legs.R.rotation.z = side*amt*.9;
+    }
+    // Goal-to-Goal: on your shot the opponent keeper leans toward the corner it will dive to
+    if(mode === 'goal2goal' && g2gTurn === 'attack' && !committed){
+      const dz = ZONES[aiDiveZone], kside = Math.sign(dz.x) || 0, ln = tellAmount();
+      ktarget = {...KREADY, x: KREADY.x + kside*ln*1.3, roll: -kside*ln,
+                 y: KREADY.y + (aiDiveZone < 3 ? ln*.5 : 0)};
     }
     if(windupTimer <= 0){ state = 'strike'; strikeT = 0; }
   }
@@ -1967,7 +2086,7 @@ function animate(){
       spinBall(dt, 10);
       if(!netHit && ball.position.z < -.9){ rippleNet(ball.position.x, ball.position.y, 15); netHit = true; }
     }
-    if(resultTimer <= 0 && conceded < maxLives()) startRound();
+    if(resultTimer <= 0 && !matchOver()) startRound();
   }
 
   /* striker: follow-through in flight, then reacts to the outcome during the result */
