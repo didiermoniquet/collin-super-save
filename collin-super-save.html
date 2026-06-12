@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.4.4">
+<meta name="version" content="1.4.5">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -346,7 +346,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.4.4';
+const VERSION = '1.4.5';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1640,34 +1640,34 @@ function resetOppKeeper(){
 function poseOppKeeper(k){
   const z = ZONES[g2gKeeperZone], side = Math.sign(z.x) || 0, high = g2gKeeperZone < 3;
   const kk = Math.min(k,1);
-  const ext  = Math.sin(kk * Math.PI * .8);                         // reach 0→1
-  const lift = Math.sin(Math.min(kk*1.15,1) * Math.PI) * (high ? .85 : .32) * (side||high ? 1 : .35); // jump arc
-  oppKeeper.group.position.set(oppHome.x + side*1.35*ext, oppHome.y + lift, oppHome.z + .12*ext);
-  oppKeeper.group.rotation.set(0, Math.PI, -side*(high?1.05:1.5)*ext);   // roll the body horizontal
-  oppKeeper.waist.rotation.set((high?-.12:.28)*ext, 0, side*.32*ext);    // spine curls into the dive
-  // arms thrown toward the ball; elbows straighten, wrists open to present the gloves
-  oppKeeper.arms.L.rotation.z =  .28 + (side>0 ? 2.8 : side<0 ? 2.0 : 2.8)*ext;
-  oppKeeper.arms.R.rotation.z = -.28 - (side<0 ? 2.8 : side>0 ? 2.0 : 2.8)*ext;
-  oppKeeper.arms.L.rotation.x = (high?-.3:.12)*ext;
-  oppKeeper.arms.R.rotation.x = (high?-.3:.12)*ext;
-  oppKeeper.arms.L.userData.elbow.rotation.x = .25 - .25*ext;
-  oppKeeper.arms.R.userData.elbow.rotation.x = .25 - .25*ext;
-  oppKeeper.arms.L.userData.wrist.rotation.x = -.35*ext;
-  oppKeeper.arms.R.userData.wrist.rotation.x = -.35*ext;
-  // legs: leading leg tucks, trailing leg drives straight off the floor; feet point
-  const lead = side>=0 ? 'L':'R', trail = side>=0 ? 'R':'L';
-  oppKeeper.legs[lead].rotation.x  = .5*ext;  oppKeeper.legs[lead].userData.knee.rotation.x  = .12 + .8*ext;
-  oppKeeper.legs[trail].rotation.x = -.22*ext; oppKeeper.legs[trail].userData.knee.rotation.x = .12 - .04*ext;
-  oppKeeper.legs.L.userData.ankle.rotation.x = .5*ext;
-  oppKeeper.legs.R.userData.ankle.rotation.x = .5*ext;
+  const ext  = Math.sin(kk * Math.PI * .85);                                       // reach 0→1
+  const lift = Math.sin(Math.min(kk*1.12,1) * Math.PI) * (high ? .95 : (side?.42:.16)); // ballistic jump
+  const g = oppKeeper.group, A = oppKeeper.arms, L = oppKeeper.legs;
+  // body: jump toward the ball and roll the torso HORIZONTAL into the dive
+  // (the figure faces -z / yaw π, so the roll & leg signs are flipped vs Collin's near-goal dive)
+  g.position.set(oppHome.x + side*1.5*ext, oppHome.y + lift, oppHome.z);
+  g.rotation.set((high?-.2:.2)*ext, Math.PI, side*1.45*ext);
+  oppKeeper.waist.rotation.set((high?-.12:.22)*ext, 0, -side*.3*ext);              // spine curls in
+  // both arms thrown up & out toward the ball; elbows straighten, wrists present the gloves
+  A.L.rotation.set((high?-.25:.12)*ext, 0,  .28 + 2.9*ext);
+  A.R.rotation.set((high?-.25:.12)*ext, 0, -.28 - 2.9*ext);
+  A.L.userData.elbow.rotation.x = .25 - .3*ext;  A.R.userData.elbow.rotation.x = .25 - .3*ext;
+  A.L.userData.wrist.rotation.x = -.4*ext;       A.R.userData.wrist.rotation.x = -.4*ext;
+  // legs split: leading leg tucks up, trailing leg drives out straight; feet point
+  const lead = side>=0 ? 'R':'L', trail = side>=0 ? 'L':'R';
+  L[lead].rotation.set(.5*ext,0,0);   L[lead].userData.knee.rotation.x  = .12 + .9*ext;
+  L[trail].rotation.set(-.3*ext,0,0); L[trail].userData.knee.rotation.x = .12;
+  L.L.userData.ankle.rotation.x = .55*ext; L.R.userData.ankle.rotation.x = .55*ext;
 }
 function resolveG2GAttack(){
   g2gAttackShot = false;
   state = 'result'; resultTimer = 1.4; ballMode = 'phys';
   if(g2gShotSaved){ sndSave(); ballVel.set((Math.random()-.5)*4, 3+Math.random()*2, -(4+Math.random()*3)); }
-  else {                                                    // goal — billow the far net
+  else {                                                    // goal — billow the net + push the camera in
     sndGoal(); ballVel.set((Math.random()-.5)*1.2, 1.2, 2.2);
     rippleOppNet(ball.position.x, ball.position.y, 22);
+    camTargetGoal.set(0, 1.5, OPP_GZ - 6.5);                 // swoop the camera toward the goal
+    orbitGoal.radius = camHome.radius + 1.5;
   }
   g2gResolve(g2gShotSaved);
 }

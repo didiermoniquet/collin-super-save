@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.5] — 2026-06-12
+
+### Changed
+- **Proper opponent keeper dive + a camera swoop on goals.** The opponent keeper now makes a real flying save in the two-goal view — a ballistic jump, the body rolling fully horizontal, arms reaching with the gloves out, legs splitting (the previous version looked wrong because its facing flipped the dive). And when you score, the camera now swoops in toward the goal to show off the finish, net billow and confetti, then pulls back to defend.
+
 ## [1.4.4] — 2026-06-12
 
 ### Fixed
