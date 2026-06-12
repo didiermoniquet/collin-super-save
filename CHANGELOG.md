@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.3] — 2026-06-12
+
+### Changed
+- **Toned down the far-net ripple.** The v1.4.2 billow was too strong; dialled the impulse and wobble back to a more natural amount.
+
 ## [1.4.2] — 2026-06-12
 
 ### Changed

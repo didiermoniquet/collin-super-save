@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.4.2">
+<meta name="version" content="1.4.3">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -346,7 +346,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.4.2';
+const VERSION = '1.4.3';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -953,7 +953,7 @@ const oppSurfGeo=new THREE.BufferGeometry(); oppSurfGeo.setAttribute('position',
 oppGroup.add(new THREE.Mesh(oppSurfGeo, new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:.13,side:THREE.DoubleSide,depthWrite:false,roughness:.9})));
 function updateOppNet(){ writeOppNet(); oppNetAttr.needsUpdate=true; oppSurfGeo.computeVertexNormals(); }
 function rippleOppNet(bx,by,power){ for(const n of oppNetNodes){ const d2=(n.x-bx)*(n.x-bx)+(n.y-by)*(n.y-by); n.vz += power*Math.exp(-d2/2.4); } } // wide, deep +z billow into the goal
-function stepOppNet(dt){ let moved=false; for(const n of oppNetNodes){ n.vz += ((n.rz-n.z)*32 - n.vz*2.4)*dt; n.z += n.vz*dt; if(Math.abs(n.vz)>1.5e-3||Math.abs(n.z-n.rz)>1.5e-3) moved=true; } if(moved) updateOppNet(); } // softer spring → deeper, longer wobble
+function stepOppNet(dt){ let moved=false; for(const n of oppNetNodes){ n.vz += ((n.rz-n.z)*46 - n.vz*3.4)*dt; n.z += n.vz*dt; if(Math.abs(n.vz)>1.5e-3||Math.abs(n.z-n.rz)>1.5e-3) moved=true; } if(moved) updateOppNet(); } // springy ripple
 oppGroup.visible = false;
 scene.add(oppGroup);
 /* opponent keeper — wears the customised striker kit, faces the shooter */
@@ -1660,9 +1660,9 @@ function resolveG2GAttack(){
   g2gAttackShot = false;
   state = 'result'; resultTimer = 1.4; ballMode = 'phys';
   if(g2gShotSaved){ sndSave(); ballVel.set((Math.random()-.5)*4, 3+Math.random()*2, -(4+Math.random()*3)); }
-  else {                                                    // goal — billow the far net hard
+  else {                                                    // goal — billow the far net
     sndGoal(); ballVel.set((Math.random()-.5)*1.2, 1.2, 2.2);
-    rippleOppNet(ball.position.x, ball.position.y, 48);
+    rippleOppNet(ball.position.x, ball.position.y, 22);
   }
   g2gResolve(g2gShotSaved);
 }
