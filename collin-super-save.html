@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.3.2">
+<meta name="version" content="1.4.0">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -132,6 +132,15 @@
   #g2gBar .g2gscore{font-family:'Bungee',cursive;font-size:22px;color:var(--ink);line-height:1}
   #g2gBar .g2gscore b{color:var(--toy-blue)}
   #g2gBar .g2gturn{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--toy-orange)}
+  /* ---------- Goal-to-Goal power meter ---------- */
+  #powerMeter{position:fixed;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 84px);left:50%;
+    transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+  .pm-track{position:relative;width:min(280px,72vw);height:22px;border:3px solid var(--ink);border-radius:12px;
+    background:linear-gradient(90deg,#ffd23f,#ff7a1f,#e23b2e);box-shadow:0 4px 0 var(--ink);overflow:hidden}
+  .pm-sweet{position:absolute;top:0;bottom:0;left:65%;width:27%;background:rgba(255,255,255,.5);
+    border-left:2px solid #fff;border-right:2px solid #fff}
+  #pmMarker{position:absolute;top:-3px;bottom:-3px;left:0;width:5px;background:var(--ink);border-radius:3px;transform:translateX(-50%)}
+  .pm-label{font-family:'Bungee',cursive;font-size:13px;color:var(--card);-webkit-text-stroke:1.5px var(--ink);text-shadow:0 2px 0 var(--ink)}
   .modes .mode-btn{margin:0;font-family:'Bungee',cursive;font-size:13px;padding:8px 14px;
     border:3px solid var(--ink);border-radius:13px;background:#fff;color:var(--ink);
     cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
@@ -222,6 +231,10 @@
 <div id="reaction"></div>
 <div id="toast"></div>
 <div id="g2gBar" class="hidden"></div>
+<div id="powerMeter" class="hidden">
+  <div class="pm-track"><div class="pm-sweet"></div><div id="pmMarker"></div></div>
+  <div class="pm-label">tap / key = shoot</div>
+</div>
 
 <button id="muteBtn" aria-label="Toggle sound">🔊</button>
 <button id="fsBtn" aria-label="Fullscreen" title="Fullscreen">⛶</button>
@@ -333,7 +346,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.3.2';
+const VERSION = '1.4.0';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -353,6 +366,7 @@ camera.lookAt(0, 1.15, 8);
 
 /* ---------- mouse camera orbit (drag = rotate, wheel = zoom, dblclick = reset) ---------- */
 const camTarget = new THREE.Vector3(0, 1, 4); // pivot between keeper and penalty spot
+const camTargetGoal = camTarget.clone();      // animated target (reframes for Goal-to-Goal shots)
 const camHome = (()=>{
   const s = new THREE.Spherical().setFromVector3(camera.position.clone().sub(camTarget));
   return {theta:s.theta, phi:s.phi, radius:s.radius};
@@ -906,6 +920,36 @@ tree(-15,26,1.2); tree(16,28,1.4); tree(-25,21,1); tree(25,17,1.1); tree(-19,31,
   mk(new THREE.CylinderGeometry(.08,.08,fw,12),0,fh,Math.PI/2);
 }
 
+/* ===== Goal-to-Goal: the opponent's goal, net & keeper at the far end (shown on your shot) ===== */
+const OPP_GZ = 22;
+const oppGroup = new THREE.Group();
+{
+  const mkPost = x=>{ const p=new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_H,16),postMat); p.position.set(x,GOAL_H/2,OPP_GZ); p.castShadow=true; oppGroup.add(p); };
+  mkPost(-GOAL_W/2); mkPost(GOAL_W/2);
+  const ob=new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_W+POST_R*2,16),postMat);
+  ob.rotation.z=Math.PI/2; ob.position.set(0,GOAL_H,OPP_GZ); ob.castShadow=true; oppGroup.add(ob);
+  // simple sloped back net (static grid of lines)
+  const cols=13, rows=7, D=1.3, pts=[];
+  const node=(c,r)=>{ const x=-GOAL_W/2+(c/(cols-1))*GOAL_W, y=(r/(rows-1))*GOAL_H;
+    return new THREE.Vector3(x,y,OPP_GZ+.15+(1-y/GOAL_H)*D); };
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    if(c<cols-1) pts.push(node(c,r), node(c+1,r));
+    if(r<rows-1) pts.push(node(c,r), node(c,r+1));
+  }
+  oppGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:.7})));
+}
+oppGroup.visible = false;
+scene.add(oppGroup);
+/* opponent keeper — wears the customised striker kit, faces the shooter */
+const oppKeeper = buildFigure({shirt:strShirtMat, shorts:strShortsMat, boots:M.redBoot, gloves:M.black, legs:M.greyLeg, cuffs:M.black});
+oppKeeper.group.scale.setScalar(1.62/2.35);
+oppKeeper.group.position.set(0, 0, OPP_GZ-.55);
+oppKeeper.group.rotation.y = Math.PI;     // face the shooter
+oppKeeper.group.visible = false;
+scene.add(oppKeeper.group);
+const oppHome = oppKeeper.group.position.clone();
+
 /* puffy clouds */
 const cloudMat = new THREE.MeshBasicMaterial({color:0xffffff});
 function cloud(x,y,z){
@@ -1070,6 +1114,9 @@ let youScore = 0, oppScore = 0;             // duel score
 let g2gTurn = 'attack';                     // 'attack' (you shoot) | 'defend' (you save)
 let g2gOver = null;                         // 'win' | 'lose' once the duel ends
 let aimed = false, aiDiveZone = 0;          // your shot-aim lock + the opponent keeper's chosen dive
+let g2gPhase = 'aim';                        // 'aim' → 'power' → 'fly' within an attack turn
+let power = 0, powerDir = 1, lockedPower = 0;
+let g2gAttackShot = false, g2gShotSaved = false, g2gKeeperZone = 0, attackFlightDur = 1;
 function matchOver(){ return mode==='goal2goal' ? g2gOver!=null : conceded >= maxLives(); }
 function curBest(){ return mode==='goal2goal' ? (DATA.scores.goal2goal||0) : (DATA.scores[mode][diff] || 0); }
 function recordBest(){ // call whenever the score climbs — persists the instant a record falls
@@ -1310,16 +1357,29 @@ function startRound(){
   ball.position.set(.35,BALL_R,11.6);
   // run-up start position (a few steps back & to the side)
   striker.group.position.set(.9 + Math.random()*.4, 0, 13.2 + Math.random()*.8);
-  if(mode === 'goal2goal' && g2gTurn === 'attack'){
-    aimed = false;
-    aiDiveZone = Math.floor(Math.random()*6);   // the opponent keeper's guess (world zone)
-    targetZone = Math.floor(Math.random()*6);   // fallback aim if you don't pick in time
-    flash('YOUR SHOT!', 'var(--toy-blue)');
+  if(mode === 'goal2goal'){
+    if(g2gTurn === 'attack'){
+      // your shot: aim → power → fire at the opponent's goal (two-goal view)
+      state = 'g2gaim'; g2gPhase = 'aim'; aimed = false;
+      aiDiveZone = Math.floor(Math.random()*6);    // the opponent keeper's guess
+      targetZone = aiDiveZone;                      // fallback aim
+      oppGroup.visible = true; oppKeeper.group.visible = true; striker.group.visible = false;
+      oppKeeper.group.position.copy(oppHome); oppKeeper.group.rotation.set(0, Math.PI, 0);
+      oppKeeper.arms.L.rotation.z = .28; oppKeeper.arms.R.rotation.z = -.28;
+      ball.position.set(0, BALL_R, 1.0);            // launch from your goal mouth
+      setG2GView('far');
+      flash('AIM!', 'var(--toy-blue)');
+    } else {
+      // defend: the opponent attacks your goal (near view, striker run-up)
+      oppGroup.visible = false; oppKeeper.group.visible = false; striker.group.visible = true;
+      setG2GView('near');
+      targetZone = pickZone(shotStyle.weights);
+      flash('SAVE IT!', 'var(--toy-orange)');
+    }
+    updateHUD();
   } else {
-    targetZone = pickZone(shotStyle.weights);    // opponent (or penalty striker) aims
-    if(mode === 'goal2goal') flash('SAVE IT!', 'var(--toy-orange)');
+    targetZone = pickZone(shotStyle.weights);      // penalty striker aims
   }
-  if(mode === 'goal2goal') updateHUD();
 }
 
 /* striker kick pose — wind = backswing load (0..1), swing = whip through ball (0..1).
@@ -1473,17 +1533,19 @@ function dive(zone, raw, isAI){
 
 /* ---------- Goal to Goal helpers ---------- */
 function aiDive(z){ dive(z, true, true); }            // opponent keeper dive (world zone, no readout)
-/* on your attack turn a zone press AIMS the shot instead of diving */
+/* on your attack turn a zone press AIMS the shot (then a second press fires) */
 function setAim(z){
-  if(state !== 'windup' && state !== 'strike') return;   // lock the aim before the ball is struck
-  if(aimed) return;
   if(Math.cos(orbit.theta) > 0) z = [2,1,0,5,4,3][z];    // same screen→world mirror as a dive
   targetZone = z; aimed = true;
 }
-/* route a zone press: aim on your shot, dive otherwise */
+/* route a zone press: aim → power → fire on your shot, dive otherwise */
 function onZone(z){
-  if(mode === 'goal2goal' && g2gTurn === 'attack') setAim(z);
-  else dive(z);
+  if(mode === 'goal2goal' && g2gTurn === 'attack'){
+    if(g2gPhase === 'aim') aimShot(z);
+    else if(g2gPhase === 'power') fireShot();
+    return;
+  }
+  dive(z);
 }
 /* score, alternate turns, and check the win condition for a resolved duel shot */
 function g2gResolve(saved){
@@ -1500,6 +1562,62 @@ function g2gResolve(saved){
   if(won || lost){ g2gOver = won ? 'win' : 'lose'; setTimeout(endGame, 1300); }
   else { g2gTurn = attacking ? 'defend' : 'attack'; }                            // alternate turns
   updateHUD();
+}
+
+/* --- two-goal striker shot (your attack turn): camera, aim, power, fire, opponent dive --- */
+function setG2GView(view){
+  if(view === 'far'){                          // reframe down-pitch to the opponent's goal
+    camTargetGoal.set(0, 1.4, 12.5);
+    orbitGoal.theta = camHome.theta;
+    orbitGoal.phi   = Math.min(camHome.phi, 1.16);
+    orbitGoal.radius = camHome.radius + 8;
+    userZoomed = true;
+  } else {                                     // back to the near goal
+    camTargetGoal.set(0, 1, 4);
+    orbitGoal.theta = camHome.theta;
+    orbitGoal.phi   = camHome.phi;
+    orbitGoal.radius = fitRadius();
+    userZoomed = false;
+  }
+}
+function aimShot(z){
+  setAim(z);
+  g2gPhase = 'power'; power = 0; powerDir = 1;
+  document.getElementById('powerMeter').classList.remove('hidden');
+}
+function fireShot(){
+  if(g2gPhase !== 'power') return;
+  lockedPower = power; g2gPhase = 'fly';
+  document.getElementById('powerMeter').classList.add('hidden');
+  // opponent keeper reads your aim sometimes (less often on a powerful shot), else dives to its guess
+  const readBase = {easy:.18, medium:.40, hard:.60}[diff] || .40;
+  const reads = Math.random() < readBase * (1 - lockedPower*.45);
+  g2gKeeperZone = reads ? targetZone : aiDiveZone;
+  let saved = (g2gKeeperZone === targetZone) && (Math.random() > lockedPower*.55);
+  if(lockedPower > .93 && Math.random() < .4) saved = true;      // overhit → sails wide / claimed
+  g2gShotSaved = saved;
+  attackFlightDur = THREE.MathUtils.lerp(1.2, .62, lockedPower); // faster shot at higher power
+  const z = ZONES[targetZone];
+  ballFrom.copy(ball.position);
+  ballTo.set(z.x, z.y, OPP_GZ - .25);
+  arcH = .35 + (1 - lockedPower)*.6;                            // weak shots loop more
+  flightT = 0; ballMode = 'lerp'; g2gAttackShot = true; state = 'flight';
+  sndKick();
+}
+function poseOppKeeper(k){
+  const z = ZONES[g2gKeeperZone], side = Math.sign(z.x) || 0, high = g2gKeeperZone < 3;
+  const ext = Math.sin(Math.min(k,1) * Math.PI * .75);
+  oppKeeper.group.position.set(oppHome.x + side*1.15*ext, oppHome.y + (high?.55:.08)*ext, oppHome.z);
+  oppKeeper.group.rotation.set(0, Math.PI, -side*1.2*ext * (high?.45:1));
+  oppKeeper.arms.L.rotation.z =  .28 + ext*2.4;
+  oppKeeper.arms.R.rotation.z = -.28 - ext*2.4;
+}
+function resolveG2GAttack(){
+  g2gAttackShot = false;
+  state = 'result'; resultTimer = 1.4; ballMode = 'phys';
+  if(g2gShotSaved){ sndSave(); ballVel.set((Math.random()-.5)*4, 3+Math.random()*2, -(4+Math.random()*3)); }
+  else { sndGoal(); ballVel.set((Math.random()-.5)*1.2, 1.2, 2.2); }   // trickle into the net
+  g2gResolve(g2gShotSaved);
 }
 
 function resolveShot(saved){
@@ -1588,6 +1706,10 @@ function beginGame(){
   const g2g = (mode === 'goal2goal');
   document.getElementById('hud').classList.toggle('hidden', g2g);
   document.getElementById('g2gBar').classList.toggle('hidden', !g2g);
+  // reset the two-goal scene props; startRound will set the per-turn view
+  oppGroup.visible = false; oppKeeper.group.visible = false; striker.group.visible = true;
+  document.getElementById('powerMeter').classList.add('hidden');
+  g2gAttackShot = false; g2gPhase = 'aim'; setG2GView('near');
   shotStyle = pickStyle();
   if(g2g){
     youScore = 0; oppScore = 0; g2gOver = null; g2gTurn = 'attack'; aimed = false;
@@ -1892,11 +2014,14 @@ function goHome(){
   gameActive = false;
   state = 'over'; diveT = -1; committed = true;   // halt round logic
   ktarget = {...KREADY};
-  replaying = false;
+  replaying = false; g2gAttackShot = false;
   saveData();                                     // flush any in-progress stats
+  oppGroup.visible = false; oppKeeper.group.visible = false; striker.group.visible = true;
+  setG2GView('near');
   document.getElementById('replayOverlay').classList.add('hidden');
   document.getElementById('endOverlay').classList.add('hidden');
   document.getElementById('homeBtn').classList.add('hidden');
+  document.getElementById('powerMeter').classList.add('hidden');
   document.getElementById('pad').style.visibility = '';
   document.getElementById('hud').classList.remove('hidden');
   document.getElementById('g2gBar').classList.add('hidden');
@@ -2091,6 +2216,31 @@ function animate(){
     setStrikerPose(1, k);                               // leg whips through the ball
     if(k >= 1) kick();
   }
+  else if(state === 'g2gaim'){
+    // power meter oscillates while you charge the shot
+    if(g2gPhase === 'power'){
+      power += powerDir * dt * 1.5;
+      if(power >= 1){ power = 1; powerDir = -1; }
+      if(power <= 0){ power = 0; powerDir = 1; }
+      const m = document.getElementById('pmMarker');
+      if(m) m.style.left = (power*100)+'%';
+    }
+    // opponent keeper waits, leaning toward the corner it will dive to (your read)
+    const dz = ZONES[aiDiveZone], kside = Math.sign(dz.x) || 0, ln = tellAmount();
+    oppKeeper.group.position.set(oppHome.x + kside*ln*1.2, oppHome.y, oppHome.z);
+    oppKeeper.group.rotation.set(0, Math.PI, -kside*ln*.5);
+    oppKeeper.arms.L.rotation.z = .28; oppKeeper.arms.R.rotation.z = -.28;
+  }
+  else if(state === 'flight' && g2gAttackShot){
+    // your two-goal shot: ball flies to the opponent's goal; their keeper lunges
+    flightT += dt / attackFlightDur;
+    const k = Math.min(flightT, 1);
+    ball.position.lerpVectors(ballFrom, ballTo, k);
+    ball.position.y += Math.sin(k*Math.PI) * arcH;
+    spinBall(dt, 22);
+    poseOppKeeper(k);
+    if(k >= 1) resolveG2GAttack();
+  }
   else if(state === 'flight'){
     flightT += dt / flightDur;
     const k = Math.min(flightT, 1);
@@ -2188,6 +2338,7 @@ function animate(){
   orbit.theta  = lerp(orbit.theta,  orbitGoal.theta,  camEase);
   orbit.phi    = lerp(orbit.phi,    orbitGoal.phi,    camEase);
   orbit.radius = lerp(orbit.radius, orbitGoal.radius, camEase);
+  camTarget.lerp(camTargetGoal, camEase);            // glide the pivot (Goal-to-Goal reframe)
   camera.position.setFromSpherical(_sph.set(orbit.radius, orbit.phi, orbit.theta)).add(camTarget);
   camera.lookAt(camTarget);
 

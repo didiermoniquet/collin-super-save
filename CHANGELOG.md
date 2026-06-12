@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] — 2026-06-12
+
+### Added
+- **Play as a striker — two-goal view (Goal to Goal).** On your shot the camera now swings down the pitch to the **opponent's goal** (its own net + the opponent keeper, wearing your customised striker kit). You **aim a corner** and then **time a power meter** (with a sweet-spot band) before firing — more power means a faster shot that's harder to save, but over-hitting can sail wide. The opponent keeper leans toward the corner it'll cover (read it and aim away; harder difficulties hide the lean and "read" you more). The camera swings back to your goal to defend. First to 5, win by 2, as before.
+
 ## [1.3.2] — 2026-06-12
 
 ### Changed
