@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] — 2026-06-12
+
+### Added
+- **Face customisation: skin, hair, and eye colour.** Both the keeper (Collin) and your striker now have **Skin**, **Hair**, and **Eyes** pickers in their customisation panels, each with its own palette — realistic skin tones, common hair colours (plus a couple of fun ones), and a range of eye colours. The live preview and the in-game figures update instantly, and the opponent keeper (who is your striker in goal) inherits the striker's look. The mouth stays its friendly dark line. Choices are saved like the rest of the kit.
+
 ## [1.5.0] — 2026-06-12
 
 ### Changed

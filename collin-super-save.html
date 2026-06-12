@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.5.0">
+<meta name="version" content="1.6.0">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -279,6 +279,9 @@
         <div class="cosrow"><span class="cl">Socks</span><div class="swatches" id="sockSwatches"></div></div>
         <div class="cosrow"><span class="cl">Gloves</span><div class="swatches" id="gloveSwatches"></div></div>
         <div class="cosrow"><span class="cl">Boots</span><div class="swatches" id="bootSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Skin</span><div class="swatches" id="skinSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Hair</span><div class="swatches" id="hairSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Eyes</span><div class="swatches" id="eyeSwatches"></div></div>
       </div>
     </details>
     <details class="sect" id="strSect">
@@ -293,6 +296,9 @@
         <div class="cosrow"><span class="cl">Shorts</span><div class="swatches" id="strShortsSwatches"></div></div>
         <div class="cosrow"><span class="cl">Socks</span><div class="swatches" id="strSockSwatches"></div></div>
         <div class="cosrow"><span class="cl">Boots</span><div class="swatches" id="strBootSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Skin</span><div class="swatches" id="strSkinSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Hair</span><div class="swatches" id="strHairSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Eyes</span><div class="swatches" id="strEyeSwatches"></div></div>
       </div>
     </details>
     <details class="sect" id="statSect">
@@ -346,7 +352,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.5.0';
+const VERSION = '1.6.0';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -530,6 +536,8 @@ function stepNet(dt){                                   // spring each node back
 const M = {
   skin:  new THREE.MeshStandardMaterial({color:0xf6c89a, roughness:.35}),
   hair:  new THREE.MeshStandardMaterial({color:0x6b4423, roughness:.5}),
+  eye:   new THREE.MeshBasicMaterial({color:0x3a2415}),    // default iris/pupil
+  mouth: new THREE.MeshBasicMaterial({color:0x3a2415}),    // smile (kept dark, never recoloured)
   black: new THREE.MeshStandardMaterial({color:0x222226, roughness:.35}),
   camo:  new THREE.MeshStandardMaterial({color:0x2e2e34, roughness:.4}),
   blue:  new THREE.MeshStandardMaterial({color:0x1f6bff, roughness:.3}),
@@ -584,7 +592,7 @@ chc.font = '700 30px Fredoka, sans-serif';        chc.fillText('COLLIN', 6, 86);
 const chestMat = new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(chestCanvas), transparent:true});
 
 /* ---------- Playmobil-style figure builder ---------- */
-function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt}){
+function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, skin=M.skin, hair=M.hair, eyeMat=M.eye}){
   const g = new THREE.Group();
 
   // legs — hip pivot → thigh → knee pivot → shin + boot (so knees bend)
@@ -645,21 +653,20 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt})
     arms[side<0?'L':'R'] = sh;
   }
 
-  // head + face + bowl haircut
+  // head + face + bowl haircut (skin / hair / eyes are recolourable materials)
   const head = new THREE.Group(); head.position.y = 1.22;
-  const skull = new THREE.Mesh(new THREE.CylinderGeometry(.27,.25,.42,16), M.skin);
+  const skull = new THREE.Mesh(new THREE.CylinderGeometry(.27,.25,.42,16), skin);
   head.add(skull);
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(.31,16,12,0,Math.PI*2,0,Math.PI*.55), M.hair);
-  hair.position.y = .1; hair.scale.set(1,.95,1.05); head.add(hair);
-  const fringe = new THREE.Mesh(new THREE.BoxGeometry(.46,.12,.1), M.hair);
+  const hairMesh = new THREE.Mesh(new THREE.SphereGeometry(.31,16,12,0,Math.PI*2,0,Math.PI*.55), hair);
+  hairMesh.position.y = .1; hairMesh.scale.set(1,.95,1.05); head.add(hairMesh);
+  const fringe = new THREE.Mesh(new THREE.BoxGeometry(.46,.12,.1), hair);
   fringe.position.set(0,.1,.24); head.add(fringe);
   const eyeGeo = new THREE.SphereGeometry(.035,8,8);
-  const eyeMat = new THREE.MeshBasicMaterial({color:0x3a2415});
   const eL = new THREE.Mesh(eyeGeo,eyeMat); eL.position.set(-.1,.02,.25);
   const eR = eL.clone(); eR.position.x = .1; head.add(eL,eR);
-  const smile = new THREE.Mesh(new THREE.TorusGeometry(.07,.014,6,12,Math.PI), eyeMat);
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(.07,.014,6,12,Math.PI), M.mouth);
   smile.position.set(0,-.08,.25); smile.rotation.set(0,0,Math.PI); head.add(smile);
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.14,10), M.skin);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.14,10), skin);
   neck.position.y = .98; waist.add(neck);
   waist.add(head);
 
@@ -672,7 +679,12 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt})
 const kitBottomsMat    = new THREE.MeshStandardMaterial({color:0x222226, roughness:.4}); // shorts + leggings
 const kitSockMat       = new THREE.MeshStandardMaterial({color:0x3a3a42, roughness:.4}); // sock cuffs
 const kitBootStripeMat = new THREE.MeshStandardMaterial({color:0xd63a8f, roughness:.3});  // boot swoosh
-const keeper = buildFigure({shirt:M.camo, shorts:kitBottomsMat, boots:M.pink, gloves:M.volt, legs:kitBottomsMat, cuffs:M.blue});
+/* keeper-exclusive appearance (skin / hair / eyes) so recolouring his face never touches anyone else */
+const keeperSkinMat = new THREE.MeshStandardMaterial({color:0xf6c89a, roughness:.35});
+const keeperHairMat = new THREE.MeshStandardMaterial({color:0x6b4423, roughness:.5});
+const keeperEyeMat  = new THREE.MeshBasicMaterial({color:0x3a2415});
+const keeper = buildFigure({shirt:M.camo, shorts:kitBottomsMat, boots:M.pink, gloves:M.volt, legs:kitBottomsMat, cuffs:M.blue,
+                            skin:keeperSkinMat, hair:keeperHairMat, eyeMat:keeperEyeMat});
 /* figure is ~2.35 units tall as built → scale to 1.60 m */
 const KSCALE = 1.6/2.35;
 keeper.group.scale.setScalar(KSCALE);
@@ -769,8 +781,13 @@ const tNameMat = new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(tNameC
 const strShirtMat  = new THREE.MeshStandardMaterial({color:0x1d49cf, roughness:.3}); // jersey
 const strShortsMat = new THREE.MeshStandardMaterial({color:0x1d49cf, roughness:.3}); // shorts
 const strSockMat   = new THREE.MeshStandardMaterial({color:0x1d49cf, roughness:.3}); // sock cuffs
+/* striker-exclusive appearance (also worn by the opponent keeper, who is the striker in goal) */
+const strikerSkinMat = new THREE.MeshStandardMaterial({color:0xf6c89a, roughness:.35});
+const strikerHairMat = new THREE.MeshStandardMaterial({color:0x6b4423, roughness:.5});
+const strikerEyeMat  = new THREE.MeshBasicMaterial({color:0x3a2415});
 const striker = buildFigure({shirt:strShirtMat, shorts:strShortsMat, boots:M.redBoot,
-                             gloves:M.black, legs:M.greyLeg, cuffs:M.black});
+                             gloves:M.black, legs:M.greyLeg, cuffs:M.black,
+                             skin:strikerSkinMat, hair:strikerHairMat, eyeMat:strikerEyeMat});
 striker.group.scale.setScalar(1.72/2.35);
 striker.group.position.set(.7,0,12.4);
 
@@ -967,7 +984,8 @@ function stepOppNet(dt){ let moved=false; for(const n of oppNetNodes){ n.vz += (
 oppGroup.visible = false;
 scene.add(oppGroup);
 /* opponent keeper — wears the customised striker kit, faces the shooter */
-const oppKeeper = buildFigure({shirt:strShirtMat, shorts:strShortsMat, boots:M.redBoot, gloves:M.black, legs:M.greyLeg, cuffs:M.black});
+const oppKeeper = buildFigure({shirt:strShirtMat, shorts:strShortsMat, boots:M.redBoot, gloves:M.black, legs:M.greyLeg, cuffs:M.black,
+                               skin:strikerSkinMat, hair:strikerHairMat, eyeMat:strikerEyeMat});
 oppKeeper.group.scale.setScalar(1.62/2.35);
 oppKeeper.group.position.set(0, 0, OPP_GZ-.55);
 oppKeeper.group.rotation.y = Math.PI;     // face the shooter
@@ -1071,7 +1089,9 @@ const DATA = {
   scores: {normal:{easy:0,medium:0,hard:0}, sudden:{easy:0,medium:0,hard:0}, goal2goal:0},
   stats:  {easy:blankStat(), medium:blankStat(), hard:blankStat()},
   cosmetics: {shirt:'#1b1b1f', shorts:'#1b1b1f', socks:'#9aa0a8', glove:'#ffd23f', boot:'#ff5fb4', name:'COLLIN',
-              striker: {shirt:'#1f6bff', shorts:'#1f6bff', socks:'#1f6bff', boot:'#e23b2e', name:'TIMOTHY', num:'9'}},
+              skin:'#f6c89a', hair:'#6b4423', eyes:'#3a2415',
+              striker: {shirt:'#1f6bff', shorts:'#1f6bff', socks:'#1f6bff', boot:'#e23b2e', name:'TIMOTHY', num:'9',
+                        skin:'#f6c89a', hair:'#6b4423', eyes:'#3a2415'}},
 };
 function mergeScores(into, from){ if(!from) return;
   for(const d of DIFFS) into[d] = Math.max(into[d]||0, +from[d]||0); }
@@ -1181,6 +1201,9 @@ function applyStrikerCosmetics(){
   try{ strShortsMat.color.set(s.shorts); }catch(e){}  // shorts
   try{ strSockMat.color.set(s.socks); }catch(e){}     // sock cuffs
   try{ M.redBoot.color.set(s.boot); }catch(e){}       // boots
+  try{ strikerSkinMat.color.set(s.skin); }catch(e){}  // skin
+  try{ strikerHairMat.color.set(s.hair); }catch(e){}  // hair
+  try{ strikerEyeMat.color.set(s.eyes); }catch(e){}   // eyes
   drawStrikerName();
 }
 
@@ -1919,24 +1942,45 @@ function shade(hex, f){    // f in [-1,1]: + lightens toward white, − darkens 
 }
 /* one shared palette of 10 common colours, used by every kit part */
 const KIT_COLORS = ['#e23b2e','#ff7a1f','#ffd23f','#2eaf4e','#1f6bff','#7a2bd0','#ff5fb4','#1b1b1f','#ffffff','#9aa0a8'];
+/* dedicated palettes for the face: realistic skin tones, common hair colours (+ a couple of
+   fun ones), and eye colours */
+const SKIN_COLORS = ['#ffe0bd','#f6c89a','#eac086','#d99e6a','#c68642','#a3673f','#7a4a2b','#5a3620'];
+const HAIR_COLORS = ['#1b1b1f','#3b2417','#6b4423','#a36a32','#d9b15c','#c75d2c','#9aa0a8','#ffffff','#2eaf4e','#7a2bd0'];
+const EYE_COLORS  = ['#3a2415','#6b4423','#8a6a3b','#2e7d32','#1f6bff','#5b8aa6','#7a2bd0','#111111'];
+const APP_DEFAULTS = {skin:'#f6c89a', hair:'#6b4423', eyes:'#3a2415'};
+const APP_PALETTES = {skin:SKIN_COLORS, hair:HAIR_COLORS, eyes:EYE_COLORS};
 function _rgb(h){ h=String(h).replace('#',''); if(h.length===3) h=h.split('').map(c=>c+c).join('');
   return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
-function nearestKitColor(hex){
-  const [r,g,b]=_rgb(hex); let best=KIT_COLORS[0], bd=Infinity;
-  for(const c of KIT_COLORS){ const [cr,cg,cb]=_rgb(c);
+function nearestColor(hex, palette){
+  const [r,g,b]=_rgb(hex); let best=palette[0], bd=Infinity;
+  for(const c of palette){ const [cr,cg,cb]=_rgb(c);
     const d=(r-cr)*(r-cr)+(g-cg)*(g-cg)+(b-cb)*(b-cb); if(d<bd){ bd=d; best=c; } }
   return best;
 }
-function normalizeCosmetics(){    // snap any saved kit colour (keeper + striker) into the 10-colour palette
+function nearestKitColor(hex){ return nearestColor(hex, KIT_COLORS); }
+function normalizeAppearance(obj){    // fill missing face colours & snap them into their palettes
+  let changed=false;
+  for(const k of ['skin','hair','eyes']){
+    if(obj[k]==null){ obj[k]=APP_DEFAULTS[k]; changed=true; }
+    const cur=String(obj[k]).toLowerCase();
+    if(!APP_PALETTES[k].includes(cur)){ obj[k]=nearestColor(cur, APP_PALETTES[k]); changed=true; }
+  }
+  return changed;
+}
+function normalizeCosmetics(){    // snap any saved colour (keeper + striker) into its palette
   let changed=false;
   for(const k of ['shirt','shorts','socks','glove','boot']){
     const cur=String(DATA.cosmetics[k]||'').toLowerCase();
     if(!KIT_COLORS.includes(cur)){ DATA.cosmetics[k]=nearestKitColor(cur); changed=true; }
   }
+  if(normalizeAppearance(DATA.cosmetics)) changed=true;
   const s = DATA.cosmetics.striker;
-  if(s) for(const k of ['shirt','shorts','socks','boot']){
-    const cur=String(s[k]||'').toLowerCase();
-    if(!KIT_COLORS.includes(cur)){ s[k]=nearestKitColor(cur); changed=true; }
+  if(s){
+    for(const k of ['shirt','shorts','socks','boot']){
+      const cur=String(s[k]||'').toLowerCase();
+      if(!KIT_COLORS.includes(cur)){ s[k]=nearestKitColor(cur); changed=true; }
+    }
+    if(normalizeAppearance(s)) changed=true;
   }
   return changed;
 }
@@ -1947,13 +1991,26 @@ const COSMETIC_ROWS = [
   {id:'gloveSwatches',  key:'glove'},
   {id:'bootSwatches',   key:'boot'},
 ];
-function buildSwatches(container, colors, kind){
+/* face/appearance rows use their own palettes (skin tones, hair, eyes) */
+const KEEPER_APP_ROWS = [
+  {id:'skinSwatches', key:'skin', palette:SKIN_COLORS},
+  {id:'hairSwatches', key:'hair', palette:HAIR_COLORS},
+  {id:'eyeSwatches',  key:'eyes', palette:EYE_COLORS},
+];
+const STRIKER_APP_ROWS = [
+  {id:'strSkinSwatches', key:'skin', palette:SKIN_COLORS},
+  {id:'strHairSwatches', key:'hair', palette:HAIR_COLORS},
+  {id:'strEyeSwatches',  key:'eyes', palette:EYE_COLORS},
+];
+function buildSwatches(container, colors, kind, getTarget, applyFn){
   if(!container) return;
+  applyFn = applyFn || applyCosmetics;
   container.innerHTML = '';
   colors.forEach(col=>{
     const s = document.createElement('button');
     s.className = 'swatch'; s.style.background = col; s.dataset.col = col;
-    s.addEventListener('click', ()=>{ DATA.cosmetics[kind] = col; saveData(); applyCosmetics(); syncCosmeticUI(); });
+    // resolve the target fresh at click time — DATA.cosmetics.striker is replaced on load
+    s.addEventListener('click', ()=>{ (getTarget ? getTarget() : DATA.cosmetics)[kind] = col; saveData(); applyFn(); syncCosmeticUI(); });
     container.appendChild(s);
   });
 }
@@ -1963,7 +2020,12 @@ function syncCosmeticUI(){
     const val = String(DATA.cosmetics[row.key]).toLowerCase();
     cont.querySelectorAll('.swatch').forEach(s=> s.classList.toggle('sel', s.dataset.col.toLowerCase() === val));
   }
-  for(const row of STRIKER_ROWS){
+  for(const row of KEEPER_APP_ROWS){
+    const cont = document.getElementById(row.id); if(!cont) continue;
+    const val = String(DATA.cosmetics[row.key]).toLowerCase();
+    cont.querySelectorAll('.swatch').forEach(s=> s.classList.toggle('sel', s.dataset.col.toLowerCase() === val));
+  }
+  for(const row of STRIKER_ROWS.concat(STRIKER_APP_ROWS)){
     const cont = document.getElementById(row.id); if(!cont) continue;
     const val = String(DATA.cosmetics.striker[row.key]).toLowerCase();
     cont.querySelectorAll('.swatch').forEach(s=> s.classList.toggle('sel', s.dataset.col.toLowerCase() === val));
@@ -1982,6 +2044,9 @@ function applyCosmetics(){
   try{ kitBootStripeMat.color.set(shade(DATA.cosmetics.boot, -.22)); }catch(e){} // boot swoosh
   try{ kitBottomsMat.color.set(DATA.cosmetics.shorts); }catch(e){}               // shorts + leggings
   try{ kitSockMat.color.set(DATA.cosmetics.socks); }catch(e){}                   // socks
+  try{ keeperSkinMat.color.set(DATA.cosmetics.skin); }catch(e){}                 // skin
+  try{ keeperHairMat.color.set(DATA.cosmetics.hair); }catch(e){}                 // hair
+  try{ keeperEyeMat.color.set(DATA.cosmetics.eyes); }catch(e){}                  // eyes
   drawKeeperShirt(DATA.cosmetics.shirt || '#16161a');                            // jersey (camo texture)
   drawKeeperName(DATA.cosmetics.name || 'COLLIN');
 }
@@ -2021,6 +2086,7 @@ if(_nameInput){
   });
 }
 COSMETIC_ROWS.forEach(r=> buildSwatches(document.getElementById(r.id), KIT_COLORS, r.key));
+KEEPER_APP_ROWS.forEach(r=> buildSwatches(document.getElementById(r.id), r.palette, r.key));
 
 /* ---------- striker cosmetics: same 10-colour palette, plus a name & number ---------- */
 const STRIKER_ROWS = [
@@ -2039,6 +2105,7 @@ STRIKER_ROWS.forEach(r=>{
     cont.appendChild(s);
   });
 });
+STRIKER_APP_ROWS.forEach(r=> buildSwatches(document.getElementById(r.id), r.palette, r.key, ()=>DATA.cosmetics.striker, applyStrikerCosmetics));
 const _strName = document.getElementById('strNameInput');
 if(_strName){
   _strName.addEventListener('input', ()=>{
