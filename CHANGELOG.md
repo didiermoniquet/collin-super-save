@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.3.2] — 2026-06-12
+
+### Changed
+- **More human players (part 2): spine/waist.** The figures now bend at the **waist** — the torso curls into a sideways dive and folds over the ball on a smother, and the striker's spine loads back then drives down through the kick (and arches on a celebration / slumps on a miss). Combined with the new ankles and wrists, the keeper and striker now articulate at every major human joint while keeping the toy look.
+
 ## [1.3.1] — 2026-06-12
 
 ### Changed

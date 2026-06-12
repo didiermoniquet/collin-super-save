@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.3.1">
+<meta name="version" content="1.3.2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -333,7 +333,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.3.1';
+const VERSION = '1.3.2';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -595,19 +595,22 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt})
     legsP[side<0?'L':'R'] = hip;
   }
 
-  // shorts
+  // shorts (stay on the body root, with the legs)
   const hipsM = new THREE.Mesh(new THREE.CylinderGeometry(.34,.3,.34,14), shorts);
   hipsM.position.y = .82; g.add(hipsM);
 
+  // waist/spine pivot — the whole upper body (torso, arms, head) bends here
+  const waist = new THREE.Group(); waist.position.y = .82; g.add(waist);
+
   // torso (trapezoid — wide shoulders, Playmobil silhouette)
   const torso = new THREE.Mesh(new THREE.CylinderGeometry(.42,.32,.78,14), shirt);
-  torso.position.y = 1.36; g.add(torso);
+  torso.position.y = .54; waist.add(torso);
 
   // arms — shoulder pivot → upper arm → elbow pivot → forearm + glove (so elbows bend)
   const arms = {};
   for(const side of [-1,1]){
     const sh = new THREE.Group();
-    sh.position.set(side*.46, 1.66, 0);
+    sh.position.set(side*.46, .84, 0);
     const upper = new THREE.Mesh(new THREE.CylinderGeometry(.1,.092,.34,10), shirt);
     upper.position.y = -.17; sh.add(upper);
     const elbowCap = new THREE.Mesh(new THREE.SphereGeometry(.092,8,8), shirt);
@@ -624,12 +627,12 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt})
     glove.position.y = -.04; glove.scale.set(1,1.1,.8); wrist.add(glove);
     sh.rotation.z = side * .25;
     sh.userData.elbow = elbow; sh.userData.wrist = wrist; sh.userData.glove = glove;
-    g.add(sh);
+    waist.add(sh);
     arms[side<0?'L':'R'] = sh;
   }
 
   // head + face + bowl haircut
-  const head = new THREE.Group(); head.position.y = 2.04;
+  const head = new THREE.Group(); head.position.y = 1.22;
   const skull = new THREE.Mesh(new THREE.CylinderGeometry(.27,.25,.42,16), M.skin);
   head.add(skull);
   const hair = new THREE.Mesh(new THREE.SphereGeometry(.31,16,12,0,Math.PI*2,0,Math.PI*.55), M.hair);
@@ -643,11 +646,11 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt})
   const smile = new THREE.Mesh(new THREE.TorusGeometry(.07,.014,6,12,Math.PI), eyeMat);
   smile.position.set(0,-.08,.25); smile.rotation.set(0,0,Math.PI); head.add(smile);
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.14,10), M.skin);
-  neck.position.y = 1.8; g.add(neck);
-  g.add(head);
+  neck.position.y = .98; waist.add(neck);
+  waist.add(head);
 
   shadowed(g);
-  return {group:g, arms, head, legs:legsP};
+  return {group:g, arms, head, legs:legsP, waist};
 }
 
 /* ---------- COLLIN the keeper ---------- */
@@ -666,21 +669,21 @@ const keeperHome = new THREE.Vector3(0,0,.6);
 
 /* --- photo details (added in pre-scale local units) --- */
 {
-  // name + number + uhlsport on the back of the shirt
+  // name + number + uhlsport on the back of the shirt (on the waist so it follows the torso)
   const decal = new THREE.Mesh(new THREE.PlaneGeometry(.62,.62), nameMat);
-  decal.position.set(0, 1.42, -.42); decal.rotation.y = Math.PI;
-  keeper.group.add(decal);
+  decal.position.set(0, .60, -.42); decal.rotation.y = Math.PI;
+  keeper.waist.add(decal);
 
   // "uhlsport / COLLIN" text on the left chest (his left = +x here)
   const chestText = new THREE.Mesh(new THREE.PlaneGeometry(.34,.34), chestMat);
-  chestText.position.set(.16, 1.5, .405); keeper.group.add(chestText);
+  chestText.position.set(.16, .68, .405); keeper.waist.add(chestText);
 
   // small white club badge on the right chest (visible during dives)
   const badge = new THREE.Mesh(new THREE.CircleGeometry(.07,16), M.white);
-  badge.position.set(-.2, 1.5, .405); keeper.group.add(badge);
+  badge.position.set(-.2, .68, .405); keeper.waist.add(badge);
   const badgeDot = new THREE.Mesh(new THREE.CircleGeometry(.035,12),
     new THREE.MeshBasicMaterial({color:0x2e7d4f}));
-  badgeDot.position.set(-.2, 1.5, .408); keeper.group.add(badgeDot);
+  badgeDot.position.set(-.2, .68, .408); keeper.waist.add(badgeDot);
 
   // gloves: black tiger-stripe bars raked across the volt backhand (photo) — on the wrist so they follow the hand
   for(const k of ['L','R']){
@@ -759,21 +762,21 @@ striker.group.position.set(.7,0,12.4);
 
 /* --- photo details (pre-scale local units; striker faces the camera) --- */
 {
-  // crest + club name on the chest (his front faces the keeper/camera)
+  // crest + club name on the chest (his front faces the keeper/camera) — on the waist
   const chest = new THREE.Mesh(new THREE.PlaneGeometry(.6,.6), crestMat);
-  chest.position.set(0, 1.42, .42); striker.group.add(chest);
+  chest.position.set(0, .60, .42); striker.waist.add(chest);
 
   // name + number on the back of the shirt
   const back = new THREE.Mesh(new THREE.PlaneGeometry(.62,.62), tNameMat);
-  back.position.set(0, 1.42, -.42); back.rotation.y = Math.PI;
-  striker.group.add(back);
+  back.position.set(0, .60, -.42); back.rotation.y = Math.PI;
+  striker.waist.add(back);
 
   // white shoulder stripes (three per side, generic sport styling)
   for(const sx of [-1,1]) for(let i=0;i<3;i++){
     const s = new THREE.Mesh(new THREE.BoxGeometry(.05,.025,.3), M.white);
-    s.position.set(sx*(.18+i*.09), 1.74-i*.02, 0);
+    s.position.set(sx*(.18+i*.09), .92-i*.02, 0);
     s.rotation.z = sx*-.35;
-    striker.group.add(s);
+    striker.waist.add(s);
   }
 
   // white side stripe on the shorts
@@ -1342,6 +1345,9 @@ function setStrikerPose(wind, swing){
   // wrists trail the arm swing
   AL.userData.wrist.rotation.x = -.2 - swing*.3;
   AR.userData.wrist.rotation.x = -.2 + swing*.2;
+  // spine loads back, then drives down over the ball through contact
+  striker.waist.rotation.x = wind*.15 - swing*.4;
+  striker.waist.rotation.z = swing*.12;
 }
 
 /* run-up stride — alternating legs & arms, with a per-step bob */
@@ -1359,6 +1365,8 @@ function strikerJog(t){
   L.userData.ankle.rotation.x = .15 + s*.45;
   R.userData.ankle.rotation.x = .15 - s*.45;
   AL.userData.wrist.rotation.x = -.25; AR.userData.wrist.rotation.x = -.25;
+  striker.waist.rotation.x = .12;        // lean into the run
+  striker.waist.rotation.z = -s*.06;     // torso counter-rotates with the stride
 }
 
 function kick(){
@@ -2033,6 +2041,9 @@ function animate(){
   keeper.legs.R.userData.ankle.rotation.x = diving ? THREE.MathUtils.clamp(.6 - kpose.kR*.5, 0, .6) : Math.sin(t*2.5)*.05;
   keeper.arms.L.userData.wrist.rotation.x = diving ? -.35 : -.08;
   keeper.arms.R.userData.wrist.rotation.x = diving ? -.35 : -.08;
+  // spine: the torso curls into a sideways dive and folds over the ball on a smother
+  keeper.waist.rotation.z = kpose.roll * .3;
+  keeper.waist.rotation.x = kpose.pitch * .45 + (ready ? Math.sin(t*2.5)*.02 : 0);
   // feet slightly wider than shoulders when set; tucks back in as he dives
   stanceSplay = lerp(stanceSplay, ready ? .15 : 0, 1 - Math.pow(.02, dt));
   keeper.legs.L.rotation.z = -stanceSplay; keeper.legs.R.rotation.z = stanceSplay;
@@ -2116,6 +2127,8 @@ function animate(){
     striker.group.position.y  = lerp(striker.group.position.y, 0, relax);
     striker.group.rotation.x  = lerp(striker.group.rotation.x, 0, relax);
     striker.group.rotation.y  = lerp(striker.group.rotation.y, strikerYaw, relax);
+    striker.waist.rotation.x  = lerp(striker.waist.rotation.x, 0, relax);
+    striker.waist.rotation.z  = lerp(striker.waist.rotation.z, 0, relax);
     for(const s of ['L','R']){
       striker.legs[s].rotation.x = lerp(striker.legs[s].rotation.x, 0, relax);
       striker.legs[s].userData.knee.rotation.x = lerp(striker.legs[s].userData.knee.rotation.x, .12, relax);
@@ -2136,6 +2149,8 @@ function animate(){
       // keeper saved it → dejection: slump, turn away a touch, hands toward the head
       striker.group.rotation.x = lerp(striker.group.rotation.x, .12, rx);
       striker.group.rotation.y = lerp(striker.group.rotation.y, strikerYaw + .3, rx);
+      striker.waist.rotation.x = lerp(striker.waist.rotation.x, .3, rx);   // shoulders slump
+      striker.waist.rotation.z = lerp(striker.waist.rotation.z, 0, rx);
       striker.arms.L.rotation.z = lerp(striker.arms.L.rotation.z, -1.7, rx);
       striker.arms.R.rotation.z = lerp(striker.arms.R.rotation.z, 1.7, rx);
       striker.arms.L.userData.elbow.rotation.x = lerp(striker.arms.L.userData.elbow.rotation.x, -2.1, rx);
@@ -2144,6 +2159,8 @@ function animate(){
       // he scored → celebration: lean back, both arms thrown up
       striker.group.rotation.x = lerp(striker.group.rotation.x, -.16, rx);
       striker.group.rotation.y = lerp(striker.group.rotation.y, strikerYaw, rx);
+      striker.waist.rotation.x = lerp(striker.waist.rotation.x, -.28, rx);  // chest thrown back
+      striker.waist.rotation.z = lerp(striker.waist.rotation.z, 0, rx);
       striker.arms.L.rotation.z = lerp(striker.arms.L.rotation.z, -2.5, rx);
       striker.arms.R.rotation.z = lerp(striker.arms.R.rotation.z, 2.5, rx);
       striker.arms.L.userData.elbow.rotation.x = lerp(striker.arms.L.userData.elbow.rotation.x, -.15, rx);
