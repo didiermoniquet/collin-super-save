@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.4.5">
+<meta name="version" content="1.4.6">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -346,7 +346,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.4.5';
+const VERSION = '1.4.6';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1612,6 +1612,7 @@ function fireShot(){
   const readBase = {easy:.18, medium:.40, hard:.60}[diff] || .40;
   const reads = Math.random() < readBase * (1 - lockedPower*.45);
   g2gKeeperZone = reads ? targetZone : aiDiveZone;
+  startOppDive(g2gKeeperZone);                                  // far keeper commits & dives
   let saved = (g2gKeeperZone === targetZone) && (Math.random() > lockedPower*.55);
   if(lockedPower > .93 && Math.random() < .4) saved = true;      // overhit → sails wide / claimed
   g2gShotSaved = saved;
@@ -1623,8 +1624,63 @@ function fireShot(){
   flightT = 0; ballMode = 'lerp'; g2gAttackShot = true; state = 'flight';
   sndKick();
 }
-/* full goalkeeper dive for the opponent — ballistic jump, body roll, reach, leg drive */
+/* ---- opponent keeper: driven through Collin's EXACT dive system, mirrored ----
+   The far keeper faces -z (yaw π), so Collin's keyframes are applied with the
+   left/right limbs swapped and the roll / forward axes flipped, then the whole
+   figure is lifted to sit on the turf. Result: the identical gather → explosive
+   ballistic jump → full-stretch reach → land flying save the player performs. */
+let oppPose = {...KREADY}, oppTarget = {...KREADY};
+let oppDiveT = -1, oppDivePeak = 0, oppDiveAir = .48;
+let oppExt = null, oppLoad = {...KLOAD}, oppLand = null;
+const _oppBox = new THREE.Box3();
+
+// build a dive's keyframes for a zone — the same per-zone shapes Collin dives:
+// smother (S), vertical spring (W), and the flying corner dives (Q/E/A/D)
+function makeDivePose(zone){
+  const z = ZONES[zone];
+  const side = Math.sign(z.x);
+  const lead = side > 0 ? 'R' : 'L';
+  const trail = side > 0 ? 'L' : 'R';
+  const p = {x:0,y:0,dz:0,roll:0,pitch:0, shL:.28,shR:-.28, fL:0,fR:0, eL:.1,eR:.1, kL:.15,kR:.15, hipL:0,hipR:0};
+  let peak = .4;
+  if(zone === 4){
+    Object.assign(p, {y:-.15, dz:.18, pitch:.58, shL:.1,shR:-.1, fL:-.18,fR:-.18, eL:-.05,eR:-.05, kL:1.3,kR:1.3, hipL:.48,hipR:.48});
+    peak = .05;
+  } else if(zone === 1){
+    Object.assign(p, {y:.2, shL:3.0,shR:-3.0, eL:0,eR:0, kL:.12,kR:.12, hipL:-.12,hipR:-.12});
+    peak = .78;
+  } else if(zone < 3){
+    Object.assign(p, {x:side*1.1, y:.3, dz:.24, roll:-side*1.15, shL:2.95,shR:-2.95, eL:.0,eR:.0});
+    p['hip'+lead] = .6;  p['k'+lead] = .75;
+    p['hip'+trail] = -.4; p['k'+trail] = .05;
+    p['sh'+trail] = (trail==='L'? 2.2 : -2.2);
+    p['e'+trail] = -.35;
+    peak = .74;
+  } else {
+    Object.assign(p, {x:side*1.05, y:-.04, dz:.26, roll:-side*1.5, shL:2.95,shR:-2.95, eL:.0,eR:.0});
+    p['hip'+lead] = .38;  p['k'+lead] = .55;
+    p['hip'+trail] = -.22; p['k'+trail] = .05;
+    p['sh'+trail] = (trail==='L'? 2.2 : -2.2);
+    p['e'+trail] = -.35;
+    peak = .26;
+  }
+  let load;
+  if(zone === 1){ load = {...KLOAD}; }
+  else if(zone === 4){ load = {...KLOAD, pitch:.22, dz:.1}; }
+  else {
+    load = {x:side*.2, y:-.14, dz:.08, roll:-side*.2, pitch:.12, shL:.4,shR:-.4, fL:-.5,fR:-.5, eL:-1.1,eR:-1.1, kL:.55,kR:.55, hipL:.1,hipR:.1};
+    load['hip'+lead] = .35; load['k'+lead] = .5;
+    load['hip'+trail] = -.1; load['k'+trail] = 1.15;
+  }
+  let land = {...p, y: p.y - .17, pitch: p.pitch*.7, kL: Math.min(1.1, p.kL+.3), kR: Math.min(1.1, p.kR+.3), hipL: p.hipL*.5, hipR: p.hipR*.5};
+  if(zone === 4) land = {...p, y: p.y - .03};
+  const air = THREE.MathUtils.clamp(.46 + peak*.42, .46, .74);
+  return {ext:p, load, land, peak, air};
+}
+
 function resetOppKeeper(){
+  oppDiveT = -1;
+  oppPose = {...KREADY}; oppTarget = {...KREADY};
   oppKeeper.group.position.copy(oppHome);
   oppKeeper.group.rotation.set(0, Math.PI, 0);
   oppKeeper.waist.rotation.set(0,0,0);
@@ -1637,27 +1693,55 @@ function resetOppKeeper(){
     oppKeeper.legs[s].userData.ankle.rotation.x = 0;
   }
 }
-function poseOppKeeper(k){
-  const z = ZONES[g2gKeeperZone], side = Math.sign(z.x) || 0, high = g2gKeeperZone < 3;
-  const kk = Math.min(k,1);
-  const ext  = Math.sin(kk * Math.PI * .85);                                       // reach 0→1
-  const lift = Math.sin(Math.min(kk*1.12,1) * Math.PI) * (high ? .95 : (side?.42:.16)); // ballistic jump
-  const g = oppKeeper.group, A = oppKeeper.arms, L = oppKeeper.legs;
-  // body: jump toward the ball and roll the torso HORIZONTAL into the dive
-  // (the figure faces -z / yaw π, so the roll & leg signs are flipped vs Collin's near-goal dive)
-  g.position.set(oppHome.x + side*1.5*ext, oppHome.y + lift, oppHome.z);
-  g.rotation.set((high?-.2:.2)*ext, Math.PI, side*1.45*ext);
-  oppKeeper.waist.rotation.set((high?-.12:.22)*ext, 0, -side*.3*ext);              // spine curls in
-  // both arms thrown up & out toward the ball; elbows straighten, wrists present the gloves
-  A.L.rotation.set((high?-.25:.12)*ext, 0,  .28 + 2.9*ext);
-  A.R.rotation.set((high?-.25:.12)*ext, 0, -.28 - 2.9*ext);
-  A.L.userData.elbow.rotation.x = .25 - .3*ext;  A.R.userData.elbow.rotation.x = .25 - .3*ext;
-  A.L.userData.wrist.rotation.x = -.4*ext;       A.R.userData.wrist.rotation.x = -.4*ext;
-  // legs split: leading leg tucks up, trailing leg drives out straight; feet point
-  const lead = side>=0 ? 'R':'L', trail = side>=0 ? 'L':'R';
-  L[lead].rotation.set(.5*ext,0,0);   L[lead].userData.knee.rotation.x  = .12 + .9*ext;
-  L[trail].rotation.set(-.3*ext,0,0); L[trail].userData.knee.rotation.x = .12;
-  L.L.userData.ankle.rotation.x = .55*ext; L.R.userData.ankle.rotation.x = .55*ext;
+
+// launch the opponent's dive timeline toward a world zone (kicks off the gather)
+function startOppDive(zone){
+  const dp = makeDivePose(zone);
+  oppExt = dp.ext; oppLoad = dp.load; oppLand = dp.land;
+  oppDivePeak = dp.peak; oppDiveAir = dp.air;
+  oppPose = {...KREADY};
+  oppDiveT = 0;
+  sndDive();
+}
+
+// advance the dive timeline each frame: gather → explosive reach → land (Collin's curve)
+function updateOppDive(dt){
+  if(oppDiveT < 0) return;
+  oppDiveT += dt;
+  let ks;
+  const airborne = oppDiveT < LOAD_T + oppDiveAir;
+  if(oppDiveT < LOAD_T){ oppTarget = oppLoad; ks = 1 - Math.pow(6e-5, dt); }      // power step
+  else if(airborne){ oppTarget = oppExt; ks = 1 - Math.pow(1.5e-6, dt); }          // exploding out
+  else { oppTarget = oppLand; ks = 1 - Math.pow(1.2e-3, dt); }                      // on the deck
+  for(const key in oppPose) oppPose[key] = lerp(oppPose[key], oppTarget[key], ks);
+  const u = (oppDiveT - LOAD_T) / oppDiveAir;
+  const lift = (u <= 0 || u >= 1) ? 0 : oppDivePeak * Math.pow(Math.sin(Math.PI*u), .62);
+  applyOppPose(oppPose, lift);
+}
+
+// map a (Collin-frame) pose onto the reversed-facing opponent figure
+function applyOppPose(p, lift){
+  const g = oppKeeper.group;
+  g.position.set(oppHome.x + p.x, oppHome.y + p.y + lift, oppHome.z - p.dz);
+  g.rotation.set(-p.pitch, Math.PI, -p.roll);            // forward & roll axes flip with the π facing
+  // limbs swap left<->right: we see the opponent's FRONT, Collin's pose is authored from behind
+  oppKeeper.arms.L.rotation.set(p.fR, 0, p.shR);
+  oppKeeper.arms.R.rotation.set(p.fL, 0, p.shL);
+  oppKeeper.arms.L.userData.elbow.rotation.x = p.eR;
+  oppKeeper.arms.R.userData.elbow.rotation.x = p.eL;
+  oppKeeper.legs.L.rotation.x = p.hipR; oppKeeper.legs.R.rotation.x = p.hipL;
+  oppKeeper.legs.L.userData.knee.rotation.x = p.kR;
+  oppKeeper.legs.R.userData.knee.rotation.x = p.kL;
+  const c = THREE.MathUtils.clamp;
+  oppKeeper.legs.L.userData.ankle.rotation.x = c(.6 - p.kR*.5, 0, .6);
+  oppKeeper.legs.R.userData.ankle.rotation.x = c(.6 - p.kL*.5, 0, .6);
+  oppKeeper.arms.L.userData.wrist.rotation.x = -.35;
+  oppKeeper.arms.R.userData.wrist.rotation.x = -.35;
+  oppKeeper.waist.rotation.set(p.pitch*.45, 0, p.roll*.3);
+  // sit on the turf: if the pose would sink him, lift the whole figure
+  g.updateMatrixWorld(true);
+  _oppBox.setFromObject(g);
+  if(_oppBox.min.y < 0) g.position.y -= _oppBox.min.y;
 }
 function resolveG2GAttack(){
   g2gAttackShot = false;
@@ -2234,6 +2318,9 @@ function animate(){
   _box.setFromObject(keeper.group);
   if(_box.min.y < 0) keeper.group.position.y -= _box.min.y;
 
+  // opponent keeper runs the same dive timeline every frame (through the result, so it lands)
+  if(oppKeeper.group.visible) updateOppDive(dt);
+
   /* striker head wobble */
   striker.head.rotation.y = Math.sin(t*1.5)*.15;
 
@@ -2292,7 +2379,6 @@ function animate(){
     ball.position.lerpVectors(ballFrom, ballTo, k);
     ball.position.y += Math.sin(k*Math.PI) * arcH;
     spinBall(dt, 22);
-    poseOppKeeper(k);
     if(k >= 1) resolveG2GAttack();
   }
   else if(state === 'flight'){

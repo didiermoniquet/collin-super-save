@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.6] — 2026-06-12
+
+### Changed
+- **Opponent keeper now dives exactly like Collin.** In the two-goal view the far keeper is driven through the *same* dive system as the player's keeper — the same per-zone keyframes and the gather → explosive ballistic jump → full-stretch reach → landing timeline — just mirrored for its reversed facing and re-grounded on the turf. So it gets the identical flying corner saves, the centre-high vertical spring, and the low collapsed-barrier smother, instead of the simpler approximation it had before.
+
 ## [1.4.5] — 2026-06-12
 
 ### Changed
