@@ -7,6 +7,14 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.5.0] — 2026-06-12
+
+### Changed
+- **Bigger, more spectacular top-corner saves.** The high diving saves are now a full-blown flying leap — the keeper springs higher to the corner with real hang time at the apex, the body flung nearly horizontal and stretched in one long line, arms reaching past the head to the top corner, the contralateral leg driving fully straight — then comes down to land. Applies to both Collin and the opponent keeper.
+
+### Fixed
+- **The opponent's goal now sits on a goal line.** In the two-goal view the opponent's goal previously floated on bare grass; the pitch now has proper markings at that end — a goal line directly under the posts, an 18-yard box, and the side lines running the full length and meeting the goal — so it reads as a real goal-to-goal pitch with the posts aligned to the line.
+
 ## [1.4.9] — 2026-06-12
 
 ### Changed

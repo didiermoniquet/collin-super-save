@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.4.9">
+<meta name="version" content="1.5.0">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -346,7 +346,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.4.9';
+const VERSION = '1.5.0';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -931,6 +931,13 @@ const oppGroup = new THREE.Group();
   mkPost(-GOAL_W/2); mkPost(GOAL_W/2);
   const ob=new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_W+POST_R*2,16),postMat);
   ob.rotation.z=Math.PI/2; ob.position.set(0,GOAL_H,OPP_GZ); ob.castShadow=true; oppGroup.add(ob);
+  // goal line + penalty box for the opponent goal, so the posts sit on a white line like the
+  // near goal (mirrors the near box; lives in oppGroup so it only shows on your shot)
+  const oppMark=(w,d,x,z)=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d), lineMat); m.rotation.x=-Math.PI/2; m.position.set(x,.012,z); oppGroup.add(m); };
+  oppMark(16,.1,0,OPP_GZ-.02);        // goal line directly under the posts
+  oppMark(16,.1,0,OPP_GZ-16.5);       // 18-yard / edge-of-box line
+  oppMark(.1,16.5,-8,OPP_GZ-8.25);    // box sides
+  oppMark(.1,16.5, 8,OPP_GZ-8.25);
 }
 /* deformable far net — billows into the goal when you score */
 const oppCols=15, oppRows=8, oppD=1.3, oppNetNodes=[];
@@ -1606,16 +1613,17 @@ function makeDivePose(zone){
                       kL:.08,kR:.08, hipL:-.24,hipR:-.24});
     peak = .8;
   } else if(zone < 3){
-    // Q/E top corners — full flying dive ATTACKING the ball at ~45° (forward + up & out):
-    // body long and extended, both hands leading past the head, contralateral leg fully
-    // straight as the drive while the ball-side leg trails in a long line
-    Object.assign(p, {x:side*1.12, y:.32, dz:.36, roll:-side*1.12, pitch:.2, wz:-side*.34,
-                      shL:2.98,shR:-2.98, fL:-.28,fR:-.28, eL:.0,eR:.0});
-    p['hip'+lead] = .44;  p['k'+lead] = .5;          // ball-side leg trails, lightly bent
-    p['hip'+trail] = -.5; p['k'+trail] = .04;        // contralateral leg fully extended — the push
-    p['sh'+trail] = (trail==='L'? 2.25 : -2.25);     // far (bottom) hand a touch behind — no t-rex
-    p['e'+trail] = -.3;
-    peak = .76;
+    // Q/E top corners — a BIG spectacular full-stretch flying save: an explosive leap high to
+    // the corner, the body flung nearly HORIZONTAL and stretched in one long line, both arms
+    // reaching past the head to the top corner, the contralateral leg driving fully straight,
+    // with real hang time at the apex
+    Object.assign(p, {x:side*1.3, y:.46, dz:.42, roll:-side*1.32, pitch:.14, wz:-side*.38,
+                      shL:3.06,shR:-3.06, fL:-.3,fR:-.3, eL:.0,eR:.0});
+    p['hip'+lead] = .52;  p['k'+lead] = .3;          // ball-side leg trails, near-straight (long line)
+    p['hip'+trail] = -.58; p['k'+trail] = .02;       // contralateral leg fully extended — the long drive
+    p['sh'+trail] = (trail==='L'? 2.35 : -2.35);     // far hand stays extended, a touch behind — no t-rex
+    p['e'+trail] = -.25;
+    peak = .95;                                       // big leap, long hang at full stretch
   } else {
     // A/D bottom corners — SPECTACULAR full-stretch flying save (Courtois-style): the body
     // flies fully HORIZONTAL and airborne, stretched in one long straight line, the lead hand
@@ -1649,7 +1657,7 @@ function makeDivePose(zone){
   land['k'+lead]  = Math.min(1.15, p['k'+lead] + .5);   // top leg folds in on impact
   land['k'+trail] = Math.min(.55,  p['k'+trail] + .25);
   if(zone === 4) land = {...p, y: p.y - .03};           // smother: stay down over the ball
-  const air = THREE.MathUtils.clamp(.46 + peak*.42, .46, .74);
+  const air = THREE.MathUtils.clamp(.46 + peak*.46, .46, .84);   // bigger leaps hang longer
   return {ext:p, load, land, peak, air};
 }
 
