@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.4.6">
+<meta name="version" content="1.4.7">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -346,7 +346,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.4.6';
+const VERSION = '1.4.7';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1488,64 +1488,10 @@ function dive(zone, raw, isAI){
     else { lastReaction = null; divedEarly = true; }
     showReaction();
   }
-  const z = ZONES[zone];
-  const side = Math.sign(z.x);                       // dive direction in world x
-  const lead = side > 0 ? 'R' : 'L';                 // leg on the dive side (tucks up)
-  const trail = side > 0 ? 'L' : 'R';                // far leg (drives the push-off)
-  // neutral airborne base, then shape per zone
-  const p = {x:0,y:0,dz:0,roll:0,pitch:0, shL:.28,shR:-.28, fL:0,fR:0, eL:.1,eR:.1, kL:.15,kR:.15, hipL:0,hipR:0};
-
-  if(zone === 4){
-    // S — collapsed barrier/smother: knees bent & together, chest folded forward over the
-    // ball, both hands reaching DOWN to the ground in front ("hands first, nose over the ball")
-    Object.assign(p, {y:-.15, dz:.18, pitch:.58, shL:.1,shR:-.1, fL:-.18,fR:-.18, eL:-.05,eR:-.05,
-                      kL:1.3,kR:1.3, hipL:.48,hipR:.48});
-    divePeak = .05;                                  // he drops into it rather than leaping
-  }
-  else if(zone === 1){
-    // W — vertical spring off both legs, arms stretched straight overhead
-    Object.assign(p, {y:.2, shL:3.0,shR:-3.0, eL:0,eR:0, kL:.12,kR:.12, hipL:-.12,hipR:-.12});
-    divePeak = .78; diveAir = .54;
-  }
-  else if(zone < 3){
-    // Q/E top corners — full flying dive: body rolls horizontal, arms past the head,
-    // trail leg driving straight while the lead leg tucks up
-    // sideways AND forward (~30°) to attack the ball; both hands lead, far arm a touch behind
-    Object.assign(p, {x:side*1.1, y:.3, dz:.24, roll:-side*1.15, shL:2.95,shR:-2.95, eL:.0,eR:.0});
-    p['hip'+lead] = .6;  p['k'+lead] = .75;
-    p['hip'+trail] = -.4; p['k'+trail] = .05;
-    p['sh'+trail] = (trail==='L'? 2.2 : -2.2);    // lead hand fully to the corner, far hand stays extended (no t-rex)
-    p['e'+trail] = -.35;
-    divePeak = .74; diveAir = .48;
-  }
-  else {
-    // A/D bottom corners — low diving save, sideways & forward toward the post
-    Object.assign(p, {x:side*1.05, y:-.04, dz:.26, roll:-side*1.5, shL:2.95,shR:-2.95, eL:.0,eR:.0});
-    p['hip'+lead] = .38;  p['k'+lead] = .55;
-    p['hip'+trail] = -.22; p['k'+trail] = .05;
-    p['sh'+trail] = (trail==='L'? 2.2 : -2.2);    // both hands attack, lead leads
-    p['e'+trail] = -.35;
-    divePeak = .26; diveAir = .42;
-  }
-  diveExt = p;
-  // POWER STEP — the gather is a directional plant: weight shifts toward the ball and the
-  // far (contralateral) leg loads deep, then drives the push-off (real GK diving mechanics)
-  if(zone === 1){            // W — even two-foot vertical load
-    diveLoad = {...KLOAD};
-  } else if(zone === 4){     // S — drop straight down into the low gather
-    diveLoad = {...KLOAD, pitch:.22, dz:.1};
-  } else {                   // corners — sidestep toward the ball, load the far leg
-    diveLoad = {x:side*.2, y:-.14, dz:.08, roll:-side*.2, pitch:.12,
-                shL:.4,shR:-.4, fL:-.5,fR:-.5, eL:-1.1,eR:-1.1, kL:.55,kR:.55, hipL:.1,hipR:.1};
-    diveLoad['hip'+lead]  = .35; diveLoad['k'+lead]  = .5;    // near foot steps toward the ball
-    diveLoad['hip'+trail] = -.1; diveLoad['k'+trail] = 1.15;  // far leg coils to push off
-  }
-  // landing keyframe: drop onto the turf, knees & body absorbing the impact
-  diveLand = {...p, y: p.y - .17, pitch: p.pitch*.7,
-              kL: Math.min(1.1, p.kL+.3), kR: Math.min(1.1, p.kR+.3),
-              hipL: p.hipL*.5, hipR: p.hipR*.5};
-  if(zone === 4) diveLand = {...p, y: p.y - .03}; // smother: stay down over the ball after the save
-  diveAir = THREE.MathUtils.clamp(.46 + divePeak*.42, .46, .74); // airtime scales with jump height
+  // shared keyframes — the same dive Collin and the opponent keeper perform
+  const dp = makeDivePose(zone);
+  diveExt = dp.ext; diveLoad = dp.load; diveLand = dp.land;
+  divePeak = dp.peak; diveAir = dp.air;
   diveT = 0;                                         // launch the dive timeline
   sndDive();
 }
@@ -1634,46 +1580,68 @@ let oppDiveT = -1, oppDivePeak = 0, oppDiveAir = .48;
 let oppExt = null, oppLoad = {...KLOAD}, oppLand = null;
 const _oppBox = new THREE.Box3();
 
-// build a dive's keyframes for a zone — the same per-zone shapes Collin dives:
-// smother (S), vertical spring (W), and the flying corner dives (Q/E/A/D)
+// build a dive's keyframes for a zone — the same per-zone shapes Collin and the
+// opponent dive. Modelled on pro GK technique: a directional power step off the
+// contralateral leg, ATTACKING the ball at ~45° (forward + sideways) with the
+// body fully extended and the hands leading, then landing on the side.
 function makeDivePose(zone){
   const z = ZONES[zone];
   const side = Math.sign(z.x);
-  const lead = side > 0 ? 'R' : 'L';
-  const trail = side > 0 ? 'L' : 'R';
+  const lead = side > 0 ? 'R' : 'L';                 // ball-side leg — aims the dive
+  const trail = side > 0 ? 'L' : 'R';                // contralateral leg — loads deep & drives
   const p = {x:0,y:0,dz:0,roll:0,pitch:0, shL:.28,shR:-.28, fL:0,fR:0, eL:.1,eR:.1, kL:.15,kR:.15, hipL:0,hipR:0};
   let peak = .4;
   if(zone === 4){
-    Object.assign(p, {y:-.15, dz:.18, pitch:.58, shL:.1,shR:-.1, fL:-.18,fR:-.18, eL:-.05,eR:-.05, kL:1.3,kR:1.3, hipL:.48,hipR:.48});
-    peak = .05;
+    // S — collapsed barrier/smother: drop behind the line of the ball, chest folding
+    // over it, both hands reaching DOWN & FORWARD to scoop ("hands first, nose over ball")
+    Object.assign(p, {y:-.13, dz:.30, pitch:.62, shL:.12,shR:-.12, fL:-.55,fR:-.55, eL:-.08,eR:-.08,
+                      kL:1.32,kR:1.32, hipL:.52,hipR:.52});
+    peak = .05;                                      // drops into it rather than leaping
   } else if(zone === 1){
-    Object.assign(p, {y:.2, shL:3.0,shR:-3.0, eL:0,eR:0, kL:.12,kR:.12, hipL:-.12,hipR:-.12});
-    peak = .78;
+    // W — explosive two-foot vertical spring; body extends and arches back a touch to
+    // reach up-and-over the bar, arms stretched straight overhead, legs trailing
+    Object.assign(p, {y:.22, pitch:-.16, shL:3.02,shR:-3.02, fL:-.16,fR:-.16, eL:0,eR:0,
+                      kL:.08,kR:.08, hipL:-.24,hipR:-.24});
+    peak = .8;
   } else if(zone < 3){
-    Object.assign(p, {x:side*1.1, y:.3, dz:.24, roll:-side*1.15, shL:2.95,shR:-2.95, eL:.0,eR:.0});
-    p['hip'+lead] = .6;  p['k'+lead] = .75;
-    p['hip'+trail] = -.4; p['k'+trail] = .05;
-    p['sh'+trail] = (trail==='L'? 2.2 : -2.2);
-    p['e'+trail] = -.35;
-    peak = .74;
+    // Q/E top corners — full flying dive ATTACKING the ball at ~45° (forward + up & out):
+    // body long and extended, both hands leading past the head, contralateral leg fully
+    // straight as the drive while the ball-side leg trails in a long line
+    Object.assign(p, {x:side*1.12, y:.32, dz:.36, roll:-side*1.12, pitch:.2,
+                      shL:2.98,shR:-2.98, fL:-.28,fR:-.28, eL:.0,eR:.0});
+    p['hip'+lead] = .44;  p['k'+lead] = .5;          // ball-side leg trails, lightly bent
+    p['hip'+trail] = -.5; p['k'+trail] = .04;        // contralateral leg fully extended — the push
+    p['sh'+trail] = (trail==='L'? 2.25 : -2.25);     // far (bottom) hand a touch behind — no t-rex
+    p['e'+trail] = -.3;
+    peak = .76;
   } else {
-    Object.assign(p, {x:side*1.05, y:-.04, dz:.26, roll:-side*1.5, shL:2.95,shR:-2.95, eL:.0,eR:.0});
-    p['hip'+lead] = .38;  p['k'+lead] = .55;
-    p['hip'+trail] = -.22; p['k'+trail] = .05;
-    p['sh'+trail] = (trail==='L'? 2.2 : -2.2);
-    p['e'+trail] = -.35;
+    // A/D bottom corners — low diving save, attacking forward & DOWN toward the post,
+    // body flatter and longer, hands leading to the ground in front of the line
+    Object.assign(p, {x:side*1.08, y:-.04, dz:.42, roll:-side*1.5, pitch:.14,
+                      shL:2.98,shR:-2.98, fL:-.4,fR:-.4, eL:.0,eR:.0});
+    p['hip'+lead] = .34;  p['k'+lead] = .5;
+    p['hip'+trail] = -.28; p['k'+trail] = .04;
+    p['sh'+trail] = (trail==='L'? 2.25 : -2.25);
+    p['e'+trail] = -.3;
     peak = .26;
   }
+  // POWER STEP — directional plant: weight to the ball-side foot, contralateral leg
+  // coils deep then drives. Even two-foot load for the vertical / low smother.
   let load;
   if(zone === 1){ load = {...KLOAD}; }
-  else if(zone === 4){ load = {...KLOAD, pitch:.22, dz:.1}; }
+  else if(zone === 4){ load = {...KLOAD, pitch:.26, dz:.14}; }
   else {
-    load = {x:side*.2, y:-.14, dz:.08, roll:-side*.2, pitch:.12, shL:.4,shR:-.4, fL:-.5,fR:-.5, eL:-1.1,eR:-1.1, kL:.55,kR:.55, hipL:.1,hipR:.1};
-    load['hip'+lead] = .35; load['k'+lead] = .5;
-    load['hip'+trail] = -.1; load['k'+trail] = 1.15;
+    load = {x:side*.22, y:-.15, dz:.1, roll:-side*.22, pitch:.14,
+            shL:.4,shR:-.4, fL:-.55,fR:-.55, eL:-1.15,eR:-1.15, kL:.55,kR:.55, hipL:.1,hipR:.1};
+    load['hip'+lead]  = .4;  load['k'+lead]  = .5;   // ball-side foot steps & points at the ball
+    load['hip'+trail] = -.12; load['k'+trail] = 1.2;  // contralateral leg coils to push off
   }
-  let land = {...p, y: p.y - .17, pitch: p.pitch*.7, kL: Math.min(1.1, p.kL+.3), kR: Math.min(1.1, p.kR+.3), hipL: p.hipL*.5, hipR: p.hipR*.5};
-  if(zone === 4) land = {...p, y: p.y - .03};
+  // LAND ON THE SIDE — stay rolled onto the lateral hip/torso; the top (ball-side) leg
+  // folds up to cushion, the lower leg stays extended; the body settles, not flops flat
+  let land = {...p, y: p.y - .16, pitch: p.pitch*.5, hipL: p.hipL*.55, hipR: p.hipR*.55};
+  land['k'+lead]  = Math.min(1.15, p['k'+lead] + .5);   // top leg folds in on impact
+  land['k'+trail] = Math.min(.55,  p['k'+trail] + .25);
+  if(zone === 4) land = {...p, y: p.y - .03};           // smother: stay down over the ball
   const air = THREE.MathUtils.clamp(.46 + peak*.42, .46, .74);
   return {ext:p, load, land, peak, air};
 }

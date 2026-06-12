@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.7] — 2026-06-12
+
+### Changed
+- **Pro goalkeeper diving technique.** Reworked the dive body shapes from real GK coaching/biomechanics so both keepers (Collin and the opponent) move like a pro: the keeper now **attacks the ball at ~45°** (driving forward *and* sideways off the contralateral leg) instead of falling flat along the line, the body is **longer and fully extended** in flight with the **hands leading**, the **vertical save extends and arches** to reach up-and-over the bar, the **smother folds over the ball** reaching hands-first, and the keeper **lands on its side** (top leg cushioning) rather than flopping flat. Collin's dive and the opponent's dive are now driven from a single shared definition, so they stay identical.
+
 ## [1.4.6] — 2026-06-12
 
 ### Changed
