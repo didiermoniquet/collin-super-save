@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.4] — 2026-06-12
+
+### Fixed
+- **No more "second goal" behind the opponent.** The decorative background goal at the far end is now hidden during your Goal-to-Goal shot, so the camera down-pitch shows just the opponent's goal (it still appears as background scenery the rest of the time).
+
 ## [1.4.3] — 2026-06-12
 
 ### Changed

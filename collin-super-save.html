@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.4.3">
+<meta name="version" content="1.4.4">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -346,7 +346,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.4.3';
+const VERSION = '1.4.4';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -910,15 +910,18 @@ function tree(x,z,s){
 }
 tree(-15,26,1.2); tree(16,28,1.4); tree(-25,21,1); tree(25,17,1.1); tree(-19,31,.9); tree(20,33,1.3);
 
-/* a full-size goal at the far end (background, like the photo) */
+/* a full-size goal at the far end (background, like the photo) — hidden during your
+   Goal-to-Goal shot so it doesn't read as a second goal behind the opponent's */
+const farGoalDeco = new THREE.Group();
 {
   const fw = 7.3, fh = 2.6, gz = 28.5;
   const fm = new THREE.MeshStandardMaterial({color:0xffffff, roughness:.4});
-  const mk = (g,x,y,rz)=>{ const m=new THREE.Mesh(g,fm); m.position.set(x,y,gz); if(rz)m.rotation.z=rz; m.castShadow=true; scene.add(m); };
+  const mk = (g,x,y,rz)=>{ const m=new THREE.Mesh(g,fm); m.position.set(x,y,gz); if(rz)m.rotation.z=rz; m.castShadow=true; farGoalDeco.add(m); };
   const postG = new THREE.CylinderGeometry(.08,.08,fh,12);
   mk(postG,-fw/2,fh/2); mk(postG,fw/2,fh/2);
   mk(new THREE.CylinderGeometry(.08,.08,fw,12),0,fh,Math.PI/2);
 }
+scene.add(farGoalDeco);
 
 /* ===== Goal-to-Goal: the opponent's goal, net & keeper at the far end (shown on your shot) ===== */
 const OPP_GZ = 22;
@@ -1379,6 +1382,7 @@ function startRound(){
       aiDiveZone = Math.floor(Math.random()*6);    // the opponent keeper's guess
       targetZone = aiDiveZone;                      // fallback aim
       oppGroup.visible = true; oppKeeper.group.visible = true; striker.group.visible = false;
+      farGoalDeco.visible = false;     // no second goal behind the opponent's
       resetOppKeeper();
       ball.position.set(0, BALL_R, 1.0);            // launch from your goal mouth
       setG2GView('far');
@@ -1386,6 +1390,7 @@ function startRound(){
     } else {
       // defend: the opponent attacks your goal (near view, striker run-up)
       oppGroup.visible = false; oppKeeper.group.visible = false; striker.group.visible = true;
+      farGoalDeco.visible = true;
       setG2GView('near');
       targetZone = pickZone(shotStyle.weights);
       flash('SAVE IT!', 'var(--toy-orange)');
@@ -1755,6 +1760,7 @@ function beginGame(){
   document.getElementById('g2gBar').classList.toggle('hidden', !g2g);
   // reset the two-goal scene props; startRound will set the per-turn view
   oppGroup.visible = false; oppKeeper.group.visible = false; striker.group.visible = true;
+  farGoalDeco.visible = true;
   document.getElementById('powerMeter').classList.add('hidden');
   g2gAttackShot = false; g2gPhase = 'aim'; setG2GView('near');
   shotStyle = pickStyle();
@@ -2064,6 +2070,7 @@ function goHome(){
   replaying = false; g2gAttackShot = false;
   saveData();                                     // flush any in-progress stats
   oppGroup.visible = false; oppKeeper.group.visible = false; striker.group.visible = true;
+  farGoalDeco.visible = true;
   setG2GView('near');
   document.getElementById('replayOverlay').classList.add('hidden');
   document.getElementById('endOverlay').classList.add('hidden');
