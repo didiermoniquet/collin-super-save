@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.4.7">
+<meta name="version" content="1.4.8">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -346,7 +346,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.4.7';
+const VERSION = '1.4.8';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1247,10 +1247,10 @@ function closeReplay(){
 const KSTAND = {x:0,y:0,dz:0,roll:0,pitch:0, shL:.28,shR:-.28, fL:0,fR:0, eL:.25,eR:.25, kL:.1,kR:.1, hipL:0,hipR:0};
 // pro ready-stance: knees bent, slight forward lean, arms held away from the body with
 // elbows bent and the gloves open in front of the hips (feet widened separately below)
-const KREADY = {x:0,y:-.06,dz:.05,roll:0,pitch:.1, shL:-.5,shR:.5, fL:-.35,fR:-.35,
+const KREADY = {x:0,y:-.06,dz:.05,roll:0,pitch:.1, wz:0, shL:-.5,shR:.5, fL:-.35,fR:-.35,
                 eL:-.8,eR:-.8, kL:.55,kR:.55, hipL:.15,hipR:.15};
 // anticipation gather: deep crouch & coil just before launching off the line
-const KLOAD  = {x:0,y:-.17,dz:.04,roll:0,pitch:.15, shL:.42,shR:-.42, fL:-.8,fR:-.8,
+const KLOAD  = {x:0,y:-.17,dz:.04,roll:0,pitch:.15, wz:0, shL:.42,shR:-.42, fL:-.8,fR:-.8,
                 eL:-2.0,eR:-2.0, kL:1.05,kR:1.05, hipL:.42,hipR:.42};
 let kpose = {...KREADY}, ktarget = {...KREADY};
 let diveT = -1, divePeak = 0, diveAir = .42;                 // dive timeline
@@ -1589,7 +1589,9 @@ function makeDivePose(zone){
   const side = Math.sign(z.x);
   const lead = side > 0 ? 'R' : 'L';                 // ball-side leg — aims the dive
   const trail = side > 0 ? 'L' : 'R';                // contralateral leg — loads deep & drives
-  const p = {x:0,y:0,dz:0,roll:0,pitch:0, shL:.28,shR:-.28, fL:0,fR:0, eL:.1,eR:.1, kL:.15,kR:.15, hipL:0,hipR:0};
+  // wz = waist lateral bend (set per zone so high dives can arch while low dives stay
+  // straight enough to lie flat); pitch drives the waist fold (wx) in the apply step.
+  const p = {x:0,y:0,dz:0,roll:0,pitch:0, wz:0, shL:.28,shR:-.28, fL:0,fR:0, eL:.1,eR:.1, kL:.15,kR:.15, hipL:0,hipR:0};
   let peak = .4;
   if(zone === 4){
     // S — collapsed barrier/smother: drop behind the line of the ball, chest folding
@@ -1607,7 +1609,7 @@ function makeDivePose(zone){
     // Q/E top corners — full flying dive ATTACKING the ball at ~45° (forward + up & out):
     // body long and extended, both hands leading past the head, contralateral leg fully
     // straight as the drive while the ball-side leg trails in a long line
-    Object.assign(p, {x:side*1.12, y:.32, dz:.36, roll:-side*1.12, pitch:.2,
+    Object.assign(p, {x:side*1.12, y:.32, dz:.36, roll:-side*1.12, pitch:.2, wz:-side*.34,
                       shL:2.98,shR:-2.98, fL:-.28,fR:-.28, eL:.0,eR:.0});
     p['hip'+lead] = .44;  p['k'+lead] = .5;          // ball-side leg trails, lightly bent
     p['hip'+trail] = -.5; p['k'+trail] = .04;        // contralateral leg fully extended — the push
@@ -1615,15 +1617,17 @@ function makeDivePose(zone){
     p['e'+trail] = -.3;
     peak = .76;
   } else {
-    // A/D bottom corners — low diving save, attacking forward & DOWN toward the post,
-    // body flatter and longer, hands leading to the ground in front of the line
-    Object.assign(p, {x:side*1.08, y:-.04, dz:.42, roll:-side*1.5, pitch:.14,
-                      shL:2.98,shR:-2.98, fL:-.4,fR:-.4, eL:.0,eR:.0});
-    p['hip'+lead] = .34;  p['k'+lead] = .5;
-    p['hip'+trail] = -.28; p['k'+trail] = .04;
-    p['sh'+trail] = (trail==='L'? 2.25 : -2.25);
-    p['e'+trail] = -.3;
-    peak = .26;
+    // A/D bottom corners — low diving save: the keeper lays out FLAT ALONG THE GROUND on the
+    // dive side, the hip and side of the torso skimming the turf, the body a long line toward
+    // the post, the lower arm reaching the low ball. Spine stays straight (small wz) so it
+    // lies flat instead of piking, and it barely leaves the floor.
+    Object.assign(p, {x:side*1.16, y:-.2, dz:.16, roll:-side*1.46, pitch:0, wz:-side*.1,
+                      shL:2.55,shR:-2.55, fL:-.2,fR:-.2, eL:.05,eR:.05});
+    p['hip'+lead] = .22;  p['k'+lead] = .4;      // top leg slightly tucked
+    p['hip'+trail] = -.12; p['k'+trail] = .03;   // lower leg extended — the long line
+    p['sh'+trail] = (trail==='L'? 1.95 : -1.95);
+    p['e'+trail] = -.2;
+    peak = .08;                                  // skims the ground, no real leap
   }
   // POWER STEP — directional plant: weight to the ball-side foot, contralateral leg
   // coils deep then drives. Even two-foot load for the vertical / low smother.
@@ -1631,7 +1635,7 @@ function makeDivePose(zone){
   if(zone === 1){ load = {...KLOAD}; }
   else if(zone === 4){ load = {...KLOAD, pitch:.26, dz:.14}; }
   else {
-    load = {x:side*.22, y:-.15, dz:.1, roll:-side*.22, pitch:.14,
+    load = {x:side*.22, y:-.15, dz:.1, roll:-side*.22, pitch:.14, wz:-side*.06,
             shL:.4,shR:-.4, fL:-.55,fR:-.55, eL:-1.15,eR:-1.15, kL:.55,kR:.55, hipL:.1,hipR:.1};
     load['hip'+lead]  = .4;  load['k'+lead]  = .5;   // ball-side foot steps & points at the ball
     load['hip'+trail] = -.12; load['k'+trail] = 1.2;  // contralateral leg coils to push off
@@ -1705,11 +1709,15 @@ function applyOppPose(p, lift){
   oppKeeper.legs.R.userData.ankle.rotation.x = c(.6 - p.kL*.5, 0, .6);
   oppKeeper.arms.L.userData.wrist.rotation.x = -.35;
   oppKeeper.arms.R.userData.wrist.rotation.x = -.35;
-  oppKeeper.waist.rotation.set(p.pitch*.45, 0, p.roll*.3);
-  // sit on the turf: if the pose would sink him, lift the whole figure
+  oppKeeper.waist.rotation.set(p.pitch*.45, 0, p.wz);
+  // sit on the turf. The yaw-π mirror isn't perfectly height-preserving, so on
+  // low/grounded dives let the lowest point settle a touch into the grass — this
+  // brings the hip down onto the ground (it would otherwise float) and the small
+  // sink is hidden by the turf at the shallow attack-camera angle.
   g.updateMatrixWorld(true);
   _oppBox.setFromObject(g);
-  if(_oppBox.min.y < 0) g.position.y -= _oppBox.min.y;
+  const floor = oppDivePeak < .15 ? -.12 : 0;
+  if(_oppBox.min.y < floor) g.position.y -= (_oppBox.min.y - floor);
 }
 function resolveG2GAttack(){
   g2gAttackShot = false;
@@ -2273,7 +2281,7 @@ function animate(){
   keeper.arms.L.userData.wrist.rotation.x = diving ? -.35 : -.08;
   keeper.arms.R.userData.wrist.rotation.x = diving ? -.35 : -.08;
   // spine: the torso curls into a sideways dive and folds over the ball on a smother
-  keeper.waist.rotation.z = kpose.roll * .3;
+  keeper.waist.rotation.z = kpose.wz;
   keeper.waist.rotation.x = kpose.pitch * .45 + (ready ? Math.sin(t*2.5)*.02 : 0);
   // feet slightly wider than shoulders when set; tucks back in as he dives
   stanceSplay = lerp(stanceSplay, ready ? .15 : 0, 1 - Math.pow(.02, dt));

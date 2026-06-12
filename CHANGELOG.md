@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.8] — 2026-06-12
+
+### Fixed
+- **Low diving saves are now grounded and read properly.** On a dive to a bottom corner the keeper used to float — the hip never reached the turf — because the spine was hard-wired to curl with the body roll, piking the figure so an arm/foot poked through the ground and the auto-grounding shoved the whole body (and the hip) back up into the air. The spine bend is now controlled per-dive (`wz`), so low saves keep a straight body and **lay out flat along the ground on the side, hip and torso on the turf**, the lower arm reaching the low ball — verified by measuring the hip height from multiple angles. High flying saves keep their reaching arch. The opponent keeper's low dive is grounded the same way.
+
 ## [1.4.7] — 2026-06-12
 
 ### Changed
