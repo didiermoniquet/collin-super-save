@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.7.1] — 2026-06-13
+
+### Changed
+- **Pro goalkeeper "set" stance.** Now that the keeper is human-proportioned, re-grounded his body language in real GK coaching: between/before shots he holds a proper **coiled athletic set** — knees deeply bent, **chest leaning out over the knees** with weight on the balls of the feet, **feet about shoulder-width**, and the **gloves up and forward, ready to spring** (arms off the body, no "t-rexing"). The dives then launch out of that loaded crouch, so the whole save reads like a real keeper. (The flying corner saves, the vertical tip-over and the low collapse/smother were re-checked against the new proportions and hold up.)
+
 ## [1.7.0] — 2026-06-13
 
 A big presentation overhaul — players, scene and menus.

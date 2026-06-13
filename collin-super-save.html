@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.7.0">
+<meta name="version" content="1.7.1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -367,7 +367,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.7.0';
+const VERSION = '1.7.1';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1335,10 +1335,11 @@ function closeReplay(){
    position: x/y/dz · body: roll(z)/pitch(x) · shoulders shL/shR(splay z) + fL/fR(swing x)
    · elbows eL/eR(bend) · hips hipL/hipR(swing x) + knees kL/kR(bend). Lerps to a target. */
 const KSTAND = {x:0,y:0,dz:0,roll:0,pitch:0, shL:.28,shR:-.28, fL:0,fR:0, eL:.25,eR:.25, kL:.1,kR:.1, hipL:0,hipR:0};
-// pro ready-stance: knees bent, slight forward lean, arms held away from the body with
-// elbows bent and the gloves open in front of the hips (feet widened separately below)
-const KREADY = {x:0,y:-.06,dz:.05,roll:0,pitch:.1, wz:0, shL:-.5,shR:.5, fL:-.35,fR:-.35,
-                eL:-.8,eR:-.8, kL:.55,kR:.55, hipL:.15,hipR:.15};
+// pro "set" stance: a coiled athletic crouch — knees deeply bent, chest leaning out over the
+// knees (weight on the balls of the feet), and the gloves held UP & FORWARD ready to react
+// (arms away from the body, elbows bent, no t-rex). Feet are widened separately below.
+const KREADY = {x:0,y:-.13,dz:.07,roll:0,pitch:.12, wz:0, shL:-.34,shR:.34, fL:-.6,fR:-.6,
+                eL:-1.12,eR:-1.12, kL:.86,kR:.86, hipL:.3,hipR:.3};
 // anticipation gather: deep crouch & coil just before launching off the line
 const KLOAD  = {x:0,y:-.17,dz:.04,roll:0,pitch:.15, wz:0, shL:.42,shR:-.42, fL:-.8,fR:-.8,
                 eL:-2.0,eR:-2.0, kL:1.05,kR:1.05, hipL:.42,hipR:.42};
@@ -2422,7 +2423,7 @@ function animate(){
   keeper.waist.rotation.z = kpose.wz;
   keeper.waist.rotation.x = kpose.pitch * .45 + (ready ? Math.sin(t*2.5)*.02 : 0);
   // feet slightly wider than shoulders when set; tucks back in as he dives
-  stanceSplay = lerp(stanceSplay, ready ? .15 : 0, 1 - Math.pow(.02, dt));
+  stanceSplay = lerp(stanceSplay, ready ? .22 : 0, 1 - Math.pow(.02, dt));   // feet ~shoulder width when set
   keeper.legs.L.rotation.z = -stanceSplay; keeper.legs.R.rotation.z = stanceSplay;
   keeper.head.rotation.y = ready ? Math.sin(t*.7)*.12         // glance around when waiting
     : THREE.MathUtils.clamp((ball.position.x - keeper.group.position.x)*.34, -.85, .85); // drive chin & face to the ball
