@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.7.1">
+<meta name="version" content="1.7.2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -367,7 +367,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.7.1';
+const VERSION = '1.7.2';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1707,13 +1707,12 @@ function makeDivePose(zone){
     p['hip'+trail] = -.58; p['k'+trail] = .02;       // contralateral leg fully extended — the long drive
     p['sh'+trail] = (trail==='L'? 2.35 : -2.35);     // far hand stays extended, a touch behind — no t-rex
     p['e'+trail] = -.25;
-    peak = .95;                                       // big leap, long hang at full stretch
+    peak = .95;                                       // a real leap to the top corner (a top-corner save IS a flying save)
   } else {
-    // A/D bottom corners — SPECTACULAR full-stretch flying save (Courtois-style): the body
-    // flies fully HORIZONTAL and airborne, stretched in one long straight line, the lead hand
-    // reaching DOWN to the low ball while the top hand trails for balance, legs extended
-    // straight behind with the toes pointed. Spine stays straight (small wz) so it's a clean
-    // plank, not a pike; it then lands down onto the side.
+    // A/D bottom corners — full-stretch low dive that HUGS THE GROUND (Courtois-style shape):
+    // the body lays out fully horizontal and long, just skimming the turf, the lead hand reaching
+    // along the ground to the low ball while the top hand trails for balance, legs extended
+    // straight behind. It barely leaves the floor — a ground-hugging slide, not a flight.
     Object.assign(p, {x:side*1.32, y:.06, dz:.3, roll:-side*1.44, pitch:-.06, wz:-side*.12,
                       shL:2.7,shR:-2.7, fL:-.35,fR:-.35, eL:.0,eR:.0});
     p['hip'+lead] = .1;   p['k'+lead] = .12;     // legs nearly straight — the long trailing line
@@ -1722,7 +1721,7 @@ function makeDivePose(zone){
     p['sh'+trail] = (trail==='L'? 1.85 : -1.85); // top hand trails behind for balance
     p['f'+lead]   = -.5;  p['e'+lead]  = .0;     // lead arm forward, straight to the ball
     p['e'+trail]  = -.2;
-    peak = .42;                                  // airborne full stretch, then lands
+    peak = .3;                                   // a low push to meet the knee-high ball, then lands on the side
   }
   // POWER STEP — directional plant: weight to the ball-side foot, contralateral leg
   // coils deep then drives. Even two-foot load for the vertical / low smother.
@@ -1741,7 +1740,7 @@ function makeDivePose(zone){
   land['k'+lead]  = Math.min(1.15, p['k'+lead] + .5);   // top leg folds in on impact
   land['k'+trail] = Math.min(.55,  p['k'+trail] + .25);
   if(zone === 4) land = {...p, y: p.y - .03};           // smother: stay down over the ball
-  const air = THREE.MathUtils.clamp(.46 + peak*.46, .46, .84);   // bigger leaps hang longer
+  const air = THREE.MathUtils.clamp(.46 + peak*.46, .46, .84);   // airborne window (holds the reach for the save)
   return {ext:p, load, land, peak, air};
 }
 
@@ -1782,7 +1781,7 @@ function updateOppDive(dt){
   else { oppTarget = oppLand; ks = 1 - Math.pow(1.2e-3, dt); }                      // on the deck
   for(const key in oppPose) oppPose[key] = lerp(oppPose[key], oppTarget[key], ks);
   const u = (oppDiveT - LOAD_T) / oppDiveAir;
-  const lift = (u <= 0 || u >= 1) ? 0 : oppDivePeak * Math.pow(Math.sin(Math.PI*u), .62);
+  const lift = (u <= 0 || u >= 1) ? 0 : oppDivePeak * Math.pow(Math.sin(Math.PI*u), .72);
   applyOppPose(oppPose, lift);
 }
 
@@ -2395,7 +2394,7 @@ function animate(){
   // briefly at full stretch, then gravity brings him back down — airtime ≈ diveAir
   if(diveT >= 0){
     const u = (diveT - LOAD_T) / diveAir;                 // 0..1 across the airborne phase
-    keeperLift = (u <= 0 || u >= 1) ? 0 : divePeak * Math.pow(Math.sin(Math.PI*u), .62);
+    keeperLift = (u <= 0 || u >= 1) ? 0 : divePeak * Math.pow(Math.sin(Math.PI*u), .72);
   } else {
     keeperLift = 0;
   }

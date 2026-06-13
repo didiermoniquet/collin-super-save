@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.7.2] — 2026-06-13
+
+### Fixed
+- **Dives no longer "fly" — the low saves hug the ground.** A trace of the dive showed the keeper's whole body floating ~0.2 m off the turf for ~0.4 s on a low save, which read as flying. The low and bottom-corner dives now **stay down and lay out along the ground** (a low push to meet the knee-high ball, then settling on the side), and the airborne arc is a touch snappier so there's less hang at the top. Top-corner and centre-high saves still take the **leap they need** (you can't reach the top corner without leaving your feet — those genuinely are flying saves). Re-tuned and re-checked that the keeper still reaches the ball in every zone (save collision verified across all six).
+
 ## [1.7.1] — 2026-06-13
 
 ### Changed
