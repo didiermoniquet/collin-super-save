@@ -7,6 +7,15 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.7.0] — 2026-06-13
+
+A big presentation overhaul — players, scene and menus.
+
+### Changed
+- **Human body proportions.** The figures were remodelled from the stubby toy build to athletic-youth proportions — longer legs (~45% of height), leaner torso and limbs, a rounded shoulder yoke and a noticeably smaller head — so Collin and the striker read as people, not bath toys. Figures now auto-scale to their target height (so the proportions can change freely), and the diving saves actually look *better* for it (the leaner body makes the full-stretch dives more elegant). Collision, grounding and all dive types were re-verified.
+- **Richer look & feel.** Warmer low-afternoon key light with a cool sky counter-fill and softer shadows; a real **gradient sky dome** with a soft sun glow; **mown-stripe turf** with a grassy speckle (no more flat plastic green); warm horizon haze; and a subtle **cinematic colour-grade + vignette** that frames the pitch without touching the UI.
+- **Completely redesigned menus & HUD.** A modern, premium pass over every panel: a clean white card with a gradient accent stripe and gradient wordmark, **segmented difficulty control**, refined mode pills, elegant labelled dividers, a bold green “Kick Off” call-to-action, tidier collapsible kit/stats sections, and lighter floating HUD badges, dive pad and buttons — all keeping the playful football identity while feeling far more polished.
+
 ## [1.6.0] — 2026-06-12
 
 ### Added

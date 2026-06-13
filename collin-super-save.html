@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.6.0">
+<meta name="version" content="1.7.0">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -18,26 +18,33 @@
 <style>
   :root{
     --grass:#5cae2f; --grass-dark:#4d9a26;
-    --toy-orange:#ff5a1f; --toy-pink:#ff5fb4; --toy-blue:#1f6bff;
-    --toy-yellow:#d8ff2e; --ink:#1b1b1f; --card:#fffdf6;
+    --toy-orange:#ff7a2e; --toy-pink:#ff4f9d; --toy-blue:#2f7fe6;
+    --toy-yellow:#ffd23f; --toy-green:#34b14a;
+    --ink:#16202a; --muted:#6a7a86; --card:#ffffff; --card-2:#f1f6f3; --line:#e7edee;
+    --sh-card:0 22px 50px -18px rgba(14,38,26,.55), 0 8px 20px -10px rgba(14,38,26,.32);
+    --sh-btn:0 10px 22px -8px rgba(20,60,30,.45);
+    --sh-sm:0 4px 12px -4px rgba(0,0,0,.22);
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%;overflow:hidden;font-family:'Fredoka',sans-serif;background:#7ec8e3;user-select:none}
-  #c{position:fixed;inset:0;display:block;touch-action:none}
+  #c{position:fixed;inset:0;display:block;touch-action:none;filter:saturate(1.17) contrast(1.07)}
+  /* cinematic vignette — darkens the frame edges only, never the UI (HUD sits above it) */
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:2;mix-blend-mode:multiply;
+    background:radial-gradient(128% 108% at 50% 38%, #fff 46%, #d3dde6 78%, #8ea2b6 100%)}
 
   /* ---------- HUD ---------- */
   #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;
        align-items:flex-start;gap:8px;pointer-events:none;z-index:5;
        padding:max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 12px max(14px,env(safe-area-inset-left))}
-  .badge{background:var(--card);border:3px solid var(--ink);border-radius:16px;
-         padding:8px 16px;box-shadow:0 4px 0 var(--ink);text-align:center;min-width:96px}
-  .badge .lbl{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888}
-  .badge .val{font-family:'Bungee',cursive;font-size:26px;line-height:1;color:var(--ink)}
-  #saves .val{color:var(--toy-blue)} #streak .val{color:var(--toy-orange)} #best .val{color:#2e9e3f}
-  #lives{display:flex;gap:6px;justify-content:center;margin-top:4px}
-  .glove{width:18px;height:18px;border-radius:50% 50% 40% 40%;background:var(--toy-blue);
-         border:2px solid var(--ink);transition:all .3s}
-  .glove.lost{background:#ccc;opacity:.4;transform:scale(.8)}
+  .badge{background:rgba(255,255,255,.92);border-radius:16px;
+         padding:7px 15px;box-shadow:var(--sh-sm);text-align:center;min-width:86px}
+  .badge .lbl{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .badge .val{font-family:'Bungee',cursive;font-size:24px;line-height:1;color:var(--ink)}
+  #saves .val{color:var(--toy-blue)} #streak .val{color:var(--toy-orange)} #best .val{color:var(--toy-green)}
+  #lives{display:flex;gap:6px;justify-content:center;margin-top:5px}
+  .glove{width:17px;height:17px;border-radius:50% 50% 42% 42%;background:var(--toy-blue);
+         box-shadow:var(--sh-sm);transition:all .3s}
+  .glove.lost{background:#cfd8d4;opacity:.45;transform:scale(.78);box-shadow:none}
 
   /* ---------- flash text ---------- */
   #flash{position:fixed;top:34%;left:50%;transform:translate(-50%,-50%) scale(0) rotate(-6deg);
@@ -53,56 +60,59 @@
   #pad{position:fixed;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
        display:grid;grid-template-columns:repeat(3,clamp(56px,18vw,72px));grid-template-rows:repeat(2,clamp(44px,7vh,58px));
        gap:8px;z-index:5;touch-action:manipulation}
-  #pad button{font-family:'Bungee',cursive;font-size:18px;border:3px solid var(--ink);
-       border-radius:14px;background:var(--card);color:var(--ink);cursor:pointer;
-       box-shadow:0 4px 0 var(--ink);transition:transform .06s}
-  #pad button:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
-  #pad button small{display:block;font-family:'Fredoka';font-size:10px;font-weight:700;color:#999}
+  #pad button{font-family:'Bungee',cursive;font-size:18px;border:none;
+       border-radius:14px;background:rgba(255,255,255,.94);color:var(--ink);cursor:pointer;
+       box-shadow:var(--sh-sm);transition:transform .08s}
+  #pad button:active{transform:translateY(3px) scale(.97)}
+  #pad button small{display:block;font-family:'Fredoka';font-size:10px;font-weight:700;color:var(--muted)}
 
   /* ---------- overlays ---------- */
   .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-           overflow-y:auto;padding:16px;background:rgba(27,27,31,.35);backdrop-filter:blur(3px);z-index:10}
-  .panel{background:var(--card);border:4px solid var(--ink);border-radius:28px;
-         padding:clamp(20px,5vw,34px) clamp(22px,6vw,38px);max-width:440px;width:100%;text-align:center;
-         max-height:94vh;max-height:94dvh;overflow-y:auto;box-shadow:0 10px 0 var(--ink);transform:rotate(-1deg)}
-  .panel h1{font-family:'Bungee',cursive;font-size:clamp(30px,6vw,44px);line-height:1.05;
-            color:var(--toy-orange);-webkit-text-stroke:1.5px var(--ink)}
-  .panel h1 span{color:var(--toy-pink)}
-  .panel p{margin:14px 0 6px;font-weight:600;color:#444;font-size:15px;line-height:1.5}
-  .keys{display:inline-grid;grid-template-columns:repeat(3,38px);gap:5px;margin:10px 0}
-  .keys b{border:2px solid var(--ink);border-radius:8px;padding:5px 0;background:#fff;
-          font-family:'Bungee';font-size:13px;box-shadow:0 3px 0 var(--ink)}
-  .panel button{margin-top:18px;font-family:'Bungee',cursive;font-size:20px;padding:14px 38px;
-        border:3px solid var(--ink);border-radius:18px;background:var(--toy-yellow);
-        cursor:pointer;box-shadow:0 5px 0 var(--ink);transition:transform .06s}
-  .panel button:active{transform:translateY(5px);box-shadow:0 0 0 var(--ink)}
-  .diffs{display:flex;gap:8px;justify-content:center;margin:16px 0 2px}
-  .diffs .diff-btn{margin:0;font-family:'Bungee',cursive;font-size:14px;padding:9px 16px;
-        border:3px solid var(--ink);border-radius:13px;background:#fff;color:var(--ink);
-        cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
-  .diffs .diff-btn.sel{background:var(--toy-blue);color:#fff}
-  .diffs .diff-btn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
-  .difflbl{font-size:12px;color:#888;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:6px 0 0}
-  .ver{margin-top:14px;font-size:11px;font-weight:600;letter-spacing:.08em;color:#b3b0a4}
-  #muteBtn{position:fixed;left:max(12px,env(safe-area-inset-left));bottom:max(16px,env(safe-area-inset-bottom));
-        z-index:6;width:46px;height:46px;line-height:1;
-        border:3px solid var(--ink);border-radius:14px;background:var(--card);font-size:20px;
-        cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
-  #muteBtn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
-  #muteBtn.off{opacity:.55}
-  #fsBtn{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));
-        z-index:11;width:46px;height:46px;line-height:1;
-        border:3px solid var(--ink);border-radius:14px;background:var(--card);font-size:21px;
-        cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
-  #fsBtn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
+           overflow-y:auto;padding:18px;background:rgba(12,22,18,.46);
+           -webkit-backdrop-filter:blur(7px) saturate(1.05);backdrop-filter:blur(7px) saturate(1.05);z-index:10}
+  .panel{position:relative;background:var(--card);border-radius:26px;
+         padding:clamp(22px,5vw,30px) clamp(20px,5.5vw,28px) clamp(18px,4vw,24px);
+         max-width:400px;width:100%;text-align:center;max-height:92vh;max-height:92dvh;
+         overflow-y:auto;overscroll-behavior:contain;box-shadow:var(--sh-card)}
+  .panel::before{content:"";position:absolute;top:0;left:0;right:0;height:7px;border-radius:26px 26px 0 0;
+         background:linear-gradient(90deg,var(--toy-orange),var(--toy-pink),var(--toy-blue))}
+  .panel h1{font-family:'Bungee',cursive;font-size:clamp(30px,7.5vw,46px);line-height:.92;
+            letter-spacing:-.5px;color:var(--ink);margin-top:8px}
+  .panel h1 span{display:block;font-size:.66em;margin-top:.1em;
+            background:linear-gradient(92deg,var(--toy-orange),var(--toy-pink));
+            -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .panel p{margin:12px 4px 4px;font-weight:500;color:var(--muted);font-size:13.5px;line-height:1.55}
+  .keys{display:inline-grid;grid-template-columns:repeat(3,34px);gap:5px;margin:12px 0 4px}
+  .keys b{border:1.5px solid var(--line);border-radius:9px;padding:6px 0;background:var(--card-2);
+          font-family:'Bungee';font-size:13px;color:var(--ink);box-shadow:var(--sh-sm)}
+  .panel button{margin-top:16px;font-family:'Bungee',cursive;font-size:15px;padding:13px 24px;
+        border:none;border-radius:14px;background:var(--card-2);color:var(--ink);
+        cursor:pointer;box-shadow:var(--sh-sm);transition:transform .1s}
+  .panel button:active{transform:translateY(2px)}
+  #startBtn,#retryBtn{width:100%;font-size:19px;padding:16px;letter-spacing:.5px;color:#fff;
+        background:linear-gradient(180deg,#46c750,#2c9a2c);box-shadow:0 12px 26px -8px rgba(40,150,50,.6)}
+  .diffs{display:flex;gap:5px;justify-content:center;margin:0;background:var(--card-2);
+        border-radius:14px;padding:5px}
+  .diffs .diff-btn{flex:1;margin:0;font-family:'Bungee',cursive;font-size:13px;padding:11px 6px;
+        border:none;border-radius:10px;background:transparent;color:var(--muted);
+        cursor:pointer;box-shadow:none;transition:.16s}
+  .diffs .diff-btn.sel{background:var(--toy-blue);color:#fff;box-shadow:var(--sh-sm)}
+  .diffs .diff-btn:active{transform:translateY(1px)}
+  .difflbl{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+        margin:18px 0 9px;display:flex;align-items:center;gap:10px}
+  .difflbl::before,.difflbl::after{content:"";flex:1;height:1px;background:var(--line)}
+  .difflbl:empty{display:none}
+  .ver{margin-top:14px;font-size:10.5px;font-weight:600;letter-spacing:.1em;color:#c2cdc6}
+  #muteBtn,#fsBtn,#homeBtn{position:fixed;z-index:6;width:44px;height:44px;line-height:1;
+        border:none;border-radius:14px;background:rgba(255,255,255,.94);font-size:20px;
+        cursor:pointer;box-shadow:var(--sh-sm);transition:transform .08s}
+  #muteBtn:active,#fsBtn:active,#homeBtn:active{transform:translateY(3px) scale(.96)}
+  #muteBtn{left:max(12px,env(safe-area-inset-left));bottom:max(16px,env(safe-area-inset-bottom))}
+  #muteBtn.off{opacity:.5}
+  #fsBtn{right:max(12px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:11;font-size:21px}
   #fsBtn.on{background:var(--toy-blue);color:#fff}
-  #homeBtn{position:fixed;left:max(12px,env(safe-area-inset-left));
-        bottom:calc(max(16px,env(safe-area-inset-bottom)) + 56px);
-        z-index:6;width:46px;height:46px;line-height:1;
-        border:3px solid var(--ink);border-radius:14px;background:var(--card);font-size:20px;
-        cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
-  #homeBtn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
-  #menuBtn{background:#fff}
+  #homeBtn{left:max(12px,env(safe-area-inset-left));bottom:calc(max(16px,env(safe-area-inset-bottom)) + 54px)}
+  #menuBtn{background:var(--card-2)}
   #finalStats{font-family:'Bungee';font-size:22px;color:var(--toy-blue);margin-top:6px}
   #recordBanner{font-family:'Bungee',cursive;font-size:18px;color:#2e9e3f;margin:8px 0 2px;
         letter-spacing:.02em;text-shadow:0 2px 0 var(--ink);animation:recordpop .6s cubic-bezier(.2,1.6,.4,1)}
@@ -117,46 +127,50 @@
     70%{opacity:1}100%{opacity:0;transform:translate(-50%,-58%) scale(1)}}
   /* ---------- shooter toast ---------- */
   #toast{position:fixed;top:calc(env(safe-area-inset-top) + 78px);left:50%;
-    transform:translateX(-50%) translateY(-8px);background:var(--card);border:3px solid var(--ink);
-    border-radius:14px;padding:7px 16px;font-family:'Bungee',cursive;font-size:13px;color:var(--ink);
-    box-shadow:0 4px 0 var(--ink);z-index:6;pointer-events:none;opacity:0;white-space:nowrap}
+    transform:translateX(-50%) translateY(-8px);background:rgba(255,255,255,.96);
+    border-radius:13px;padding:8px 16px;font-family:'Bungee',cursive;font-size:12px;color:var(--ink);
+    box-shadow:var(--sh-card);z-index:6;pointer-events:none;opacity:0;white-space:nowrap}
   #toast.show{animation:toast 2.4s ease-out forwards}
   @keyframes toast{0%{opacity:0;transform:translateX(-50%) translateY(-8px)}
     10%{opacity:1;transform:translateX(-50%) translateY(0)}
     80%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
   /* ---------- mode / cosmetics / stats inside panels ---------- */
-  .modes{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:6px 0 2px}
+  .modes{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin:0}
+  .modes .mode-btn{margin:0;font-family:'Bungee',cursive;font-size:11px;padding:10px 13px;
+    border:1.5px solid var(--line);border-radius:11px;background:var(--card);color:var(--muted);
+    cursor:pointer;box-shadow:none;transition:.16s}
+  .modes .mode-btn.sel{background:var(--ink);color:#fff;border-color:var(--ink);box-shadow:var(--sh-sm)}
+  .modes .mode-btn:active{transform:translateY(1px)}
   #g2gBar{position:fixed;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);
-    display:flex;flex-direction:column;align-items:center;gap:2px;z-index:5;pointer-events:none;
-    background:var(--card);border:3px solid var(--ink);border-radius:16px;padding:8px 20px;box-shadow:0 4px 0 var(--ink)}
-  #g2gBar .g2gscore{font-family:'Bungee',cursive;font-size:22px;color:var(--ink);line-height:1}
+    display:flex;flex-direction:column;align-items:center;gap:1px;z-index:5;pointer-events:none;
+    background:rgba(255,255,255,.95);border-radius:16px;padding:8px 22px;box-shadow:var(--sh-card)}
+  #g2gBar .g2gscore{font-family:'Bungee',cursive;font-size:20px;color:var(--ink);line-height:1}
   #g2gBar .g2gscore b{color:var(--toy-blue)}
-  #g2gBar .g2gturn{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--toy-orange)}
+  #g2gBar .g2gturn{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--toy-orange)}
   /* ---------- Goal-to-Goal power meter ---------- */
   #powerMeter{position:fixed;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 84px);left:50%;
     transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
-  .pm-track{position:relative;width:min(280px,72vw);height:22px;border:3px solid var(--ink);border-radius:12px;
-    background:linear-gradient(90deg,#ffd23f,#ff7a1f,#e23b2e);box-shadow:0 4px 0 var(--ink);overflow:hidden}
-  .pm-sweet{position:absolute;top:0;bottom:0;left:65%;width:27%;background:rgba(255,255,255,.5);
+  .pm-track{position:relative;width:min(280px,72vw);height:20px;border-radius:11px;
+    background:linear-gradient(90deg,#ffd23f,#ff7a1f,#e23b2e);box-shadow:var(--sh-sm),inset 0 0 0 1.5px rgba(0,0,0,.12);overflow:hidden}
+  .pm-sweet{position:absolute;top:0;bottom:0;left:65%;width:27%;background:rgba(255,255,255,.45);
     border-left:2px solid #fff;border-right:2px solid #fff}
-  #pmMarker{position:absolute;top:-3px;bottom:-3px;left:0;width:5px;background:var(--ink);border-radius:3px;transform:translateX(-50%)}
-  .pm-label{font-family:'Bungee',cursive;font-size:13px;color:var(--card);-webkit-text-stroke:1.5px var(--ink);text-shadow:0 2px 0 var(--ink)}
-  .modes .mode-btn{margin:0;font-family:'Bungee',cursive;font-size:13px;padding:8px 14px;
-    border:3px solid var(--ink);border-radius:13px;background:#fff;color:var(--ink);
-    cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .06s}
-  .modes .mode-btn.sel{background:var(--toy-orange);color:#fff}
-  .modes .mode-btn:active{transform:translateY(4px);box-shadow:0 0 0 var(--ink)}
-  details.sect{margin:12px 0 0;text-align:left;border:3px solid var(--ink);border-radius:14px;background:#fff;overflow:hidden}
-  details.sect>summary{list-style:none;cursor:pointer;font-family:'Bungee',cursive;font-size:13px;
-    padding:10px 14px;background:var(--toy-yellow);color:var(--ink)}
+  #pmMarker{position:absolute;top:-2px;bottom:-2px;left:0;width:4px;background:var(--ink);border-radius:3px;
+    transform:translateX(-50%);box-shadow:0 0 0 2px rgba(255,255,255,.75)}
+  .pm-label{font-family:'Bungee',cursive;font-size:12px;color:#fff;text-shadow:0 1px 5px rgba(0,0,0,.55)}
+  details.sect{margin:11px 0 0;text-align:left;border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}
+  details.sect[open]{box-shadow:var(--sh-sm)}
+  details.sect>summary{list-style:none;cursor:pointer;font-family:'Bungee',cursive;font-size:12.5px;
+    padding:12px 14px;background:var(--card-2);color:var(--ink);display:flex;align-items:center;justify-content:space-between}
   details.sect>summary::-webkit-details-marker{display:none}
-  .sectbody{padding:12px 14px}
-  #kitPreview,#strPreview{display:block;width:100%;height:170px;border:3px solid var(--ink);border-radius:14px;
-    background:linear-gradient(#bfe3ff,#dff3c8);box-shadow:0 3px 0 var(--ink);margin-bottom:12px;touch-action:none}
-  .cosrow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:2px dashed rgba(27,27,31,.16)}
+  details.sect>summary::after{content:"▾";color:var(--muted);font-size:11px;transition:transform .2s}
+  details.sect[open]>summary::after{transform:rotate(180deg)}
+  .sectbody{padding:14px}
+  #kitPreview,#strPreview{display:block;width:100%;height:170px;border:1px solid var(--line);border-radius:14px;
+    background:linear-gradient(#cdeaff,#e7f6d8);box-shadow:inset 0 2px 10px rgba(0,0,0,.07);margin-bottom:14px;touch-action:none}
+  .cosrow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
   .cosrow:first-child{padding-top:2px}
   .cosrow:last-child{border-bottom:none;padding-bottom:2px}
-  .cosrow .cl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#888;width:62px}
+  .cosrow .cl{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);width:58px}
   .swatches{display:grid;grid-template-columns:repeat(5,32px);gap:8px;justify-content:start;align-items:center}
   /* scoped to beat the generic `.panel button` rule (else swatches become big pills) */
   .swatches .swatch{width:32px;height:32px;min-width:32px;border-radius:50%;border:3px solid var(--ink);
@@ -218,6 +232,7 @@
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="vignette"></div>
 
 <div id="hud">
   <div class="badge" id="saves"><div class="lbl">Saves</div><div class="val">0</div></div>
@@ -352,7 +367,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.6.0';
+const VERSION = '1.7.0';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -363,8 +378,8 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x8fd0ea);
-scene.fog = new THREE.Fog(0xb4dcf0, 55, 170);
+scene.background = new THREE.Color(0x7cc1ec);
+scene.fog = new THREE.Fog(0xdcecef, 46, 150);   // warm horizon haze pulls the scenery into the sky
 
 const camera = new THREE.PerspectiveCamera(50, 1, .1, 200);
 camera.position.set(0, 2.6, -5.2);
@@ -432,26 +447,64 @@ canvas.addEventListener('dblclick', ()=>{
   orbitGoal.theta = camHome.theta + Math.round((orbit.theta - camHome.theta)/(Math.PI*2))*Math.PI*2;
 });
 
-/* ---------- lights ---------- */
-scene.add(new THREE.HemisphereLight(0xcfeaff, 0x3f7a1f, .85));
-const sun = new THREE.DirectionalLight(0xfff3d6, 1.15);
-sun.position.set(8, 14, -6);
+/* ---------- lights — warm low-afternoon key, cool sky fill, soft shadows ---------- */
+scene.add(new THREE.HemisphereLight(0xbfe3ff, 0x4c7e2c, .58));        // sky ↔ grass bounce
+const sun = new THREE.DirectionalLight(0xffe9c2, 1.45);              // warm key, raked low
+sun.position.set(10, 15, -7);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left=-15; sun.shadow.camera.right=15;
-sun.shadow.camera.top=20;  sun.shadow.camera.bottom=-10;
+sun.shadow.camera.left=-16; sun.shadow.camera.right=16;
+sun.shadow.camera.top=20;  sun.shadow.camera.bottom=-12;
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02; sun.shadow.radius = 4.5;
 scene.add(sun);
+const skyFill = new THREE.DirectionalLight(0xd2e4ff, .42);          // cool counter-fill from the sky
+skyFill.position.set(-9, 8, 7); scene.add(skyFill);
+scene.add(new THREE.AmbientLight(0xffffff, .1));                     // tiny floor so nothing crushes black
 
-/* ---------- pitch (striped toy turf) ---------- */
+/* ---------- gradient sky dome + soft sun glow ---------- */
+{
+  const sc = document.createElement('canvas'); sc.width=16; sc.height=256;
+  const sg = sc.getContext('2d');
+  const grad = sg.createLinearGradient(0,0,0,256);
+  grad.addColorStop(0,   '#2f7fd4');   // zenith
+  grad.addColorStop(.45, '#7cc1ec');
+  grad.addColorStop(.80, '#bfe4f5');
+  grad.addColorStop(1,   '#e8f6ef');   // horizon haze (matches fog)
+  sg.fillStyle = grad; sg.fillRect(0,0,16,256);
+  const skyTex = new THREE.CanvasTexture(sc);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(160,32,16),
+    new THREE.MeshBasicMaterial({map:skyTex, side:THREE.BackSide, fog:false, depthWrite:false}));
+  scene.add(sky);
+  // soft sun-disc glow high in the sky (purely cosmetic sprite)
+  const glowC = document.createElement('canvas'); glowC.width=glowC.height=128;
+  const gg = glowC.getContext('2d');
+  const rg = gg.createRadialGradient(64,64,3,64,64,64);
+  rg.addColorStop(0,'rgba(255,251,228,.95)'); rg.addColorStop(.32,'rgba(255,244,205,.45)'); rg.addColorStop(1,'rgba(255,244,205,0)');
+  gg.fillStyle = rg; gg.fillRect(0,0,128,128);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(glowC), transparent:true, depthWrite:false, fog:false}));
+  glow.scale.set(40,40,1); glow.position.set(44,40,-62); scene.add(glow);
+}
+
+/* ---------- pitch (mown turf with grassy speckle) ---------- */
 const turfCanvas = document.createElement('canvas');
 turfCanvas.width = turfCanvas.height = 512;
 const tc = turfCanvas.getContext('2d');
-for(let i=0;i<8;i++){ tc.fillStyle = i%2?'#5cae2f':'#4d9a26'; tc.fillRect(0,i*64,512,64); }
+tc.fillStyle = '#57a82b'; tc.fillRect(0,0,512,512);              // base green
+for(let i=0;i<8;i++){                                            // mowing stripes (alternating sheen)
+  tc.fillStyle = i%2 ? '#62b233' : '#4d9a25';
+  tc.fillRect(0, i*64, 512, 64);
+}
+for(let i=0;i<2800;i++){                                         // fine speckle so it reads as grass, not plastic
+  const x=Math.random()*512, y=Math.random()*512;
+  tc.fillStyle = Math.random()<.5 ? 'rgba(225,255,205,.06)' : 'rgba(10,45,0,.07)';
+  tc.fillRect(x, y, 2, 2);
+}
 const turfTex = new THREE.CanvasTexture(turfCanvas);
-turfTex.wrapS = turfTex.wrapT = THREE.RepeatWrapping; turfTex.repeat.set(4,4);
+turfTex.wrapS = turfTex.wrapT = THREE.RepeatWrapping; turfTex.repeat.set(3,3);
+try{ turfTex.anisotropy = renderer.capabilities.getMaxAnisotropy(); }catch(_){}
 const pitch = new THREE.Mesh(
   new THREE.PlaneGeometry(80,80),
-  new THREE.MeshStandardMaterial({map:turfTex, roughness:.9}));
+  new THREE.MeshStandardMaterial({map:turfTex, roughness:.92}));
 pitch.rotation.x = -Math.PI/2; pitch.receiveShadow = true;
 scene.add(pitch);
 
@@ -591,84 +644,89 @@ chc.font = 'italic 700 22px Fredoka, sans-serif'; chc.fillText('uhlsport', 6, 56
 chc.font = '700 30px Fredoka, sans-serif';        chc.fillText('COLLIN', 6, 86);
 const chestMat = new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(chestCanvas), transparent:true});
 
-/* ---------- Playmobil-style figure builder ---------- */
+/* ---------- articulated figure builder (human-ish proportions) ----------
+   Roughly athletic-youth proportions: legs ~45% of height, leaner limbs, a
+   smaller head and a subtle shoulder yoke. The joint hierarchy & userData are
+   unchanged, so every pose/dive keeps working; figures are auto-scaled to a
+   target height (see FIG_BUILD_H) so the exact build size doesn't matter. */
 function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, skin=M.skin, hair=M.hair, eyeMat=M.eye}){
   const g = new THREE.Group();
 
-  // legs — hip pivot → thigh → knee pivot → shin + boot (so knees bend)
+  // legs — hip → thigh → knee → shin + boot (long & lean)
   const legsP = {};
   for(const side of [-1,1]){
     const hip = new THREE.Group();
-    hip.position.set(side*.16, .78, 0);
-    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(.145,.125,.40,12), legs);
-    thigh.position.y = -.20; hip.add(thigh);
-    const kneeCap = new THREE.Mesh(new THREE.SphereGeometry(.125,10,8), legs);
-    kneeCap.position.y = -.40; hip.add(kneeCap);
+    hip.position.set(side*.13, 1.0, 0);
+    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(.115,.09,.50,14), legs);
+    thigh.position.y = -.25; hip.add(thigh);
+    const kneeCap = new THREE.Mesh(new THREE.SphereGeometry(.092,10,8), legs);
+    kneeCap.position.y = -.50; hip.add(kneeCap);
     const knee = new THREE.Group();
-    knee.position.y = -.40; hip.add(knee);
-    const shin = new THREE.Mesh(new THREE.CylinderGeometry(.12,.105,.34,12), legs);
-    shin.position.y = -.17; knee.add(shin);
+    knee.position.y = -.50; hip.add(knee);
+    const shin = new THREE.Mesh(new THREE.CylinderGeometry(.088,.066,.44,14), legs);
+    shin.position.y = -.22; knee.add(shin);
     const ankle = new THREE.Group();                 // ankle pivot — the foot flexes & points
-    ankle.position.y = -.30; knee.add(ankle);
-    const boot = new THREE.Mesh(new THREE.BoxGeometry(.26,.16,.44), boots);
-    boot.position.set(0,0,.07); ankle.add(boot);
+    ankle.position.y = -.42; knee.add(ankle);
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(.185,.11,.40), boots);
+    boot.position.set(0,-.04,.09); ankle.add(boot);
     hip.userData.knee = knee; hip.userData.ankle = ankle; hip.userData.boot = boot;
     g.add(hip);
     legsP[side<0?'L':'R'] = hip;
   }
 
-  // shorts (stay on the body root, with the legs)
-  const hipsM = new THREE.Mesh(new THREE.CylinderGeometry(.34,.3,.34,14), shorts);
-  hipsM.position.y = .82; g.add(hipsM);
+  // pelvis / shorts
+  const hipsM = new THREE.Mesh(new THREE.CylinderGeometry(.25,.21,.30,16), shorts);
+  hipsM.position.y = 1.02; g.add(hipsM);
 
   // waist/spine pivot — the whole upper body (torso, arms, head) bends here
-  const waist = new THREE.Group(); waist.position.y = .82; g.add(waist);
+  const waist = new THREE.Group(); waist.position.y = 1.0; g.add(waist);
 
-  // torso (trapezoid — wide shoulders, Playmobil silhouette)
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(.42,.32,.78,14), shirt);
-  torso.position.y = .54; waist.add(torso);
+  // torso — leaner & tapered, with a rounded shoulder yoke for a fuller chest
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(.285,.225,.60,18), shirt);
+  torso.position.y = .40; waist.add(torso);
+  const yoke = new THREE.Mesh(new THREE.SphereGeometry(.30,18,12), shirt);
+  yoke.position.y = .60; yoke.scale.set(1.12,.6,.82); waist.add(yoke);
 
-  // arms — shoulder pivot → upper arm → elbow pivot → forearm + glove (so elbows bend)
+  // arms — shoulder → upper arm → elbow → forearm + glove (slimmer, a touch longer)
   const arms = {};
   for(const side of [-1,1]){
     const sh = new THREE.Group();
-    sh.position.set(side*.46, .84, 0);
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(.1,.092,.34,10), shirt);
-    upper.position.y = -.17; sh.add(upper);
-    const elbowCap = new THREE.Mesh(new THREE.SphereGeometry(.092,8,8), shirt);
-    elbowCap.position.y = -.34; sh.add(elbowCap);
+    sh.position.set(side*.33, .66, 0);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(.077,.064,.38,12), shirt);
+    upper.position.y = -.19; sh.add(upper);
+    const elbowCap = new THREE.Mesh(new THREE.SphereGeometry(.066,8,8), shirt);
+    elbowCap.position.y = -.38; sh.add(elbowCap);
     const elbow = new THREE.Group();
-    elbow.position.y = -.34; sh.add(elbow);
-    const fore = new THREE.Mesh(new THREE.CylinderGeometry(.09,.082,.30,10), shirt);
-    fore.position.y = -.15; elbow.add(fore);
-    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.105,.035,8,14), cuffs);
-    cuff.position.y = -.20; cuff.rotation.x = Math.PI/2; elbow.add(cuff);
+    elbow.position.y = -.38; sh.add(elbow);
+    const fore = new THREE.Mesh(new THREE.CylinderGeometry(.063,.052,.34,12), shirt);
+    fore.position.y = -.17; elbow.add(fore);
+    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.076,.027,8,14), cuffs);
+    cuff.position.y = -.34; cuff.rotation.x = Math.PI/2; elbow.add(cuff);
     const wrist = new THREE.Group();                 // wrist pivot — the hand articulates
-    wrist.position.y = -.30; elbow.add(wrist);
-    const glove = new THREE.Mesh(new THREE.SphereGeometry(.15,12,10), gloves);
-    glove.position.y = -.04; glove.scale.set(1,1.1,.8); wrist.add(glove);
-    sh.rotation.z = side * .25;
+    wrist.position.y = -.36; elbow.add(wrist);
+    const glove = new THREE.Mesh(new THREE.SphereGeometry(.112,12,10), gloves);
+    glove.position.y = -.045; glove.scale.set(1,1.12,.82); wrist.add(glove);
+    sh.rotation.z = side * .16;
     sh.userData.elbow = elbow; sh.userData.wrist = wrist; sh.userData.glove = glove;
     waist.add(sh);
     arms[side<0?'L':'R'] = sh;
   }
 
-  // head + face + bowl haircut (skin / hair / eyes are recolourable materials)
-  const head = new THREE.Group(); head.position.y = 1.22;
-  const skull = new THREE.Mesh(new THREE.CylinderGeometry(.27,.25,.42,16), skin);
+  // neck + head + face (smaller head for human-ish proportions)
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.13,12), skin);
+  neck.position.y = .79; waist.add(neck);
+  const head = new THREE.Group(); head.position.y = .95; waist.add(head);
+  const skull = new THREE.Mesh(new THREE.CylinderGeometry(.185,.16,.34,20), skin);
   head.add(skull);
-  const hairMesh = new THREE.Mesh(new THREE.SphereGeometry(.31,16,12,0,Math.PI*2,0,Math.PI*.55), hair);
-  hairMesh.position.y = .1; hairMesh.scale.set(1,.95,1.05); head.add(hairMesh);
-  const fringe = new THREE.Mesh(new THREE.BoxGeometry(.46,.12,.1), hair);
-  fringe.position.set(0,.1,.24); head.add(fringe);
-  const eyeGeo = new THREE.SphereGeometry(.035,8,8);
-  const eL = new THREE.Mesh(eyeGeo,eyeMat); eL.position.set(-.1,.02,.25);
-  const eR = eL.clone(); eR.position.x = .1; head.add(eL,eR);
-  const smile = new THREE.Mesh(new THREE.TorusGeometry(.07,.014,6,12,Math.PI), M.mouth);
-  smile.position.set(0,-.08,.25); smile.rotation.set(0,0,Math.PI); head.add(smile);
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.14,10), skin);
-  neck.position.y = .98; waist.add(neck);
-  waist.add(head);
+  const hairMesh = new THREE.Mesh(new THREE.SphereGeometry(.21,18,12,0,Math.PI*2,0,Math.PI*.56), hair);
+  hairMesh.position.y = .055; hairMesh.scale.set(1,.96,1.06); head.add(hairMesh);
+  const fringe = new THREE.Mesh(new THREE.BoxGeometry(.33,.08,.08), hair);
+  fringe.position.set(0,.055,.16); head.add(fringe);
+  const eyeGeo = new THREE.SphereGeometry(.026,8,8);
+  const eL = new THREE.Mesh(eyeGeo,eyeMat); eL.position.set(-.072,.02,.17);
+  const eR = eL.clone(); eR.position.x = .072; head.add(eL,eR);
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(.05,.011,6,12,Math.PI), M.mouth);
+  smile.position.set(0,-.065,.17); smile.rotation.set(0,0,Math.PI); head.add(smile);
 
   shadowed(g);
   return {group:g, arms, head, legs:legsP, waist};
@@ -685,8 +743,10 @@ const keeperHairMat = new THREE.MeshStandardMaterial({color:0x6b4423, roughness:
 const keeperEyeMat  = new THREE.MeshBasicMaterial({color:0x3a2415});
 const keeper = buildFigure({shirt:M.camo, shorts:kitBottomsMat, boots:M.pink, gloves:M.volt, legs:kitBottomsMat, cuffs:M.blue,
                             skin:keeperSkinMat, hair:keeperHairMat, eyeMat:keeperEyeMat});
-/* figure is ~2.35 units tall as built → scale to 1.60 m */
-const KSCALE = 1.6/2.35;
+/* measure the un-decorated build height once; every figure scales proportionally
+   off it, so changing the model's proportions never breaks the world sizing */
+const FIG_BUILD_H = (()=>{ const b=new THREE.Box3().setFromObject(keeper.group); return b.max.y - b.min.y; })();
+const KSCALE = 1.6/FIG_BUILD_H;          // Collin → 1.60 m
 keeper.group.scale.setScalar(KSCALE);
 keeper.group.position.set(0,0,.6);
 keeper.group.rotation.y = 0; // face is modelled on local +z → faces the striker
@@ -696,26 +756,26 @@ const keeperHome = new THREE.Vector3(0,0,.6);
 /* --- photo details (added in pre-scale local units) --- */
 {
   // name + number + uhlsport on the back of the shirt (on the waist so it follows the torso)
-  const decal = new THREE.Mesh(new THREE.PlaneGeometry(.62,.62), nameMat);
-  decal.position.set(0, .60, -.42); decal.rotation.y = Math.PI;
+  const decal = new THREE.Mesh(new THREE.PlaneGeometry(.44,.44), nameMat);
+  decal.position.set(0, .44, -.30); decal.rotation.y = Math.PI;
   keeper.waist.add(decal);
 
   // "uhlsport / COLLIN" text on the left chest (his left = +x here)
-  const chestText = new THREE.Mesh(new THREE.PlaneGeometry(.34,.34), chestMat);
-  chestText.position.set(.16, .68, .405); keeper.waist.add(chestText);
+  const chestText = new THREE.Mesh(new THREE.PlaneGeometry(.24,.24), chestMat);
+  chestText.position.set(.12, .50, .30); keeper.waist.add(chestText);
 
   // small white club badge on the right chest (visible during dives)
-  const badge = new THREE.Mesh(new THREE.CircleGeometry(.07,16), M.white);
-  badge.position.set(-.2, .68, .405); keeper.waist.add(badge);
-  const badgeDot = new THREE.Mesh(new THREE.CircleGeometry(.035,12),
+  const badge = new THREE.Mesh(new THREE.CircleGeometry(.05,16), M.white);
+  badge.position.set(-.14, .50, .30); keeper.waist.add(badge);
+  const badgeDot = new THREE.Mesh(new THREE.CircleGeometry(.025,12),
     new THREE.MeshBasicMaterial({color:0x2e7d4f}));
-  badgeDot.position.set(-.2, .68, .408); keeper.waist.add(badgeDot);
+  badgeDot.position.set(-.14, .50, .303); keeper.waist.add(badgeDot);
 
-  // gloves: black tiger-stripe bars raked across the volt backhand (photo) — on the wrist so they follow the hand
+  // gloves: black tiger-stripe bars raked across the volt backhand — on the wrist so they follow the hand
   for(const k of ['L','R']){
     for(let s=-1;s<=1;s++){
-      const stripe = new THREE.Mesh(new THREE.BoxGeometry(.025,.085,.14), M.black);
-      stripe.position.set(s*.06, -.02, .10);
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(.018,.06,.10), M.black);
+      stripe.position.set(s*.045, -.05, .065);
       stripe.rotation.z = .45 + s*.18;
       keeper.arms[k].userData.wrist.add(stripe);
     }
@@ -725,18 +785,18 @@ const keeperHome = new THREE.Vector3(0,0,.6);
   for(const sx of [-1,1]){
     const knee = keeper.legs[sx<0?'L':'R'].userData.knee;
     const ankle = keeper.legs[sx<0?'L':'R'].userData.ankle;
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(.28,.05,.22), kitBootStripeMat);
-    stripe.position.set(0,.03,.11); ankle.add(stripe);
-    const sole = new THREE.Mesh(new THREE.BoxGeometry(.28,.045,.46), M.white);
-    sole.position.set(0,-.10,.07); ankle.add(sole);
-    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.125,.03,8,14), kitSockMat);
-    cuff.position.set(0,-.04,0); cuff.rotation.x = Math.PI/2; knee.add(cuff);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(.19,.04,.16), kitBootStripeMat);
+    stripe.position.set(0,-.01,.13); ankle.add(stripe);
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(.19,.04,.40), M.white);
+    sole.position.set(0,-.105,.09); ankle.add(sole);
+    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.095,.024,8,14), kitSockMat);
+    cuff.position.set(0,-.05,0); cuff.rotation.x = Math.PI/2; knee.add(cuff);
   }
 
-  // tousled hair tufts (photo: messy bowl cut)
-  const tuftGeo = new THREE.SphereGeometry(.09,8,6);
-  [[-.14,.3,.08],[.12,.32,-.06],[0,.34,.12],[.18,.26,.1],[-.18,.25,-.1]].forEach(p=>{
-    const tuft = new THREE.Mesh(tuftGeo, M.hair);
+  // tousled hair tufts (messy crop) — small, sitting on the crown of the smaller head
+  const tuftGeo = new THREE.SphereGeometry(.055,8,6);
+  [[-.10,.12,.05],[.09,.13,-.03],[0,.15,.07],[.12,.09,.06],[-.12,.09,-.05]].forEach(p=>{
+    const tuft = new THREE.Mesh(tuftGeo, keeperHairMat);
     tuft.position.set(...p); tuft.scale.set(1.2,.7,1.2);
     keeper.head.add(tuft);
   });
@@ -788,53 +848,53 @@ const strikerEyeMat  = new THREE.MeshBasicMaterial({color:0x3a2415});
 const striker = buildFigure({shirt:strShirtMat, shorts:strShortsMat, boots:M.redBoot,
                              gloves:M.black, legs:M.greyLeg, cuffs:M.black,
                              skin:strikerSkinMat, hair:strikerHairMat, eyeMat:strikerEyeMat});
-striker.group.scale.setScalar(1.72/2.35);
+striker.group.scale.setScalar(1.72/FIG_BUILD_H);
 striker.group.position.set(.7,0,12.4);
 
 /* --- photo details (pre-scale local units; striker faces the camera) --- */
 {
   // crest + club name on the chest (his front faces the keeper/camera) — on the waist
-  const chest = new THREE.Mesh(new THREE.PlaneGeometry(.6,.6), crestMat);
-  chest.position.set(0, .60, .42); striker.waist.add(chest);
+  const chest = new THREE.Mesh(new THREE.PlaneGeometry(.40,.40), crestMat);
+  chest.position.set(0, .46, .295); striker.waist.add(chest);
 
   // name + number on the back of the shirt
-  const back = new THREE.Mesh(new THREE.PlaneGeometry(.62,.62), tNameMat);
-  back.position.set(0, .60, -.42); back.rotation.y = Math.PI;
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(.44,.44), tNameMat);
+  back.position.set(0, .44, -.30); back.rotation.y = Math.PI;
   striker.waist.add(back);
 
   // white shoulder stripes (three per side, generic sport styling)
   for(const sx of [-1,1]) for(let i=0;i<3;i++){
-    const s = new THREE.Mesh(new THREE.BoxGeometry(.05,.025,.3), M.white);
-    s.position.set(sx*(.18+i*.09), .92-i*.02, 0);
-    s.rotation.z = sx*-.35;
+    const s = new THREE.Mesh(new THREE.BoxGeometry(.035,.02,.22), M.white);
+    s.position.set(sx*(.13+i*.066), .63-i*.013, .02);
+    s.rotation.z = sx*-.30;
     striker.waist.add(s);
   }
 
-  // white side stripe on the shorts
+  // white side stripe on the shorts / thigh
   for(const sx of [-1,1]){
-    const s = new THREE.Mesh(new THREE.BoxGeometry(.04,.32,.1), M.white);
-    s.position.set(sx*.32, .82, .12); striker.group.add(s);
+    const s = new THREE.Mesh(new THREE.BoxGeometry(.032,.30,.07), M.white);
+    s.position.set(sx*.21, .90, .07); striker.group.add(s);
   }
 
   // blue sock cuffs + white ankle socks + white boot stripes & soles —
   // parented to the shin so they follow the knee bend through the kick
   for(const sx of [-1,1]){
     const knee = striker.legs[sx<0?'L':'R'].userData.knee;
-    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(.135,.125,.18,12), strSockMat);
-    cuff.position.set(0, -.05, 0); knee.add(cuff);
-    const ankle = new THREE.Mesh(new THREE.CylinderGeometry(.12,.13,.10,12), M.white);
-    ankle.position.set(0, -.26, 0); knee.add(ankle);
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(.10,.09,.16,12), strSockMat);
+    cuff.position.set(0, -.07, 0); knee.add(cuff);
+    const ankle = new THREE.Mesh(new THREE.CylinderGeometry(.086,.094,.09,12), M.white);
+    ankle.position.set(0, -.36, 0); knee.add(ankle);
     const ankG = striker.legs[sx<0?'L':'R'].userData.ankle;
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(.28,.05,.18), M.white);
-    stripe.position.set(0, 0, .08); ankG.add(stripe);             // adidas white boot stripes (on the ankle)
-    const sole = new THREE.Mesh(new THREE.BoxGeometry(.28,.045,.46), M.white);
-    sole.position.set(0, -.10, .07); ankG.add(sole);              // white sole (on the ankle)
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(.19,.04,.15), M.white);
+    stripe.position.set(0, -.01, .11); ankG.add(stripe);          // white boot stripes (on the ankle)
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(.19,.04,.40), M.white);
+    sole.position.set(0, -.105, .09); ankG.add(sole);             // white sole (on the ankle)
   }
 
-  // tousled brown hair tufts (same hairstyle as the photo)
-  const tuftGeo = new THREE.SphereGeometry(.09,8,6);
-  [[-.15,.29,.06],[.13,.31,-.05],[0,.34,.1],[.17,.25,.08],[-.16,.26,-.09]].forEach(p=>{
-    const tuft = new THREE.Mesh(tuftGeo, M.hair);
+  // tousled brown hair tufts — small, sitting on the crown of the smaller head
+  const tuftGeo = new THREE.SphereGeometry(.055,8,6);
+  [[-.10,.12,.05],[.09,.13,-.03],[0,.15,.07],[.12,.09,.06],[-.12,.09,-.05]].forEach(p=>{
+    const tuft = new THREE.Mesh(tuftGeo, strikerHairMat);
     tuft.position.set(...p); tuft.scale.set(1.2,.7,1.2);
     striker.head.add(tuft);
   });
@@ -986,7 +1046,7 @@ scene.add(oppGroup);
 /* opponent keeper — wears the customised striker kit, faces the shooter */
 const oppKeeper = buildFigure({shirt:strShirtMat, shorts:strShortsMat, boots:M.redBoot, gloves:M.black, legs:M.greyLeg, cuffs:M.black,
                                skin:strikerSkinMat, hair:strikerHairMat, eyeMat:strikerEyeMat});
-oppKeeper.group.scale.setScalar(1.62/2.35);
+oppKeeper.group.scale.setScalar(1.62/FIG_BUILD_H);
 oppKeeper.group.position.set(0, 0, OPP_GZ-.55);
 oppKeeper.group.rotation.y = Math.PI;     // face the shooter
 oppKeeper.group.visible = false;
@@ -1010,7 +1070,7 @@ function bgPlayer(x,z,ry,shirtCol,shortCol,bootCol){
   const mat = c=>new THREE.MeshStandardMaterial({color:c, roughness:.4});
   const f = buildFigure({shirt:mat(shirtCol), shorts:mat(shortCol), boots:mat(bootCol),
                          gloves:M.skin, legs:M.greyLeg, cuffs:mat(shirtCol)});
-  f.group.scale.setScalar(1.6/2.35);
+  f.group.scale.setScalar(1.6/FIG_BUILD_H);
   f.group.position.set(x,0,z); f.group.rotation.y = ry;
   scene.add(f.group);
 }
