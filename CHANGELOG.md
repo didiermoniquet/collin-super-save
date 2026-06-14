@@ -7,6 +7,17 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.9.4] — 2026-06-14
+
+### Added
+- **Pick the players' heights.** The Keeper and Striker kit panels each get a **Height slider** (1.40–2.05 m; defaults Collin 1.60 m, striker 1.72 m). Because saves are physics-based, a taller keeper genuinely reaches more of the goal — the choice is persisted and applied live.
+- **Official goal sizes — choose 8v8 or 11v11.** A new **Format** selector in the menu sets the goal to its real dimensions and labels it: **8v8 = 5.00 × 2.00 m**, **11v11 = 7.32 × 2.44 m (FIFA full-size)**. The goal, net, shot zones **and the keeper's dive reach all scale together**, so the save difficulty stays balanced in either format (verified: the keeper reaches every zone in both). The far goal in Goal-to-Goal resizes too.
+
+## [1.9.3] — 2026-06-14
+
+### Added
+- **A two-camp crowd that lives and dies with the result.** The stands are now split into two sets of supporters — **Collin's camp** (steel-grey, his dark kit) on the stadium's left and the **striker's camp** (blue kit) on the right — across both the painted rows and the 3-D spectators. When a shot is settled the two camps react in opposite ways: a **save** sends Collin's camp leaping up with arms thrown overhead (and the striker's camp slumping with their **heads in their hands**), and a **goal** flips it — the striker's camp erupts while Collin's holds their heads. The reaction rolls in, holds, and eases back to the ambient wave, and is wired to every mode's shot outcome.
+
 ## [1.9.2] — 2026-06-14
 
 ### Changed

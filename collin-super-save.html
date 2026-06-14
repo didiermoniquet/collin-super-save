@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.9.2">
+<meta name="version" content="1.9.4">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -98,6 +98,15 @@
         cursor:pointer;box-shadow:none;transition:.16s}
   .diffs .diff-btn.sel{background:var(--toy-blue);color:#fff;box-shadow:var(--sh-sm)}
   .diffs .diff-btn:active{transform:translateY(1px)}
+  /* goal-format toggle reuses the segmented look */
+  .diffs .fmt-btn{flex:1;margin:0;font-family:'Bungee',cursive;font-size:13px;padding:11px 6px;
+        border:none;border-radius:10px;background:transparent;color:var(--muted);
+        cursor:pointer;box-shadow:none;transition:.16s}
+  .diffs .fmt-btn.sel{background:var(--toy-green);color:#fff;box-shadow:var(--sh-sm)}
+  .diffs .fmt-btn:active{transform:translateY(1px)}
+  /* height sliders in the kit panels */
+  .hslider{flex:1;accent-color:var(--toy-blue);height:22px;cursor:pointer}
+  .hval{font-family:'Bungee',cursive;font-size:12px;color:var(--ink);min-width:54px;text-align:right}
   .difflbl{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.14em;text-transform:uppercase;
         margin:18px 0 9px;display:flex;align-items:center;gap:10px}
   .difflbl::before,.difflbl::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -282,6 +291,12 @@
       <button class="diff-btn sel" data-diff="medium">MEDIUM</button>
       <button class="diff-btn" data-diff="hard">HARD</button>
     </div>
+    <p class="difflbl">Format — official goal size</p>
+    <div class="diffs">
+      <button class="fmt-btn sel" data-fmt="8v8">8 v 8</button>
+      <button class="fmt-btn" data-fmt="11v11">11 v 11</button>
+    </div>
+    <p class="fmt-dims fineprint" style="font-size:11px;color:#888;text-align:center;margin:3px 0 0"></p>
     <p id="bestHint" class="difflbl"></p>
     <details class="sect" id="kitSect">
       <summary>🎨 Keeper kit</summary>
@@ -297,6 +312,9 @@
         <div class="cosrow"><span class="cl">Skin</span><div class="swatches" id="skinSwatches"></div></div>
         <div class="cosrow"><span class="cl">Hair</span><div class="swatches" id="hairSwatches"></div></div>
         <div class="cosrow"><span class="cl">Eyes</span><div class="swatches" id="eyeSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Height</span>
+          <input type="range" id="keeperHeight" class="hslider" min="1.40" max="2.05" step="0.01">
+          <span class="hval" id="keeperHeightVal"></span></div>
       </div>
     </details>
     <details class="sect" id="strSect">
@@ -314,6 +332,9 @@
         <div class="cosrow"><span class="cl">Skin</span><div class="swatches" id="strSkinSwatches"></div></div>
         <div class="cosrow"><span class="cl">Hair</span><div class="swatches" id="strHairSwatches"></div></div>
         <div class="cosrow"><span class="cl">Eyes</span><div class="swatches" id="strEyeSwatches"></div></div>
+        <div class="cosrow"><span class="cl">Height</span>
+          <input type="range" id="strikerHeight" class="hslider" min="1.40" max="2.05" step="0.01">
+          <span class="hval" id="strikerHeightVal"></span></div>
       </div>
     </details>
     <details class="sect" id="statSect">
@@ -345,6 +366,12 @@
       <button class="diff-btn sel" data-diff="medium">MEDIUM</button>
       <button class="diff-btn" data-diff="hard">HARD</button>
     </div>
+    <p class="difflbl">Format — official goal size</p>
+    <div class="diffs">
+      <button class="fmt-btn sel" data-fmt="8v8">8 v 8</button>
+      <button class="fmt-btn" data-fmt="11v11">11 v 11</button>
+    </div>
+    <p class="fmt-dims fineprint" style="font-size:11px;color:#888;text-align:center;margin:3px 0 0"></p>
     <button id="replayBtn" class="hidden">▶ WATCH BEST SAVE</button>
     <button id="retryBtn">PLAY AGAIN</button>
     <button id="menuBtn">⌂ MENU</button>
@@ -367,7 +394,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.9.2';
+const VERSION = '1.9.4';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -508,27 +535,36 @@ const pitch = new THREE.Mesh(
 pitch.rotation.x = -Math.PI/2; pitch.receiveShadow = true;
 scene.add(pitch);
 
-/* ---------- stadium — stepped terraces, packed crowd, cantilever roofs & floodlights ---------- */
+/* The crowd is split into two camps — Collin's supporters (dark/charcoal kit) on the
+   stadium's left, the striker's (blue kit) on the right. resolveShot() calls crowdReact()
+   so the winning camp celebrates and the losing camp holds their heads in their hands. */
+let crowdReact = ()=>{};                                   // assigned by the stadium block below
+
+/* ---------- stadium — stepped terraces, two-camp crowd, cantilever roofs & floodlights ---------- */
 {
+  // team 0 = goalkeeper (Collin), team 1 = striker — shirt palettes for the painted rows…
+  const TEAM_SHIRTS = [
+    ['#6a7180','#565d6b','#7a818f','#4b515d','#838b99'],   // Collin's end — steel-grey (his dark kit, kept readable)
+    ['#1f6bff','#2f60c8','#1a3f8e','#4f86f0','#143a86'],    // striker's end — blue kit
+  ];
+  const TEAM_BODY = [0x6a7180, 0x1f6bff];                  // …and the 3-D spectators' shirts
   /* one densely-packed row of supporters, tiled along each terrace step.
      Natural-ish spread of clothing + skin tones, hair/caps, the odd empty seat. */
-  function crowdRowTexture(){
+  function crowdRowTexture(shirts){
     const W=512, H=110, c=document.createElement('canvas'); c.width=W; c.height=H;
     const x=c.getContext('2d');
     x.fillStyle='#15171e'; x.fillRect(0,0,W,H);                       // dark seat shadow behind people
-    const shirts=['#dadada','#b6bcc4','#9aa1ab','#727b87','#3e4654','#2a2f3a','#7a2630','#b23a32',
-                  '#274a8a','#33608f','#2f6b46','#caa23a','#54402f','#e8e2d4','#454b57','#5a3550','#1f3550','#8a8f98'];
     const skins=['#f3c6a0','#e7b48c','#d39b6e','#b67a4e','#8d5a36','#6b4326'];
     const N=18, step=W/N;
     for(let i=0;i<N;i++){
       if(Math.random()<0.08) continue;                               // empty seat
       const cx=i*step+step*0.5+(Math.random()-0.5)*step*0.25;
       const r=step*0.42*(0.85+Math.random()*0.3);
-      x.fillStyle=shirts[(Math.random()*shirts.length)|0];
+      x.fillStyle=shirts[(Math.random()*shirts.length)|0];           // team-coloured shirts
       x.beginPath(); x.ellipse(cx, H*0.74, r*1.15, r*1.28, 0, 0, Math.PI*2); x.fill();   // torso + shoulders
       x.fillStyle=skins[(Math.random()*skins.length)|0];
       x.beginPath(); x.arc(cx, H*0.42, r*0.68, 0, Math.PI*2); x.fill();                  // head
-      if(Math.random()<0.62){                                        // hair or cap
+      if(Math.random()<0.62){                                        // hair or cap (some in team colour)
         x.fillStyle = Math.random()<0.32 ? shirts[(Math.random()*shirts.length)|0] : '#2a2018';
         x.beginPath(); x.arc(cx, H*0.37, r*0.7, Math.PI*1.02, Math.PI*1.98); x.fill();
       }
@@ -538,7 +574,8 @@ scene.add(pitch);
     x.fillStyle=g; x.fillRect(0,0,W,H);
     const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
   }
-  const crowdTex = crowdRowTexture();
+  const crowdTexTeam = [crowdRowTexture(TEAM_SHIRTS[0]), crowdRowTexture(TEAM_SHIRTS[1])];
+  const teamAt = wx => (wx < 0 ? 0 : 1);   // left of centre = Collin's camp, right = striker's
 
   /* pitch-side sponsor / LED hoarding */
   function hoardingTexture(){
@@ -596,16 +633,21 @@ scene.add(pitch);
     ramp.rotation.x=slope-Math.PI/2;
     ramp.position.set(0,(FRONT+TOP)/2, -DEPTH/2 - 0.12);
     g.add(ramp);
-    // packed crowd + a dark step-lip per row (each higher row sits further back)
-    const ph=rise*1.55;
+    // packed crowd + a dark step-lip per row (each higher row sits further back).
+    // each row is two half-planes so the painted crowd is the right team colour on each side.
+    const ph=rise*1.55, hw=length/2;
     for(let r=0;r<ROWS;r++){
       const base=FRONT+r*rise, zf=-r*tread;
-      const row=new THREE.Mesh(new THREE.PlaneGeometry(length,ph),
-        new THREE.MeshLambertMaterial({map:crowdTex.clone()}));
-      row.material.map.repeat.set(Math.max(2,Math.round(length/2.2)),1);
-      row.material.map.needsUpdate=true;
-      row.position.set(0, base+ph/2-rise*0.2, zf+0.02);
-      g.add(row);
+      for(const sgn of [-1,1]){                                       // left & right halves
+        const hx=sgn*length/4;
+        const team=teamAt(cx + hx*Math.cos(rotY));                    // which camp sits here, in world space
+        const row=new THREE.Mesh(new THREE.PlaneGeometry(hw,ph),
+          new THREE.MeshLambertMaterial({map:crowdTexTeam[team].clone()}));
+        row.material.map.repeat.set(Math.max(2,Math.round(hw/2.2)),1);
+        row.material.map.needsUpdate=true;
+        row.position.set(hx, base+ph/2-rise*0.2, zf+0.02);
+        g.add(row);
+      }
       const lip=new THREE.Mesh(new THREE.BoxGeometry(length,0.12,0.12), concreteDark);
       lip.position.set(0, base-rise*0.16, zf+0.04); g.add(lip);
     }
@@ -627,8 +669,8 @@ scene.add(pitch);
   const SPACING=1.7;
   const bodyGeo=new THREE.CylinderGeometry(.13,.2,.5,6);
   const headGeo=new THREE.SphereGeometry(.135,8,6);
-  const armGeo =new THREE.BoxGeometry(.34,.08,.1);     // a skin-coloured bar = two arms (rests low, shoots up to cheer)
-  const SHIRT=[0xe2e2e2,0x39527d,0x9aa1ab,0xb23a32,0x2f6b46,0xcaa23a].map(c=>new THREE.MeshLambertMaterial({color:c}));
+  const armGeo =new THREE.BoxGeometry(.34,.08,.1);     // a skin-coloured bar = two arms (rests low, shoots up / onto the head)
+  const TEAMMAT=TEAM_BODY.map(c=>new THREE.MeshLambertMaterial({color:c}));   // body shirt per camp
   const SKIN =[0xf3c6a0,0xd39b6e,0x8d5a36].map(c=>new THREE.MeshLambertMaterial({color:c}));
   const crowdParts=[];    // instanced meshes whose matrices update each frame
   const crowdPeople=[];   // per-spectator animation records
@@ -641,41 +683,71 @@ scene.add(pitch);
       const lx=-length/2 + (col+0.5)*colW + (Math.random()-.5)*colW*0.3;
       const y =FRONT + r*rise + 0.27;                               // seated height on this step
       const z =-r*tread + 0.16;                                     // sit just in front of the row line
-      const sb=(Math.random()*SHIRT.length)|0, kb=(Math.random()*SKIN.length)|0;
-      const wx=cx + lx*Math.cos(rotY) + z*Math.sin(rotY);           // world position → wave phase
+      const kb=(Math.random()*SKIN.length)|0;
+      const wx=cx + lx*Math.cos(rotY) + z*Math.sin(rotY);           // world position → camp + wave phase
       const wz=cz - lx*Math.sin(rotY) + z*Math.cos(rotY);
-      specs.push({lx,y,z,sb,kb, phase:Math.random()*6.283, ang:Math.atan2(wz,wx)});
+      specs.push({lx,y,z,team:teamAt(wx),kb, phase:Math.random()*6.283, ang:Math.atan2(wz,wx)});
     }
-    const sCount=Array(SHIRT.length).fill(0), kCount=Array(SKIN.length).fill(0);
-    specs.forEach(s=>{ sCount[s.sb]++; kCount[s.kb]++; });
-    const bodyIM=SHIRT.map((m,i)=>new THREE.InstancedMesh(bodyGeo,m,Math.max(1,sCount[i])));
+    const tCount=[0,0], kCount=Array(SKIN.length).fill(0);
+    specs.forEach(s=>{ tCount[s.team]++; kCount[s.kb]++; });
+    const bodyIM=TEAMMAT.map((m,i)=>new THREE.InstancedMesh(bodyGeo,m,Math.max(1,tCount[i])));
     const headIM=SKIN .map((m,i)=>new THREE.InstancedMesh(headGeo,m,Math.max(1,kCount[i])));
     const armIM =SKIN .map((m,i)=>new THREE.InstancedMesh(armGeo, m,Math.max(1,kCount[i])));
     [...bodyIM,...headIM,...armIM].forEach(im=>{ im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled=false; g.add(im); crowdParts.push(im); });
-    const sIdx=Array(SHIRT.length).fill(0), kIdx=Array(SKIN.length).fill(0);
+    const tIdx=[0,0], kIdx=Array(SKIN.length).fill(0);
     specs.forEach(s=>{
-      const bi=sIdx[s.sb]++, hi=kIdx[s.kb]++;
-      crowdPeople.push({bodyMesh:bodyIM[s.sb], bi, headMesh:headIM[s.kb], armMesh:armIM[s.kb], hi,
-                        lx:s.lx, y:s.y, z:s.z, phase:s.phase, ang:s.ang});
+      const bi=tIdx[s.team]++, hi=kIdx[s.kb]++;
+      crowdPeople.push({bodyMesh:bodyIM[s.team], bi, headMesh:headIM[s.kb], armMesh:armIM[s.kb], hi,
+                        lx:s.lx, y:s.y, z:s.z, phase:s.phase, ang:s.ang, team:s.team});
     });
   }
+  /* result reaction: the winning camp goes wild, the losing camp slumps with their
+     heads in their hands. crowdReact(team) is called from resolveShot(). */
+  let reactTeam=-1, reactT0=-1; const REACT_DUR=3.4;
+  crowdReact = team => { reactTeam=team; reactT0=performance.now()*0.001; };
+
   function animateCrowd(){
     requestAnimationFrame(animateCrowd);
     const t=performance.now()*0.001, wave=t*1.1;
+    const since=t-reactT0;
+    const env = (reactTeam>=0 && since<REACT_DUR)
+      ? Math.min(1, since*3) * Math.min(1, (REACT_DUR-since)*1.4) : 0;   // ease in / hold / ease out
     for(const p of crowdPeople){
-      const c=Math.max(0, Math.cos(p.ang - wave)); const cheer=c*c;   // sharp travelling band
       const bob=Math.sin(t*2.2 + p.phase)*0.025;
-      const lift=cheer*0.33, sy=1 + cheer*0.55;                        // rise out of the seat + stretch up
-      _d.scale.set(1,sy,1); _d.rotation.set(0,0,0);
+      let lift, sy, headY, armY, armSX, armRot, hx=0;
+      if(env>0 && p.team===reactTeam){
+        // CELEBRATE — leap up out of the seat, arms thrown high overhead, waving hard
+        const jump=Math.abs(Math.sin(t*6.5 + p.phase));
+        lift = env*(0.42 + jump*0.5); sy = 1 + env*0.55;
+        headY = lift + 0.28*sy;
+        armY = headY + env*(0.22 + jump*0.34); armSX = 1 + env*0.8;       // arms high & wide
+        armRot = Math.sin(t*13 + p.phase)*0.9*env;                        // frantic waving
+      } else if(env>0){
+        // SHOCKED — sink into the seat, head bowed, both hands clutched onto the head
+        hx = env*0.03*Math.sin(t*2.4 + p.phase);                          // slow disbelieving shake
+        lift = -env*0.16; sy = 1 - env*0.12;
+        headY = lift + 0.28*sy - env*0.08;                               // head drops
+        armY = headY + 0.03; armSX = 1 - env*0.5;                         // hands drawn together onto the head
+        armRot = 0;
+      } else {
+        // IDLE — gentle travelling "Mexican wave"
+        const c=Math.max(0, Math.cos(p.ang - wave)); const cheer=c*c;
+        lift = cheer*0.33; sy = 1 + cheer*0.55;
+        headY = lift + 0.28*sy;
+        armY = 0.14 + cheer*0.42; armSX = 1 + cheer*0.3;
+        armRot = Math.sin(t*7 + p.phase)*0.45*cheer;
+      }
+      _d.rotation.set(0,0,0);
+      _d.scale.set(1,sy,1);
       _d.position.set(p.lx, p.y + bob + lift, p.z); _d.updateMatrix();
       p.bodyMesh.setMatrixAt(p.bi, _d.matrix);
       _d.scale.set(1,1,1);
-      _d.position.set(p.lx, p.y + bob + lift + 0.28*sy, p.z); _d.updateMatrix();
+      _d.position.set(p.lx + hx, p.y + bob + headY, p.z); _d.updateMatrix();
       p.headMesh.setMatrixAt(p.hi, _d.matrix);
-      // arms — folded low when seated, thrown up and waving when the cheer hits
-      _d.position.set(p.lx, p.y + 0.14 + bob + lift + cheer*0.42, p.z + 0.05);
-      _d.scale.set(1 + cheer*0.3, 1, 1);
-      _d.rotation.set(0, 0, Math.sin(t*7 + p.phase)*0.45*cheer);
+      // arms — low when seated, up & waving to celebrate, or clutched to the head in shock
+      _d.position.set(p.lx + hx, p.y + bob + armY, p.z + 0.05);
+      _d.scale.set(armSX, 1, 1);
+      _d.rotation.set(0, 0, armRot);
       _d.updateMatrix(); p.armMesh.setMatrixAt(p.hi, _d.matrix);
       _d.rotation.set(0,0,0);
     }
@@ -724,24 +796,43 @@ function lineSeg(w,d,x,z){
 }
 lineSeg(16,.1,0,16.5); lineSeg(.1,16.5,-8,8.25); lineSeg(.1,16.5,8,8.25); lineSeg(16,.1,0,0.02);
 
-/* ---------- goal — youth size: 5 m wide × 2 m high ---------- */
-const GOAL_W = 5, GOAL_H = 2, POST_R = .07;
+/* ---------- goal — official sizes, selectable in the menu ----------
+   8v8  = 5.00 m × 2.00 m  (small-sided youth standard — what the dives were authored against)
+   11v11 = 7.32 m × 2.44 m (full-size FIFA goal: 8 yd × 8 ft)
+   The goal, net, shot zones and the keeper's dive reach all scale off GOAL_BASE so the
+   save difficulty stays balanced when the format changes (see applyFormat). */
+const GOAL_FORMATS = { '8v8': {w:5.00, h:2.00}, '11v11': {w:7.32, h:2.44} };
+const GOAL_BASE = GOAL_FORMATS['8v8'];
+const POST_R = .07;
+let GOAL_W = GOAL_BASE.w, GOAL_H = GOAL_BASE.h;
 const postMat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:.3, metalness:.1});
-function post(x){ const p = new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_H,16), postMat);
-  p.position.set(x,GOAL_H/2,0); p.castShadow=true; scene.add(p); }
-post(-GOAL_W/2); post(GOAL_W/2);
-const bar = new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_W+POST_R*2,16), postMat);
-bar.rotation.z = Math.PI/2; bar.position.set(0,GOAL_H,0); bar.castShadow=true; scene.add(bar);
+const goalFrame = new THREE.Group(); scene.add(goalFrame);
+function buildGoalFrame(){
+  while(goalFrame.children.length) goalFrame.remove(goalFrame.children[0]);
+  for(const sx of [-1,1]){
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_H,16), postMat);
+    p.position.set(sx*GOAL_W/2, GOAL_H/2, 0); p.castShadow=true; goalFrame.add(p);
+  }
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_W+POST_R*2,16), postMat);
+  bar.rotation.z = Math.PI/2; bar.position.set(0,GOAL_H,0); bar.castShadow=true; goalFrame.add(bar);
+}
+buildGoalFrame();
 
 /* ---------- deformable net — bulges & ripples when the ball hits it ---------- */
 const NET_COLS = 25, NET_ROWS = 13;
 const netNodes = [];                                   // grid of {x,y,rz, z,vz}
-for(let r=0;r<NET_ROWS;r++) for(let c=0;c<NET_COLS;c++){
-  const x = -GOAL_W/2 + (c/(NET_COLS-1))*GOAL_W;
-  const y = (r/(NET_ROWS-1))*GOAL_H;
-  const rz = -1.4 + (y/GOAL_H)*1.2;                    // net surface slopes back & down
-  netNodes.push({x, y, rz, z:rz, vz:0});
+for(let r=0;r<NET_ROWS;r++) for(let c=0;c<NET_COLS;c++) netNodes.push({x:0,y:0,rz:0,z:0,vz:0});
+function layoutNet(){                                   // (re)place the grid for the current goal size
+  let i=0;
+  for(let r=0;r<NET_ROWS;r++) for(let c=0;c<NET_COLS;c++){
+    const n=netNodes[i++];
+    n.x = -GOAL_W/2 + (c/(NET_COLS-1))*GOAL_W;
+    n.y = (r/(NET_ROWS-1))*GOAL_H;
+    n.rz = -1.4 + (n.y/GOAL_H)*1.2;                     // net surface slopes back & down
+    n.z = n.rz; n.vz = 0;
+  }
 }
+layoutNet();
 const netIdx = (r,c)=> r*NET_COLS + c;
 // one position per node, shared by the grid lines and a translucent surface so the
 // bulge reads as a 3-D pocket (shading) even when viewed head-on
@@ -972,7 +1063,7 @@ const keeper = buildFigure({shirt:M.camo, shorts:kitBottomsMat, boots:M.pink, gl
 /* measure the un-decorated build height once; every figure scales proportionally
    off it, so changing the model's proportions never breaks the world sizing */
 const FIG_BUILD_H = (()=>{ const b=new THREE.Box3().setFromObject(keeper.group); return b.max.y - b.min.y; })();
-const KSCALE = 1.6/FIG_BUILD_H;          // Collin → 1.60 m
+let KSCALE = 1.6/FIG_BUILD_H;            // Collin → 1.60 m (overridden by the keeper-height setting)
 keeper.group.scale.setScalar(KSCALE);
 keeper.group.position.set(0,0,.6);
 keeper.group.rotation.y = 0; // face is modelled on local +z → faces the striker
@@ -1168,11 +1259,18 @@ scene.add(farGoalDeco);
 /* ===== Goal-to-Goal: the opponent's goal, net & keeper at the far end (shown on your shot) ===== */
 const OPP_GZ = 22;
 const oppGroup = new THREE.Group();
-{
-  const mkPost = x=>{ const p=new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_H,16),postMat); p.position.set(x,GOAL_H/2,OPP_GZ); p.castShadow=true; oppGroup.add(p); };
-  mkPost(-GOAL_W/2); mkPost(GOAL_W/2);
+const oppFrame = new THREE.Group(); oppGroup.add(oppFrame);
+function buildOppFrame(){            // posts + bar at the current goal size (mirrors the near frame)
+  while(oppFrame.children.length) oppFrame.remove(oppFrame.children[0]);
+  for(const sx of [-1,1]){
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_H,16),postMat);
+    p.position.set(sx*GOAL_W/2,GOAL_H/2,OPP_GZ); p.castShadow=true; oppFrame.add(p);
+  }
   const ob=new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_W+POST_R*2,16),postMat);
-  ob.rotation.z=Math.PI/2; ob.position.set(0,GOAL_H,OPP_GZ); ob.castShadow=true; oppGroup.add(ob);
+  ob.rotation.z=Math.PI/2; ob.position.set(0,GOAL_H,OPP_GZ); ob.castShadow=true; oppFrame.add(ob);
+}
+buildOppFrame();
+{
   // goal line + penalty box for the opponent goal, so the posts sit on a white line like the
   // near goal (mirrors the near box; lives in oppGroup so it only shows on your shot)
   const oppMark=(w,d,x,z)=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d), lineMat); m.rotation.x=-Math.PI/2; m.position.set(x,.012,z); oppGroup.add(m); };
@@ -1183,10 +1281,16 @@ const oppGroup = new THREE.Group();
 }
 /* deformable far net — billows into the goal when you score */
 const oppCols=15, oppRows=8, oppD=1.3, oppNetNodes=[];
-for(let r=0;r<oppRows;r++) for(let c=0;c<oppCols;c++){
-  const x=-GOAL_W/2+(c/(oppCols-1))*GOAL_W, y=(r/(oppRows-1))*GOAL_H;
-  oppNetNodes.push({x, y, rz:OPP_GZ+.15+(1-y/GOAL_H)*oppD, z:OPP_GZ+.15+(1-y/GOAL_H)*oppD, vz:0});
+for(let r=0;r<oppRows;r++) for(let c=0;c<oppCols;c++) oppNetNodes.push({x:0,y:0,rz:0,z:0,vz:0});
+function layoutOppNet(){
+  let i=0;
+  for(let r=0;r<oppRows;r++) for(let c=0;c<oppCols;c++){
+    const n=oppNetNodes[i++];
+    n.x=-GOAL_W/2+(c/(oppCols-1))*GOAL_W; n.y=(r/(oppRows-1))*GOAL_H;
+    n.rz=OPP_GZ+.15+(1-n.y/GOAL_H)*oppD; n.z=n.rz; n.vz=0;
+  }
 }
+layoutOppNet();
 const oppNetIdx=(r,c)=>r*oppCols+c;
 const oppNetPos=new Float32Array(oppNetNodes.length*3);
 function writeOppNet(){ for(let i=0;i<oppNetNodes.length;i++){ const n=oppNetNodes[i]; oppNetPos[i*3]=n.x; oppNetPos[i*3+1]=n.y; oppNetPos[i*3+2]=n.z; } }
@@ -1277,12 +1381,17 @@ function burstConfetti(pos){
 /* =====================================================
    GAME STATE
    ===================================================== */
-const ZONES = [ // 0..2 top row, 3..5 bottom row — SCREEN left/centre/right
-  // NB: camera looks toward +z, so screen-left = world +x (mirrored axis)
-  // tuned to the 5 m × 2 m goal
-  {x: 1.7, y:1.55}, {x:0, y:1.62}, {x:-1.7, y:1.55},
-  {x: 1.7, y:0.45}, {x:0, y:0.35}, {x:-1.7, y:0.45},
+// 0..2 top row, 3..5 bottom row — SCREEN left/centre/right.
+// NB: camera looks toward +z, so screen-left = world +x (mirrored axis).
+// Stored as fractions of the goal (±fx of the half-width, fy of the height) so the targets
+// follow the chosen format; on the 5×2 goal these reproduce the original tuned positions.
+const ZONE_FRAC = [
+  {fx: .68, fy:.775}, {fx:0, fy:.81}, {fx:-.68, fy:.775},
+  {fx: .68, fy:.225}, {fx:0, fy:.175}, {fx:-.68, fy:.225},
 ];
+const ZONES = ZONE_FRAC.map(()=>({x:0,y:0}));
+function layoutZones(){ ZONE_FRAC.forEach((f,i)=>{ ZONES[i].x = f.fx*GOAL_W/2; ZONES[i].y = f.fy*GOAL_H; }); }
+layoutZones();
 let state = 'idle';          // idle | windup | strike | flight | result | over
 let targetZone = 0, playerZone = -1, committed = false;
 let flightT = 0, flightDur = .85;
@@ -1313,10 +1422,11 @@ function blankStat(){ return {saves:0, shots:0, bestStreak:0, bestReaction:null,
 const DATA = {
   scores: {normal:{easy:0,medium:0,hard:0}, sudden:{easy:0,medium:0,hard:0}, goal2goal:0},
   stats:  {easy:blankStat(), medium:blankStat(), hard:blankStat()},
+  format: '8v8',     // goal size: '8v8' (5×2 m) | '11v11' (7.32×2.44 m)
   cosmetics: {shirt:'#1b1b1f', shorts:'#1b1b1f', socks:'#9aa0a8', glove:'#ffd23f', boot:'#ff5fb4', name:'COLLIN',
-              skin:'#f6c89a', hair:'#46301d', eyes:'#3a2415',
+              skin:'#f6c89a', hair:'#46301d', eyes:'#3a2415', height:1.60,
               striker: {shirt:'#1f6bff', shorts:'#1f6bff', socks:'#1f6bff', boot:'#e23b2e', name:'TIMOTHY', num:'9',
-                        skin:'#f6c89a', hair:'#46301d', eyes:'#3a2415'}},
+                        skin:'#f6c89a', hair:'#46301d', eyes:'#3a2415', height:1.72}},
 };
 function mergeScores(into, from){ if(!from) return;
   for(const d of DIFFS) into[d] = Math.max(into[d]||0, +from[d]||0); }
@@ -1335,6 +1445,7 @@ function mergeData(raw){ if(!raw) return; let o; try{ o=JSON.parse(raw); }catch(
     if(o.scores.goal2goal!=null) DATA.scores.goal2goal = Math.max(DATA.scores.goal2goal||0, +o.scores.goal2goal||0); }
   if(o.stats) for(const d of DIFFS) mergeStat(DATA.stats[d], o.stats[d]);
   if(o.cosmetics) for(const k in DATA.cosmetics) if(o.cosmetics[k]!=null) DATA.cosmetics[k]=o.cosmetics[k];
+  if(o.format && GOAL_FORMATS[o.format]) DATA.format = o.format;
 }
 function mergeLegacy(raw){ if(!raw) return; try{ const o=JSON.parse(raw);  // v1 flat {easy,medium,hard} → normal mode
   mergeScores(DATA.scores.normal, o); }catch(e){} }
@@ -1367,6 +1478,8 @@ idbReady().then(async ()=>{
   if(typeof updateBest==='function') updateBest();
   if(typeof applyCosmetics==='function') applyCosmetics();
   if(typeof applyStrikerCosmetics==='function') applyStrikerCosmetics();
+  if(typeof applyHeights==='function') applyHeights();
+  if(typeof applyFormat==='function') applyFormat(DATA.format);
   if(typeof syncCosmeticUI==='function') syncCosmeticUI();
   if(typeof renderStats==='function') renderStats();
 });
@@ -1430,6 +1543,34 @@ function applyStrikerCosmetics(){
   try{ strikerHairMat.color.set(s.hair); }catch(e){}  // hair
   try{ strikerEyeMat.color.set(s.eyes); }catch(e){}   // eyes
   drawStrikerName();
+}
+
+/* ---------- player heights (drive the figure scale → reach) ---------- */
+const HEIGHT_MIN = 1.40, HEIGHT_MAX = 2.05;
+function clampHeight(h, dflt){ h = +h; if(!isFinite(h)) h = dflt; return Math.min(HEIGHT_MAX, Math.max(HEIGHT_MIN, h)); }
+function applyHeights(){
+  const kh = clampHeight(DATA.cosmetics.height, 1.60);
+  DATA.cosmetics.height = kh;
+  KSCALE = kh / FIG_BUILD_H;                       // re-applied to the keeper every frame
+  keeper.group.scale.setScalar(KSCALE);
+  const sh = clampHeight(DATA.cosmetics.striker.height, 1.72);
+  DATA.cosmetics.striker.height = sh;
+  striker.group.scale.setScalar(sh / FIG_BUILD_H);
+  oppKeeper.group.scale.setScalar(sh / FIG_BUILD_H);   // the opponent keeper IS the striker, in goal
+}
+
+/* ---------- goal format (official 8v8 / 11v11): resize goal, net, zones & dive reach ---------- */
+function applyFormat(fmt){
+  if(!GOAL_FORMATS[fmt]) fmt = '8v8';
+  DATA.format = fmt;
+  const f = GOAL_FORMATS[fmt];
+  GOAL_W = f.w; GOAL_H = f.h;
+  buildGoalFrame();  layoutNet();    updateNetGeo();     // near goal + net
+  layoutZones();                                          // shot targets follow the goal
+  buildOppFrame();   layoutOppNet(); updateOppNet();      // far (goal-to-goal) goal + net
+  document.querySelectorAll('.fmt-btn').forEach(x=> x.classList.toggle('sel', x.dataset.fmt === fmt));
+  document.querySelectorAll('.fmt-dims').forEach(el=>
+    el.textContent = fmt.replace('v',' v ') + ' — ' + f.w.toFixed(2) + ' × ' + f.h.toFixed(2) + ' m (official)');
 }
 
 /* ---------- reaction timing & the striker's directional "tell" ---------- */
@@ -1912,6 +2053,11 @@ function makeDivePose(zone){
   land['k'+lead]  = Math.min(1.15, p['k'+lead] + .5);   // top leg folds in on impact
   land['k'+trail] = Math.min(.55,  p['k'+trail] + .25);
   if(zone === 4) land = {...p, y: p.y - .03};           // smother: stay down over the ball
+  // scale the dive to the goal: reach further sideways & leap higher in a bigger goal, so the
+  // keeper still attacks every corner (the targets in ZONES scale the same way → stays balanced)
+  const sx = GOAL_W/GOAL_BASE.w, sy = GOAL_H/GOAL_BASE.h;
+  for(const o of [p, load, land]){ o.x = (o.x||0)*sx; o.y = (o.y||0)*sy; }
+  peak *= sy;
   const air = THREE.MathUtils.clamp(.46 + peak*.46, .46, .84);   // airborne window (holds the reach for the save)
   return {ext:p, load, land, peak, air};
 }
@@ -2000,6 +2146,8 @@ function resolveG2GAttack(){
 
 function resolveShot(saved){
   state = 'result'; resultTimer = 1.5; lastSaved = saved;
+  crowdReact(saved ? 0 : 1);   // a save → Collin's camp erupts; a goal → the striker's camp
+
   // ball reaction (same for both modes): a save parries it away, a goal carries it into the net
   if(saved){
     ballMode = 'phys';
@@ -2163,6 +2311,23 @@ document.querySelectorAll('.mode-btn').forEach(b=>{
   });
 });
 
+/* goal-format selector (8v8 / 11v11) — resizes goal, net, zones & dive reach; shared by both overlays */
+document.querySelectorAll('.fmt-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{ applyFormat(b.dataset.fmt); saveData(); });
+});
+
+/* keeper & striker height sliders */
+function bindHeight(sliderId, valId, get, set){
+  const sl = document.getElementById(sliderId); if(!sl) return;
+  sl.addEventListener('input', ()=>{
+    set(+sl.value);
+    const v = document.getElementById(valId); if(v) v.textContent = (+sl.value).toFixed(2)+' m';
+    applyHeights(); saveData();
+  });
+}
+bindHeight('keeperHeight', 'keeperHeightVal', ()=>DATA.cosmetics.height,        v=>DATA.cosmetics.height=v);
+bindHeight('strikerHeight','strikerHeightVal',()=>DATA.cosmetics.striker.height, v=>DATA.cosmetics.striker.height=v);
+
 /* ---------- keeper cosmetics: colour the whole kit + a custom name ---------- */
 function shade(hex, f){    // f in [-1,1]: + lightens toward white, − darkens toward black
   hex = String(hex).replace('#','');
@@ -2268,6 +2433,16 @@ function syncCosmeticUI(){
   if(sn && document.activeElement !== sn) sn.value = DATA.cosmetics.striker.name;
   const snum = document.getElementById('strNumInput');
   if(snum && document.activeElement !== snum) snum.value = DATA.cosmetics.striker.num;
+  // height sliders + their read-outs
+  const setH = (slId, valId, h)=>{ const sl=document.getElementById(slId);
+    if(sl){ sl.value = h; const v=document.getElementById(valId); if(v) v.textContent=(+h).toFixed(2)+' m'; } };
+  setH('keeperHeight','keeperHeightVal', DATA.cosmetics.height);
+  setH('strikerHeight','strikerHeightVal', DATA.cosmetics.striker.height);
+  // goal-format toggle + dimensions read-out
+  document.querySelectorAll('.fmt-btn').forEach(x=> x.classList.toggle('sel', x.dataset.fmt === DATA.format));
+  const f = GOAL_FORMATS[DATA.format] || GOAL_FORMATS['8v8'];
+  document.querySelectorAll('.fmt-dims').forEach(el=>
+    el.textContent = DATA.format.replace('v',' v ') + ' — ' + f.w.toFixed(2) + ' × ' + f.h.toFixed(2) + ' m (official)');
 }
 function applyCosmetics(){
   if(normalizeCosmetics()) saveData();                                           // keep colours within the palette
@@ -2418,7 +2593,7 @@ function renderStats(){
     `<div class="heat">${cells}</div>`;
 }
 
-applyCosmetics(); applyStrikerCosmetics(); syncCosmeticUI(); renderStats();
+applyCosmetics(); applyStrikerCosmetics(); applyHeights(); applyFormat(DATA.format); syncCosmeticUI(); renderStats();
 updateBest();       // show the starting difficulty's best on load
 document.getElementById('startBtn').addEventListener('click', ()=>{
   initAudio();
