@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.11.0">
+<meta name="version" content="1.11.1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -394,7 +394,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.11.0';
+const VERSION = '1.11.1';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1345,18 +1345,41 @@ const farGoalDeco = new THREE.Group();
 }
 scene.add(farGoalDeco);
 
-/* ===== Goal-to-Goal: the opponent's goal, net & keeper at the far end (shown on your shot) ===== */
-const OPP_GZ = 22;
+/* ===== Goal-to-Goal: the opponent's goal, net & keeper at the far end (shown on your shot) =====
+   Sits at z=18 so the goal + its ~2 m net run-back clear the far stand (front edge at z=24)
+   with several metres of run-off behind it, instead of poking into the seats. */
+const OPP_GZ = 18;
 const oppGroup = new THREE.Group();
 const oppFrame = new THREE.Group(); oppGroup.add(oppFrame);
-function buildOppFrame(){            // posts + bar at the current goal size (mirrors the near frame)
+// same professional goal as the near one, but at the far end with the box stanchion & net
+// running back toward +z (away from the shooter).
+function buildOppFrame(){
+  setNetDepths();
   while(oppFrame.children.length) oppFrame.remove(oppFrame.children[0]);
+  const hw=GOAL_W/2, H=GOAL_H, tD=NET_TOP_D, bD=NET_BOT_D, Z=OPP_GZ;
   for(const sx of [-1,1]){
-    const p=new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_H,16),postMat);
-    p.position.set(sx*GOAL_W/2,GOAL_H/2,OPP_GZ); p.castShadow=true; oppFrame.add(p);
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,H,20),postMat);
+    p.position.set(sx*hw,H/2,Z); p.castShadow=true; oppFrame.add(p);
+    const cap=new THREE.Mesh(new THREE.SphereGeometry(POST_R,16,12),postMat);
+    cap.position.set(sx*hw,H,Z); oppFrame.add(cap);
   }
-  const ob=new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_W+POST_R*2,16),postMat);
-  ob.rotation.z=Math.PI/2; ob.position.set(0,GOAL_H,OPP_GZ); ob.castShadow=true; oppFrame.add(ob);
+  const ob=new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_W,24),postMat);
+  ob.rotation.z=Math.PI/2; ob.position.set(0,H,Z); ob.castShadow=true; oppFrame.add(ob);
+  for(const sx of [-1,1]){ const x=sx*hw;
+    tubeBetween(x,H,Z,        x,H,Z+tD,        FRAME_R, frameMat, oppFrame);   // top run-back
+    tubeBetween(x,H,Z+tD,     x,FRAME_R,Z+bD,  FRAME_R, frameMat, oppFrame);   // back slope
+    tubeBetween(x,FRAME_R,Z,  x,FRAME_R,Z+bD,  FRAME_R, frameMat, oppFrame);   // ground run-back
+    tubeBetween(x,H,Z+tD,     x,FRAME_R,Z+bD,  FRAME_R*0.85, frameMat, oppFrame); // mid stay
+  }
+  tubeBetween(-hw,H,Z+tD,        hw,H,Z+tD,        FRAME_R, frameMat, oppFrame);
+  tubeBetween(-hw,FRAME_R,Z+bD,  hw,FRAME_R,Z+bD,  FRAME_R, frameMat, oppFrame);
+  for(const sx of [-1,1]){
+    const a=new THREE.Mesh(new THREE.BoxGeometry(.16,.06,.16), anchorMat);
+    a.position.set(sx*hw,.03,Z+bD); a.castShadow=true; oppFrame.add(a);
+  }
+  const nClip=Math.max(6,Math.round(GOAL_W/0.5));
+  for(let i=0;i<=nClip;i++){ const c=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6), clipMat);
+    c.position.set(-hw+(i/nClip)*GOAL_W, H-POST_R, Z-.02); oppFrame.add(c); }
 }
 buildOppFrame();
 {
@@ -1368,37 +1391,52 @@ buildOppFrame();
   oppMark(.1,16.5,-8,OPP_GZ-8.25);    // box sides
   oppMark(.1,16.5, 8,OPP_GZ-8.25);
 }
-/* deformable far net — billows into the goal when you score */
-const oppCols=15, oppRows=8, oppD=1.3, oppNetNodes=[];
-for(let r=0;r<oppRows;r++) for(let c=0;c<oppCols;c++) oppNetNodes.push({x:0,y:0,rz:0,z:0,vz:0});
-function layoutOppNet(){
-  let i=0;
-  for(let r=0;r<oppRows;r++) for(let c=0;c<oppCols;c++){
-    const n=oppNetNodes[i++];
-    n.x=-GOAL_W/2+(c/(oppCols-1))*GOAL_W; n.y=(r/(oppRows-1))*GOAL_H;
-    n.rz=OPP_GZ+.15+(1-n.y/GOAL_H)*oppD; n.z=n.rz; n.vz=0;
+/* far box net — roof + sloped back + side panels, running back toward +z; billows when you score */
+const oppNetG = new THREE.Group(); oppGroup.add(oppNetG);
+let oppNetNodes=[], oppCols=0, oppRows=0, oppPos=null, oppAttr=null, oppSurfGeo=null;
+function writeOppNet(){ for(let i=0;i<oppNetNodes.length;i++){ const n=oppNetNodes[i];
+  oppPos[i*3]=n.rx; oppPos[i*3+1]=n.ry; oppPos[i*3+2]=n.rz + n.d; } }   // d billows +z into the goal
+function buildOppSideNet(x){
+  const H=GOAL_H, tD=NET_TOP_D, bD=NET_BOT_D, Z=OPP_GZ;
+  const P0=[x,H,Z], P1=[x,H,Z+tD], P3=[x,0,Z], P2=[x,0,Z+bD];
+  const cu=Math.max(3,Math.round(bD/NET_CELL)), cv=Math.max(4,Math.round(H/NET_CELL));
+  const pos=new Float32Array((cu+1)*(cv+1)*3); let k=0;
+  const lerp=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+  for(let v=0;v<=cv;v++) for(let u=0;u<=cu;u++){
+    const top=lerp(P0,P1,u/cu), bot=lerp(P3,P2,u/cu), p=lerp(top,bot,v/cv);
+    pos[k++]=p[0]; pos[k++]=p[1]; pos[k++]=p[2];
   }
+  const attr=new THREE.BufferAttribute(pos,3), idx=(r,c)=>r*(cu+1)+c, lp=[];
+  for(let v=0;v<=cv;v++) for(let u=0;u<=cu;u++){ if(u<cu) lp.push(idx(v,u),idx(v,u+1)); if(v<cv) lp.push(idx(v,u),idx(v+1,u)); }
+  const lg=new THREE.BufferGeometry(); lg.setAttribute('position',attr); lg.setIndex(lp);
+  oppNetG.add(new THREE.LineSegments(lg, netLineMat));
 }
-layoutOppNet();
-const oppNetIdx=(r,c)=>r*oppCols+c;
-const oppNetPos=new Float32Array(oppNetNodes.length*3);
-function writeOppNet(){ for(let i=0;i<oppNetNodes.length;i++){ const n=oppNetNodes[i]; oppNetPos[i*3]=n.x; oppNetPos[i*3+1]=n.y; oppNetPos[i*3+2]=n.z; } }
-writeOppNet();
-const oppNetAttr=new THREE.BufferAttribute(oppNetPos,3);
-const oppLinePairs=[];
-for(let r=0;r<oppRows;r++) for(let c=0;c<oppCols;c++){
-  if(c<oppCols-1) oppLinePairs.push(oppNetIdx(r,c),oppNetIdx(r,c+1));
-  if(r<oppRows-1) oppLinePairs.push(oppNetIdx(r,c),oppNetIdx(r+1,c));
+function buildOppNet(){
+  setNetDepths();
+  while(oppNetG.children.length) oppNetG.remove(oppNetG.children[0]);
+  oppCols=Math.max(8,Math.round(GOAL_W/NET_CELL));
+  const profLen=NET_TOP_D + Math.hypot(NET_BOT_D-NET_TOP_D, GOAL_H);
+  oppRows=Math.max(6,Math.round(profLen/NET_CELL));
+  oppNetNodes=[];
+  for(let r=0;r<oppRows;r++){ const t=r/(oppRows-1), p=netProfile(t);
+    for(let c=0;c<oppCols;c++){ const fx=c/(oppCols-1), x=-GOAL_W/2+fx*GOAL_W;
+      const sag=Math.sin(Math.PI*fx)*0.018+Math.sin(Math.PI*t)*0.012;
+      oppNetNodes.push({rx:x, ry:Math.max(p.y,0.012), rz:OPP_GZ - p.z + sag, d:0, vd:0}); } }
+  oppPos=new Float32Array(oppNetNodes.length*3); writeOppNet();
+  oppAttr=new THREE.BufferAttribute(oppPos,3);
+  const idx=(r,c)=>r*oppCols+c, lp=[];
+  for(let r=0;r<oppRows;r++) for(let c=0;c<oppCols;c++){ if(c<oppCols-1) lp.push(idx(r,c),idx(r,c+1)); if(r<oppRows-1) lp.push(idx(r,c),idx(r+1,c)); }
+  const lg=new THREE.BufferGeometry(); lg.setAttribute('position',oppAttr); lg.setIndex(lp);
+  oppNetG.add(new THREE.LineSegments(lg, netLineMat));
+  const tr=[]; for(let r=0;r<oppRows-1;r++) for(let c=0;c<oppCols-1;c++){ const a=idx(r,c),b=idx(r,c+1),d=idx(r+1,c),e=idx(r+1,c+1); tr.push(a,d,b,b,d,e); }
+  oppSurfGeo=new THREE.BufferGeometry(); oppSurfGeo.setAttribute('position',oppAttr); oppSurfGeo.setIndex(tr); oppSurfGeo.computeVertexNormals();
+  oppNetG.add(new THREE.Mesh(oppSurfGeo, netSurfMat));
+  buildOppSideNet(-GOAL_W/2); buildOppSideNet(GOAL_W/2);
 }
-const oppLineGeo=new THREE.BufferGeometry(); oppLineGeo.setAttribute('position',oppNetAttr); oppLineGeo.setIndex(oppLinePairs);
-oppGroup.add(new THREE.LineSegments(oppLineGeo, new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.8})));
-const oppTris=[];
-for(let r=0;r<oppRows-1;r++) for(let c=0;c<oppCols-1;c++){ const a=oppNetIdx(r,c),b=oppNetIdx(r,c+1),d=oppNetIdx(r+1,c),e=oppNetIdx(r+1,c+1); oppTris.push(a,d,b,b,d,e); }
-const oppSurfGeo=new THREE.BufferGeometry(); oppSurfGeo.setAttribute('position',oppNetAttr); oppSurfGeo.setIndex(oppTris); oppSurfGeo.computeVertexNormals();
-oppGroup.add(new THREE.Mesh(oppSurfGeo, new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:.13,side:THREE.DoubleSide,depthWrite:false,roughness:.9})));
-function updateOppNet(){ writeOppNet(); oppNetAttr.needsUpdate=true; oppSurfGeo.computeVertexNormals(); }
-function rippleOppNet(bx,by,power){ for(const n of oppNetNodes){ const d2=(n.x-bx)*(n.x-bx)+(n.y-by)*(n.y-by); n.vz += power*Math.exp(-d2/2.4); } } // wide, deep +z billow into the goal
-function stepOppNet(dt){ let moved=false; for(const n of oppNetNodes){ n.vz += ((n.rz-n.z)*46 - n.vz*3.4)*dt; n.z += n.vz*dt; if(Math.abs(n.vz)>1.5e-3||Math.abs(n.z-n.rz)>1.5e-3) moved=true; } if(moved) updateOppNet(); } // springy ripple
+function updateOppNet(){ if(!oppAttr) return; writeOppNet(); oppAttr.needsUpdate=true; oppSurfGeo.computeVertexNormals(); }
+function rippleOppNet(bx,by,power){ for(const n of oppNetNodes){ const d2=(n.rx-bx)*(n.rx-bx)+(n.ry-by)*(n.ry-by); n.vd += power*0.12*Math.exp(-d2/0.9); } }
+function stepOppNet(dt){ let moved=false; for(const n of oppNetNodes){ n.vd += (-n.d*60 - n.vd*5)*dt; n.d += n.vd*dt; if(Math.abs(n.vd)>2e-3||Math.abs(n.d)>2e-3) moved=true; } if(moved) updateOppNet(); }
+buildOppNet();
 oppGroup.visible = false;
 scene.add(oppGroup);
 /* opponent keeper — wears the customised striker kit, faces the shooter */
@@ -1656,7 +1694,7 @@ function applyFormat(fmt){
   GOAL_W = f.w; GOAL_H = f.h;
   buildGoalFrame();  buildGoalNet();                     // near goal frame + box net
   layoutZones();                                          // shot targets follow the goal
-  buildOppFrame();   layoutOppNet(); updateOppNet();      // far (goal-to-goal) goal + net
+  buildOppFrame();   buildOppNet();                       // far (goal-to-goal) goal frame + box net
   document.querySelectorAll('.fmt-btn').forEach(x=> x.classList.toggle('sel', x.dataset.fmt === fmt));
   document.querySelectorAll('.fmt-dims').forEach(el=>
     el.textContent = fmt.replace('v',' v ') + ' — ' + f.w.toFixed(2) + ' × ' + f.h.toFixed(2) + ' m (official)');

@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.11.1] — 2026-06-14
+
+### Fixed
+- **The opponent's goal in Goal-to-Goal mode now matches the new professional goal.** It had been left with the old flat frame and back-curtain net; it now has the same FIFA-scale 0.12 m posts, rear box stanchion with ground anchors, and the 3-D net enclosure (roof + sloped back + side panels, no floor net) — mirrored to run back behind the far goal — with the same billow-on-impact physics. It was also **moved forward (to z=18)** so the goal and its net run-back sit on the field with run-off behind, instead of poking into the far stand.
+
 ## [1.11.0] — 2026-06-14
 
 ### Changed
