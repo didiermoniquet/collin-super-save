@@ -10,7 +10,7 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
 ## [1.8.0] — 2026-06-14
 
 ### Added
-- **A stadium around the pitch.** The field is no longer floating in empty sky — it now sits inside a proper **stadium bowl**. Tiered, reclined stands wrap all four sides (behind the goal, behind the penalty taker, and along both touchlines), packed with a **stylised crowd** of thousands of tiny multi-coloured spectators seated in shaded terrace rows. Each bank has a pitch-side **advertising hoarding**, a grey concrete back facade, and a dark coping rail along the top, with the far end framing the goal as the main backdrop. Built to sit clear of the keeper/player code so it composes cleanly with the existing scene, and kept lightweight (crowd is a single reused canvas texture).
+- **A full stadium around the pitch.** The field no longer floats in empty sky — it now sits inside a proper **stadium**. All four sides (behind the goal, behind the penalty taker, and along both touchlines) are wrapped in **stepped concrete terraces** with a dark shadow lip on every row, packed with a **realistic crowd**: a natural spread of clothing and skin tones, hair and caps, and the odd empty seat, with soft ambient shading so the rows read with depth rather than flat confetti. Each stand is capped by a **cantilever roof** with a dark underside and a concrete back wall, fronted by a **sponsor/LED advertising hoarding**, and the four corners carry **floodlight pylons** with glowing lamp banks aimed in at the pitch. Built entirely within the scene-setup section so it composes cleanly with the keeper/player work, and kept lightweight (the crowd is one reused canvas texture tiled across the rows).
 
 ## [1.7.3] — 2026-06-13
 
