@@ -7,6 +7,16 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.9.0] — 2026-06-14
+
+### Added
+- **A living crowd in the stands.** The terraces are now populated with **3-D spectators sitting and cheering** — low-poly people seated row by row across all four stands, gently bobbing, with a **stand-up "arms-out" cheer that rolls around the bowl** like a Mexican wave. Built with instanced rendering (grouped by shirt and skin colour) and driven by its own lightweight animation loop, so it adds atmosphere without bogging the game down or touching the gameplay loop.
+
+## [1.8.3] — 2026-06-14
+
+### Changed
+- Reworded the end-of-game message that referenced "training between the cones" (the cones are gone) to "keep working on those saves!".
+
 ## [1.8.2] — 2026-06-14
 
 ### Removed
