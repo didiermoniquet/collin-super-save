@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.8.1">
+<meta name="version" content="1.8.2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -367,7 +367,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.8.1';
+const VERSION = '1.8.2';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1047,26 +1047,8 @@ const strikerYaw = Math.PI + .15;
 striker.group.rotation.y = strikerYaw;
 scene.add(striker.group);
 
-/* ---------- cones (from the photo!) ---------- */
-const coneHoleMat = new THREE.MeshBasicMaterial({color:0x6e2406});
-function cone(x,z){
-  const c = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.ConeGeometry(.32,.7,16,1,true), M.orange);
-  body.position.y = .35; c.add(body);
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(.42,.45,.07,16), M.orange);
-  base.position.y = .035; c.add(base);
-  // training-cone holes — a stacked column punched through both broad faces (photo)
-  for(const face of [1,-1]){
-    [[.20,.235],[.34,.165],[.47,.105]].forEach(([hy,rr])=>{
-      const hole = new THREE.Mesh(new THREE.CircleGeometry(.05,14), coneHoleMat);
-      hole.position.set(0, hy, face*(rr+.004));
-      hole.lookAt(0, hy+.3, face*2);   // sit on the slanted wall, facing out & up
-      c.add(hole);
-    });
-  }
-  shadowed(c); c.position.set(x,0,z); scene.add(c);
-}
-cone(-5.2,1.2); cone(5.4,1.6); cone(-6.4,5); cone(6.6,6); cone(-4.8,9.5); cone(5.6,10.5);
+/* ---------- cones removed from the pitch ---------- */
+
 
 /* =====================================================
    BACKGROUND SCENERY — suburban pitch (from Timmy's photo)

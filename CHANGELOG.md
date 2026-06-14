@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.8.2] — 2026-06-14
+
+### Removed
+- **The orange training cones on the pitch are gone**, clearing the playing surface around the penalty area.
+
 ## [1.8.1] — 2026-06-14
 
 ### Removed
