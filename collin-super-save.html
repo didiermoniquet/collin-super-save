@@ -508,76 +508,146 @@ const pitch = new THREE.Mesh(
 pitch.rotation.x = -Math.PI/2; pitch.receiveShadow = true;
 scene.add(pitch);
 
-/* ---------- stadium bowl — tiered stands packed with a stylised crowd ---------- */
+/* ---------- stadium — stepped terraces, packed crowd, cantilever roofs & floodlights ---------- */
 {
-  // crowd texture: dark terraces speckled with thousands of tiny spectators
-  const crowdC = document.createElement('canvas'); crowdC.width = 256; crowdC.height = 256;
-  const cg = crowdC.getContext('2d');
-  cg.fillStyle = '#20242f'; cg.fillRect(0,0,256,256);                 // shadowed seating base
-  const ROWS = 11;
-  const seatCols = ['#f4f4f4','#e23b2e','#1f6bff','#ffd23f','#46c750','#ff7a1f','#ff5fb4','#c9d2dd','#8a93a3','#2b3242'];
-  for(let r=0;r<ROWS;r++){
-    const y0 = (r/ROWS)*256, y1 = ((r+1)/ROWS)*256;
-    cg.fillStyle = r%2 ? 'rgba(0,0,0,.16)' : 'rgba(255,255,255,.04)'; // alternating terrace step shading
-    cg.fillRect(0, y0, 256, y1-y0);
-    cg.fillStyle = 'rgba(0,0,0,.30)'; cg.fillRect(0, y1-2, 256, 2);   // dark lip on each step
-    const people = 22;
-    for(let p=0;p<people;p++){
-      const cx = (p + (r%2?.5:0))/people*256 + (Math.random()-.5)*5;
-      const cy = y0 + (y1-y0)*(.45 + Math.random()*.25);
-      cg.fillStyle = seatCols[(Math.random()*seatCols.length)|0];
-      cg.beginPath(); cg.arc(cx, cy, 3.0, 0, Math.PI*2); cg.fill();    // body / shirt
-      cg.fillStyle = 'rgba(20,15,12,.55)';
-      cg.beginPath(); cg.arc(cx, cy-3.1, 1.7, 0, Math.PI*2); cg.fill();// head
+  /* one densely-packed row of supporters, tiled along each terrace step.
+     Natural-ish spread of clothing + skin tones, hair/caps, the odd empty seat. */
+  function crowdRowTexture(){
+    const W=512, H=110, c=document.createElement('canvas'); c.width=W; c.height=H;
+    const x=c.getContext('2d');
+    x.fillStyle='#15171e'; x.fillRect(0,0,W,H);                       // dark seat shadow behind people
+    const shirts=['#dadada','#b6bcc4','#9aa1ab','#727b87','#3e4654','#2a2f3a','#7a2630','#b23a32',
+                  '#274a8a','#33608f','#2f6b46','#caa23a','#54402f','#e8e2d4','#454b57','#5a3550','#1f3550','#8a8f98'];
+    const skins=['#f3c6a0','#e7b48c','#d39b6e','#b67a4e','#8d5a36','#6b4326'];
+    const N=18, step=W/N;
+    for(let i=0;i<N;i++){
+      if(Math.random()<0.08) continue;                               // empty seat
+      const cx=i*step+step*0.5+(Math.random()-0.5)*step*0.25;
+      const r=step*0.42*(0.85+Math.random()*0.3);
+      x.fillStyle=shirts[(Math.random()*shirts.length)|0];
+      x.beginPath(); x.ellipse(cx, H*0.74, r*1.15, r*1.28, 0, 0, Math.PI*2); x.fill();   // torso + shoulders
+      x.fillStyle=skins[(Math.random()*skins.length)|0];
+      x.beginPath(); x.arc(cx, H*0.42, r*0.68, 0, Math.PI*2); x.fill();                  // head
+      if(Math.random()<0.62){                                        // hair or cap
+        x.fillStyle = Math.random()<0.32 ? shirts[(Math.random()*shirts.length)|0] : '#2a2018';
+        x.beginPath(); x.arc(cx, H*0.37, r*0.7, Math.PI*1.02, Math.PI*1.98); x.fill();
+      }
     }
+    const g=x.createLinearGradient(0,0,0,H);                         // soft AO top & bottom of each step
+    g.addColorStop(0,'rgba(0,0,0,.30)'); g.addColorStop(.55,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.32)');
+    x.fillStyle=g; x.fillRect(0,0,W,H);
+    const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
   }
-  const crowdTex = new THREE.CanvasTexture(crowdC);
-  crowdTex.wrapS = crowdTex.wrapT = THREE.RepeatWrapping;
-  const crowdMat = new THREE.MeshLambertMaterial({map: crowdTex});
+  const crowdTex = crowdRowTexture();
 
-  const concreteMat = new THREE.MeshStandardMaterial({color:0xb9c1cc, roughness:.95}); // bowl wall / facade
-  const railMat     = new THREE.MeshStandardMaterial({color:0x2b3242, roughness:.8});  // top coping
-  const adCols = [0x1f6bff, 0xe23b2e, 0xffd23f, 0x46c750, 0xff7a1f];                    // pitch-side hoardings
+  /* pitch-side sponsor / LED hoarding */
+  function hoardingTexture(){
+    const W=512, H=64, c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
+    const segs=['#0b3d91','#c8102e','#127a3a','#1f1f24','#005bbb','#e2711d'];
+    const words=['COLLIN','SUPER','SAVE!','FC·24','GOAL','· · ·'];
+    const seg=W/segs.length;
+    for(let i=0;i<segs.length;i++){
+      x.fillStyle=segs[i]; x.fillRect(i*seg,0,seg,H);
+      x.fillStyle='rgba(255,255,255,.9)'; x.font='bold 24px sans-serif';
+      x.textAlign='center'; x.textBaseline='middle';
+      x.fillText(words[i], i*seg+seg/2, H/2+1);
+    }
+    const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; t.repeat.set(3,1); return t;
+  }
 
-  const FRONT = 0.95;   // top of the perimeter hoarding
-  const DEPTH = 13;     // how deep the seating bank reclines
-  const TOP   = 7.2;    // height of the back row
-  const slope = Math.atan2(TOP - FRONT, DEPTH);
+  /* floodlight lamp bank + soft glow */
+  function floodTexture(){
+    const c=document.createElement('canvas'); c.width=128; c.height=64; const x=c.getContext('2d');
+    x.fillStyle='#0c0d11'; x.fillRect(0,0,128,64);
+    for(let iy=0;iy<3;iy++) for(let ix=0;ix<6;ix++){
+      const px=12+ix*21, py=12+iy*20;
+      x.fillStyle='rgba(255,255,235,.45)'; x.beginPath(); x.arc(px,py,10,0,Math.PI*2); x.fill(); // halo
+      x.fillStyle='#fdfdf2';               x.beginPath(); x.arc(px,py,6.5,0,Math.PI*2); x.fill(); // bright core
+    }
+    return new THREE.CanvasTexture(c);
+  }
+  function glowTexture(){
+    const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
+    const r=x.createRadialGradient(64,64,2,64,64,64);
+    r.addColorStop(0,'rgba(255,255,240,.85)'); r.addColorStop(.3,'rgba(245,250,255,.32)'); r.addColorStop(1,'rgba(245,250,255,0)');
+    x.fillStyle=r; x.fillRect(0,0,128,128); return new THREE.CanvasTexture(c);
+  }
+  const glowMat = new THREE.SpriteMaterial({map:glowTexture(), transparent:true, depthWrite:false, fog:false});
 
-  // one stand bank: front sits at local +Z (pitch side), seating reclines back toward -Z and up
-  function buildStand(cx, cz, rotY, length, adIdx){
-    const g = new THREE.Group(); g.position.set(cx, 0, cz); g.rotation.y = rotY;
-    const front = 0;   // pitch-side edge sits at the group origin; seating reclines toward -Z
-    // pitch-side advertising hoarding
-    const ad = new THREE.Mesh(new THREE.BoxGeometry(length, FRONT, .3),
-      new THREE.MeshStandardMaterial({color:adCols[adIdx % adCols.length], roughness:.5}));
-    ad.position.set(0, FRONT/2, front); g.add(ad);
-    // reclined seating bank wearing the crowd texture
-    const rampLen = Math.hypot(DEPTH, TOP - FRONT);
-    const ramp = new THREE.Mesh(new THREE.PlaneGeometry(length, rampLen), crowdMat.clone());
-    ramp.material.map = crowdTex.clone();
-    ramp.material.map.wrapS = ramp.material.map.wrapT = THREE.RepeatWrapping;
-    ramp.material.map.repeat.set(Math.max(1, Math.round(length/7)), 1);
-    ramp.material.map.needsUpdate = true;
-    ramp.rotation.x = slope - Math.PI/2;
-    ramp.position.set(0, (FRONT + TOP)/2, front - DEPTH/2);
+  const concreteMat  = new THREE.MeshStandardMaterial({color:0xc2c8d0, roughness:.96}); // terrace structure
+  const concreteDark = new THREE.MeshStandardMaterial({color:0x646a73, roughness:.95}); // step lips / back wall / poles
+  const roofMat      = new THREE.MeshStandardMaterial({color:0xd5dae1, roughness:.55, metalness:.25, side:THREE.DoubleSide});
+  const roofUnder    = new THREE.MeshStandardMaterial({color:0x3b424c, roughness:.9});
+
+  const ROWS=11, FRONT=1.0, TOP=8.2, DEPTH=14;
+  const rise=(TOP-FRONT)/ROWS, tread=DEPTH/ROWS;
+  const slope=Math.atan2(TOP-FRONT, DEPTH);
+
+  // one stand bank: pitch-side edge at local +Z, terraces step back toward -Z and up
+  function buildStand(cx, cz, rotY, length){
+    const g=new THREE.Group(); g.position.set(cx,0,cz); g.rotation.y=rotY;
+    // advertising hoarding along the touchline
+    const hoard=new THREE.Mesh(new THREE.BoxGeometry(length,FRONT,.35),
+      new THREE.MeshStandardMaterial({map:hoardingTexture(), roughness:.55, emissive:0x0c0c0c}));
+    hoard.position.set(0,FRONT/2,.18); g.add(hoard);
+    // solid concrete bank behind the crowd, so gaps between rows read as terrace, not sky
+    const rampLen=Math.hypot(DEPTH, TOP-FRONT);
+    const ramp=new THREE.Mesh(new THREE.PlaneGeometry(length,rampLen), concreteMat);
+    ramp.rotation.x=slope-Math.PI/2;
+    ramp.position.set(0,(FRONT+TOP)/2, -DEPTH/2 - 0.12);
     g.add(ramp);
-    // grey back facade closing the bowl behind the crowd
-    const back = new THREE.Mesh(new THREE.BoxGeometry(length, TOP + 1.2, .4), concreteMat);
-    back.position.set(0, (TOP + 1.2)/2, front - DEPTH); g.add(back);
-    // dark coping rail along the top edge
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(length, .35, 1.0), railMat);
-    rail.position.set(0, TOP + .2, front - DEPTH + .5); g.add(rail);
+    // packed crowd + a dark step-lip per row (each higher row sits further back)
+    const ph=rise*1.55;
+    for(let r=0;r<ROWS;r++){
+      const base=FRONT+r*rise, zf=-r*tread;
+      const row=new THREE.Mesh(new THREE.PlaneGeometry(length,ph),
+        new THREE.MeshLambertMaterial({map:crowdTex.clone()}));
+      row.material.map.repeat.set(Math.max(2,Math.round(length/2.2)),1);
+      row.material.map.needsUpdate=true;
+      row.position.set(0, base+ph/2-rise*0.2, zf+0.02);
+      g.add(row);
+      const lip=new THREE.Mesh(new THREE.BoxGeometry(length,0.12,0.12), concreteDark);
+      lip.position.set(0, base-rise*0.16, zf+0.04); g.add(lip);
+    }
+    // back wall capping the top row
+    const back=new THREE.Mesh(new THREE.BoxGeometry(length,3.2,.5), concreteDark);
+    back.position.set(0, TOP+1.0, -DEPTH+.25); g.add(back);
+    // cantilever roof, tilted a touch open toward the pitch, with a dark underside
+    const roofDepth=DEPTH*0.6;
+    const roof=new THREE.Mesh(new THREE.BoxGeometry(length+1.4,.28,roofDepth), roofMat);
+    roof.position.set(0, TOP+3.0, -DEPTH+roofDepth/2-0.4); roof.rotation.x=-0.13; g.add(roof);
+    const under=new THREE.Mesh(new THREE.PlaneGeometry(length+1.4,roofDepth), roofUnder);
+    under.rotation.x=Math.PI/2-0.13; under.position.set(0, TOP+2.85, -DEPTH+roofDepth/2-0.4); g.add(under);
     return g;
   }
 
   const bowl = new THREE.Group();
-  const HALF_X = 19, GOAL_END = -8, FAR_END = 27, MID_Z = (GOAL_END + FAR_END)/2;
-  const sideLen = FAR_END - GOAL_END, endLen = HALF_X*2;
-  bowl.add(buildStand(0,      FAR_END,  Math.PI,      endLen, 0));   // far end (main backdrop)
-  bowl.add(buildStand(0,      GOAL_END, 0,            endLen, 1));   // behind the goal
-  bowl.add(buildStand(-HALF_X, MID_Z,   Math.PI/2,    sideLen, 2));  // left touchline
-  bowl.add(buildStand( HALF_X, MID_Z,  -Math.PI/2,    sideLen, 3));  // right touchline
+  const HALF_X=19, GOAL_END=-8, FAR_END=24, MID_Z=(GOAL_END+FAR_END)/2;
+  const sideLen=FAR_END-GOAL_END, endLen=HALF_X*2;
+  bowl.add(buildStand(0,       FAR_END,  Math.PI,    endLen));   // far end — main backdrop behind the taker
+  bowl.add(buildStand(0,       GOAL_END, 0,          endLen));   // behind the goal
+  bowl.add(buildStand(-HALF_X, MID_Z,    Math.PI/2,  sideLen));  // left touchline
+  bowl.add(buildStand( HALF_X, MID_Z,   -Math.PI/2,  sideLen));  // right touchline
+
+  // corner floodlight pylons aimed in at the pitch
+  function floodlight(x,z){
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.16,.28,18,12), concreteDark);
+    pole.position.set(x,9,z); bowl.add(pole);
+    const head=new THREE.Group(); head.position.set(x,18,z);
+    head.add(new THREE.Mesh(new THREE.BoxGeometry(3.4,1.9,.35),
+      new THREE.MeshStandardMaterial({color:0x191b21, roughness:.6})));
+    const lamps=new THREE.Mesh(new THREE.PlaneGeometry(3.1,1.6),
+      new THREE.MeshBasicMaterial({map:floodTexture(), fog:false}));
+    lamps.position.z=-0.21; head.add(lamps);                         // lamps on the -Z face (aimed at pitch)
+    head.quaternion.setFromRotationMatrix(
+      new THREE.Matrix4().lookAt(new THREE.Vector3(x,18,z), new THREE.Vector3(0,3,0), new THREE.Vector3(0,1,0)));
+    bowl.add(head);
+    const glow=new THREE.Sprite(glowMat.clone()); glow.scale.set(7,7,1); glow.position.set(x,18.2,z); bowl.add(glow);
+  }
+  const PX=HALF_X+2.5;
+  floodlight(-PX, GOAL_END-2.5); floodlight(PX, GOAL_END-2.5);
+  floodlight(-PX, FAR_END+2.5);  floodlight(PX, FAR_END+2.5);
+
   scene.add(bowl);
 }
 
