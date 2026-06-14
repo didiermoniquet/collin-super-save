@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.7.3">
+<meta name="version" content="1.8.0">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -367,7 +367,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.7.3';
+const VERSION = '1.8.0';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -507,6 +507,79 @@ const pitch = new THREE.Mesh(
   new THREE.MeshStandardMaterial({map:turfTex, roughness:.92}));
 pitch.rotation.x = -Math.PI/2; pitch.receiveShadow = true;
 scene.add(pitch);
+
+/* ---------- stadium bowl — tiered stands packed with a stylised crowd ---------- */
+{
+  // crowd texture: dark terraces speckled with thousands of tiny spectators
+  const crowdC = document.createElement('canvas'); crowdC.width = 256; crowdC.height = 256;
+  const cg = crowdC.getContext('2d');
+  cg.fillStyle = '#20242f'; cg.fillRect(0,0,256,256);                 // shadowed seating base
+  const ROWS = 11;
+  const seatCols = ['#f4f4f4','#e23b2e','#1f6bff','#ffd23f','#46c750','#ff7a1f','#ff5fb4','#c9d2dd','#8a93a3','#2b3242'];
+  for(let r=0;r<ROWS;r++){
+    const y0 = (r/ROWS)*256, y1 = ((r+1)/ROWS)*256;
+    cg.fillStyle = r%2 ? 'rgba(0,0,0,.16)' : 'rgba(255,255,255,.04)'; // alternating terrace step shading
+    cg.fillRect(0, y0, 256, y1-y0);
+    cg.fillStyle = 'rgba(0,0,0,.30)'; cg.fillRect(0, y1-2, 256, 2);   // dark lip on each step
+    const people = 22;
+    for(let p=0;p<people;p++){
+      const cx = (p + (r%2?.5:0))/people*256 + (Math.random()-.5)*5;
+      const cy = y0 + (y1-y0)*(.45 + Math.random()*.25);
+      cg.fillStyle = seatCols[(Math.random()*seatCols.length)|0];
+      cg.beginPath(); cg.arc(cx, cy, 3.0, 0, Math.PI*2); cg.fill();    // body / shirt
+      cg.fillStyle = 'rgba(20,15,12,.55)';
+      cg.beginPath(); cg.arc(cx, cy-3.1, 1.7, 0, Math.PI*2); cg.fill();// head
+    }
+  }
+  const crowdTex = new THREE.CanvasTexture(crowdC);
+  crowdTex.wrapS = crowdTex.wrapT = THREE.RepeatWrapping;
+  const crowdMat = new THREE.MeshLambertMaterial({map: crowdTex});
+
+  const concreteMat = new THREE.MeshStandardMaterial({color:0xb9c1cc, roughness:.95}); // bowl wall / facade
+  const railMat     = new THREE.MeshStandardMaterial({color:0x2b3242, roughness:.8});  // top coping
+  const adCols = [0x1f6bff, 0xe23b2e, 0xffd23f, 0x46c750, 0xff7a1f];                    // pitch-side hoardings
+
+  const FRONT = 0.95;   // top of the perimeter hoarding
+  const DEPTH = 13;     // how deep the seating bank reclines
+  const TOP   = 7.2;    // height of the back row
+  const slope = Math.atan2(TOP - FRONT, DEPTH);
+
+  // one stand bank: front sits at local +Z (pitch side), seating reclines back toward -Z and up
+  function buildStand(cx, cz, rotY, length, adIdx){
+    const g = new THREE.Group(); g.position.set(cx, 0, cz); g.rotation.y = rotY;
+    const front = 0;   // pitch-side edge sits at the group origin; seating reclines toward -Z
+    // pitch-side advertising hoarding
+    const ad = new THREE.Mesh(new THREE.BoxGeometry(length, FRONT, .3),
+      new THREE.MeshStandardMaterial({color:adCols[adIdx % adCols.length], roughness:.5}));
+    ad.position.set(0, FRONT/2, front); g.add(ad);
+    // reclined seating bank wearing the crowd texture
+    const rampLen = Math.hypot(DEPTH, TOP - FRONT);
+    const ramp = new THREE.Mesh(new THREE.PlaneGeometry(length, rampLen), crowdMat.clone());
+    ramp.material.map = crowdTex.clone();
+    ramp.material.map.wrapS = ramp.material.map.wrapT = THREE.RepeatWrapping;
+    ramp.material.map.repeat.set(Math.max(1, Math.round(length/7)), 1);
+    ramp.material.map.needsUpdate = true;
+    ramp.rotation.x = slope - Math.PI/2;
+    ramp.position.set(0, (FRONT + TOP)/2, front - DEPTH/2);
+    g.add(ramp);
+    // grey back facade closing the bowl behind the crowd
+    const back = new THREE.Mesh(new THREE.BoxGeometry(length, TOP + 1.2, .4), concreteMat);
+    back.position.set(0, (TOP + 1.2)/2, front - DEPTH); g.add(back);
+    // dark coping rail along the top edge
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(length, .35, 1.0), railMat);
+    rail.position.set(0, TOP + .2, front - DEPTH + .5); g.add(rail);
+    return g;
+  }
+
+  const bowl = new THREE.Group();
+  const HALF_X = 19, GOAL_END = -8, FAR_END = 27, MID_Z = (GOAL_END + FAR_END)/2;
+  const sideLen = FAR_END - GOAL_END, endLen = HALF_X*2;
+  bowl.add(buildStand(0,      FAR_END,  Math.PI,      endLen, 0));   // far end (main backdrop)
+  bowl.add(buildStand(0,      GOAL_END, 0,            endLen, 1));   // behind the goal
+  bowl.add(buildStand(-HALF_X, MID_Z,   Math.PI/2,    sideLen, 2));  // left touchline
+  bowl.add(buildStand( HALF_X, MID_Z,  -Math.PI/2,    sideLen, 3));  // right touchline
+  scene.add(bowl);
+}
 
 /* penalty spot + box line */
 const lineMat = new THREE.MeshBasicMaterial({color:0xffffff});

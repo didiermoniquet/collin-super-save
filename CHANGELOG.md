@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.8.0] — 2026-06-14
+
+### Added
+- **A stadium around the pitch.** The field is no longer floating in empty sky — it now sits inside a proper **stadium bowl**. Tiered, reclined stands wrap all four sides (behind the goal, behind the penalty taker, and along both touchlines), packed with a **stylised crowd** of thousands of tiny multi-coloured spectators seated in shaded terrace rows. Each bank has a pitch-side **advertising hoarding**, a grey concrete back facade, and a dark coping rail along the top, with the far end framing the goal as the main backdrop. Built to sit clear of the keeper/player code so it composes cleanly with the existing scene, and kept lightweight (crowd is a single reused canvas texture).
+
 ## [1.7.3] — 2026-06-13
 
 ### Fixed
