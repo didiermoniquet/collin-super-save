@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.8.3">
+<meta name="version" content="1.9.0">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -367,7 +367,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.8.3';
+const VERSION = '1.9.0';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -621,13 +621,66 @@ scene.add(pitch);
     return g;
   }
 
+  /* ---- 3-D spectators sitting on the terraces, cheering in a travelling wave ----
+     Kept cheap with InstancedMesh (one per shirt/skin colour); a small self-contained
+     rAF loop bobs them and rolls a "stand-up & arms-out" cheer around the bowl. */
+  const SPACING=1.7;
+  const bodyGeo=new THREE.CylinderGeometry(.13,.2,.5,6);
+  const headGeo=new THREE.SphereGeometry(.135,8,6);
+  const SHIRT=[0xe2e2e2,0x39527d,0x9aa1ab,0xb23a32,0x2f6b46,0xcaa23a].map(c=>new THREE.MeshLambertMaterial({color:c}));
+  const SKIN =[0xf3c6a0,0xd39b6e,0x8d5a36].map(c=>new THREE.MeshLambertMaterial({color:c}));
+  const crowdParts=[];    // instanced meshes whose matrices update each frame
+  const crowdPeople=[];   // per-spectator animation records
+  const _d=new THREE.Object3D();
+  function populateCrowd(g, cx, cz, rotY, length){
+    const cols=Math.max(2, Math.floor(length/SPACING)), colW=length/cols;
+    const specs=[];
+    for(let r=0;r<ROWS;r++) for(let col=0;col<cols;col++){
+      if(Math.random()<0.12) continue;                              // empty seat
+      const lx=-length/2 + (col+0.5)*colW + (Math.random()-.5)*colW*0.3;
+      const y =FRONT + r*rise + 0.27;                               // seated height on this step
+      const z =-r*tread + 0.16;                                     // sit just in front of the row line
+      const sb=(Math.random()*SHIRT.length)|0, kb=(Math.random()*SKIN.length)|0;
+      const wx=cx + lx*Math.cos(rotY) + z*Math.sin(rotY);           // world position → wave phase
+      const wz=cz - lx*Math.sin(rotY) + z*Math.cos(rotY);
+      specs.push({lx,y,z,sb,kb, phase:Math.random()*6.283, ang:Math.atan2(wz,wx)});
+    }
+    const sCount=Array(SHIRT.length).fill(0), kCount=Array(SKIN.length).fill(0);
+    specs.forEach(s=>{ sCount[s.sb]++; kCount[s.kb]++; });
+    const bodyIM=SHIRT.map((m,i)=>new THREE.InstancedMesh(bodyGeo,m,Math.max(1,sCount[i])));
+    const headIM=SKIN .map((m,i)=>new THREE.InstancedMesh(headGeo,m,Math.max(1,kCount[i])));
+    [...bodyIM,...headIM].forEach(im=>{ im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled=false; g.add(im); crowdParts.push(im); });
+    const sIdx=Array(SHIRT.length).fill(0), kIdx=Array(SKIN.length).fill(0);
+    specs.forEach(s=>{
+      crowdPeople.push({bodyMesh:bodyIM[s.sb], bi:sIdx[s.sb]++, headMesh:headIM[s.kb], hi:kIdx[s.kb]++,
+                        lx:s.lx, y:s.y, z:s.z, phase:s.phase, ang:s.ang});
+    });
+  }
+  function animateCrowd(){
+    requestAnimationFrame(animateCrowd);
+    const t=performance.now()*0.001, wave=t*1.1;
+    for(const p of crowdPeople){
+      const c=Math.max(0, Math.cos(p.ang - wave)); const cheer=c*c;   // sharp travelling band
+      const bob=Math.sin(t*2.2 + p.phase)*0.025;
+      const lift=cheer*0.33, sy=1 + cheer*0.55;                        // rise out of the seat + stretch up
+      _d.scale.set(1,sy,1); _d.rotation.set(0,0,0);
+      _d.position.set(p.lx, p.y + bob + lift, p.z); _d.updateMatrix();
+      p.bodyMesh.setMatrixAt(p.bi, _d.matrix);
+      _d.scale.set(1,1,1);
+      _d.position.set(p.lx, p.y + bob + lift + 0.28*sy, p.z); _d.updateMatrix();
+      p.headMesh.setMatrixAt(p.hi, _d.matrix);
+    }
+    for(const im of crowdParts) im.instanceMatrix.needsUpdate=true;
+  }
+
   const bowl = new THREE.Group();
   const HALF_X=19, GOAL_END=-8, FAR_END=24, MID_Z=(GOAL_END+FAR_END)/2;
   const sideLen=FAR_END-GOAL_END, endLen=HALF_X*2;
-  bowl.add(buildStand(0,       FAR_END,  Math.PI,    endLen));   // far end — main backdrop behind the taker
-  bowl.add(buildStand(0,       GOAL_END, 0,          endLen));   // behind the goal
-  bowl.add(buildStand(-HALF_X, MID_Z,    Math.PI/2,  sideLen));  // left touchline
-  bowl.add(buildStand( HALF_X, MID_Z,   -Math.PI/2,  sideLen));  // right touchline
+  function addStand(cx,cz,rotY,length){ const g=buildStand(cx,cz,rotY,length); populateCrowd(g,cx,cz,rotY,length); bowl.add(g); }
+  addStand(0,       FAR_END,  Math.PI,    endLen);   // far end — main backdrop behind the taker
+  addStand(0,       GOAL_END, 0,          endLen);   // behind the goal
+  addStand(-HALF_X, MID_Z,    Math.PI/2,  sideLen);  // left touchline
+  addStand( HALF_X, MID_Z,   -Math.PI/2,  sideLen);  // right touchline
 
   // corner floodlight pylons aimed in at the pitch
   function floodlight(x,z){
@@ -649,6 +702,7 @@ scene.add(pitch);
   floodlight(-PX, FAR_END+2.5);  floodlight(PX, FAR_END+2.5);
 
   scene.add(bowl);
+  animateCrowd();
 }
 
 /* penalty spot + box line */
