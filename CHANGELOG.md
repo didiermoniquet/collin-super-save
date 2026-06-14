@@ -7,6 +7,28 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.11.0] — 2026-06-14
+
+### Changed
+- **A real professional goal.** Replaced the flat posts-and-back-curtain with a proper modern stadium goal, built to FIFA scale and designed for the close-up behind-the-goal camera:
+  - **Frame:** glossy white painted-aluminium posts & crossbar at the correct **0.12 m diameter**, with rounded post↔bar corners.
+  - **Rear box stanchion:** top run-back (~0.9 m), ground run-back (~2.0 m) and the back slope between them, joined by top/bottom rear bars and a mid-stay each side, **pinned by ground anchors** — all scaled to the chosen format (8v8 / 11v11).
+  - **Net:** a true 3-D enclosure — a roof and a sloped back panel down to the ground at the rear, plus vertical triangular **side nets** (no net on the ground inside — open grass, like a real goal) — in white nylon with an even **~square mesh**, a little gravity slack (not rigid), and small net **ties/clips** along the crossbar.
+  - **Physics:** the back net now takes a **localised punch** where the ball strikes and **billows back, then springs smoothly home** (stiff, moderately damped — low stretch).
+  - Frame and net are **separate meshes**; the net grid rebuilds to the correct cell size for each format. Gameplay, dives and saves are unchanged.
+
+## [1.10.0] — 2026-06-14
+
+### Changed
+- **A big realism pass — the game looks far less cartoonish.** Re-graded the whole presentation toward a natural, photographic look while keeping every bit of gameplay identical:
+  - **Rendering pipeline:** switched to **sRGB output + ACES filmic tone-mapping** (highlights roll off naturally instead of blowing out flat), with all colour textures tagged sRGB so nothing shifts hue.
+  - **Lighting:** softer overcast-bright daylight — a gentler warm sun key, broad cool sky/ground fill, and **higher-resolution, softer-edged shadows** — instead of the hard, flat key.
+  - **Sky & air:** desaturated, hazier sky gradient and a greyer atmospheric **fog** for real depth (no more electric cyan).
+  - **Pitch:** natural (de-neoned) grass with finer **mowing stripes**, broad mottled wear and a denser grass speckle so it reads organic, not plastic.
+  - **Materials:** weathered, duller concrete stands & roofs, a more natural team-blue crowd, and **rounder, smoother players and ball** (higher-poly limbs/head/ball). The bright **pink boots & volt gloves are kept** — those are real.
+  - **Grade:** a slightly deeper cinematic vignette to frame the pitch.
+  - Heavy post-processing (bloom/SSAO) was deliberately skipped to avoid external dependencies in the offline PWA; the look is achieved in-pipeline.
+
 ## [1.9.4] — 2026-06-14
 
 ### Added

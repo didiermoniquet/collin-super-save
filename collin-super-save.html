@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.9.4">
+<meta name="version" content="1.11.0">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -30,7 +30,7 @@
   #c{position:fixed;inset:0;display:block;touch-action:none;filter:saturate(1.17) contrast(1.07)}
   /* cinematic vignette — darkens the frame edges only, never the UI (HUD sits above it) */
   #vignette{position:fixed;inset:0;pointer-events:none;z-index:2;mix-blend-mode:multiply;
-    background:radial-gradient(128% 108% at 50% 38%, #fff 46%, #d3dde6 78%, #8ea2b6 100%)}
+    background:radial-gradient(122% 104% at 50% 40%, #fff 40%, #c6d2dc 73%, #71889e 100%)}
 
   /* ---------- HUD ---------- */
   #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;
@@ -394,7 +394,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.9.4';
+const VERSION = '1.11.0';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -403,10 +403,16 @@ const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// realistic pipeline: sRGB output + ACES filmic tone-mapping (rolls off highlights so the
+// scene reads photographic instead of flat & cartoonish). Colour maps are tagged sRGB below.
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.92;
+const sRGB = t => { if(t){ t.encoding = THREE.sRGBEncoding; } return t; };   // tag colour textures
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x7cc1ec);
-scene.fog = new THREE.Fog(0xdcecef, 46, 150);   // warm horizon haze pulls the scenery into the sky
+scene.background = new THREE.Color(0x9fb8cc);
+scene.fog = new THREE.Fog(0xc7d4dc, 40, 135);   // soft atmospheric haze for depth (greyer, less candy-blue)
 
 const camera = new THREE.PerspectiveCamera(50, 1, .1, 200);
 camera.position.set(0, 2.6, -5.2);
@@ -474,31 +480,31 @@ canvas.addEventListener('dblclick', ()=>{
   orbitGoal.theta = camHome.theta + Math.round((orbit.theta - camHome.theta)/(Math.PI*2))*Math.PI*2;
 });
 
-/* ---------- lights — warm low-afternoon key, cool sky fill, soft shadows ---------- */
-scene.add(new THREE.HemisphereLight(0xbfe3ff, 0x4c7e2c, .58));        // sky ↔ grass bounce
-const sun = new THREE.DirectionalLight(0xffe9c2, 1.45);              // warm key, raked low
+/* ---------- lights — overcast-bright daylight: soft sun key, cool sky fill, gentle ground bounce ---------- */
+scene.add(new THREE.HemisphereLight(0xaecadf, 0x59663f, .62));       // sky ↔ grass bounce (broad soft fill)
+const sun = new THREE.DirectionalLight(0xfff1da, 1.25);              // soft warm key, raked low
 sun.position.set(10, 15, -7);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left=-16; sun.shadow.camera.right=16;
-sun.shadow.camera.top=20;  sun.shadow.camera.bottom=-12;
-sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02; sun.shadow.radius = 4.5;
+sun.shadow.mapSize.set(4096, 4096);                                  // crisper, softer-edged shadows
+sun.shadow.camera.left=-18; sun.shadow.camera.right=18;
+sun.shadow.camera.top=22;  sun.shadow.camera.bottom=-14;
+sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.025; sun.shadow.radius = 6;
 scene.add(sun);
-const skyFill = new THREE.DirectionalLight(0xd2e4ff, .42);          // cool counter-fill from the sky
+const skyFill = new THREE.DirectionalLight(0xcfe0f2, .35);          // cool counter-fill from the sky
 skyFill.position.set(-9, 8, 7); scene.add(skyFill);
-scene.add(new THREE.AmbientLight(0xffffff, .1));                     // tiny floor so nothing crushes black
+scene.add(new THREE.AmbientLight(0xffffff, .12));                    // tiny floor so nothing crushes black
 
 /* ---------- gradient sky dome + soft sun glow ---------- */
 {
   const sc = document.createElement('canvas'); sc.width=16; sc.height=256;
   const sg = sc.getContext('2d');
   const grad = sg.createLinearGradient(0,0,0,256);
-  grad.addColorStop(0,   '#2f7fd4');   // zenith
-  grad.addColorStop(.45, '#7cc1ec');
-  grad.addColorStop(.80, '#bfe4f5');
-  grad.addColorStop(1,   '#e8f6ef');   // horizon haze (matches fog)
+  grad.addColorStop(0,   '#5b86b3');   // zenith — softer, hazier blue
+  grad.addColorStop(.45, '#8fb0cd');
+  grad.addColorStop(.80, '#b9cdd9');
+  grad.addColorStop(1,   '#d6dfe2');   // pale horizon haze (matches fog)
   sg.fillStyle = grad; sg.fillRect(0,0,16,256);
-  const skyTex = new THREE.CanvasTexture(sc);
+  const skyTex = sRGB(new THREE.CanvasTexture(sc));
   const sky = new THREE.Mesh(new THREE.SphereGeometry(160,32,16),
     new THREE.MeshBasicMaterial({map:skyTex, side:THREE.BackSide, fog:false, depthWrite:false}));
   scene.add(sky);
@@ -516,22 +522,28 @@ scene.add(new THREE.AmbientLight(0xffffff, .1));                     // tiny flo
 const turfCanvas = document.createElement('canvas');
 turfCanvas.width = turfCanvas.height = 512;
 const tc = turfCanvas.getContext('2d');
-tc.fillStyle = '#57a82b'; tc.fillRect(0,0,512,512);              // base green
-for(let i=0;i<8;i++){                                            // mowing stripes (alternating sheen)
-  tc.fillStyle = i%2 ? '#62b233' : '#4d9a25';
-  tc.fillRect(0, i*64, 512, 64);
+tc.fillStyle = '#3a5e2c'; tc.fillRect(0,0,512,512);             // base — natural pitch green (desaturated)
+for(let i=0;i<16;i++){                                           // finer mowing stripes, gentle sheen contrast
+  tc.fillStyle = i%2 ? '#406630' : '#345626';
+  tc.fillRect(0, i*32, 512, 32);
 }
-for(let i=0;i<2800;i++){                                         // fine speckle so it reads as grass, not plastic
+// broad mottled wear/patches so the grass reads organic rather than flat plastic
+for(let i=0;i<60;i++){
+  const x=Math.random()*512, y=Math.random()*512, r=18+Math.random()*46;
+  tc.fillStyle = Math.random()<.5 ? 'rgba(120,150,80,.05)' : 'rgba(20,45,10,.06)';
+  tc.beginPath(); tc.ellipse(x,y,r,r*.7,0,0,Math.PI*2); tc.fill();
+}
+for(let i=0;i<5200;i++){                                         // fine speckle so it reads as grass blades
   const x=Math.random()*512, y=Math.random()*512;
-  tc.fillStyle = Math.random()<.5 ? 'rgba(225,255,205,.06)' : 'rgba(10,45,0,.07)';
-  tc.fillRect(x, y, 2, 2);
+  tc.fillStyle = Math.random()<.5 ? 'rgba(180,205,140,.05)' : 'rgba(12,38,5,.07)';
+  tc.fillRect(x, y, 1.5, 1.5);
 }
-const turfTex = new THREE.CanvasTexture(turfCanvas);
-turfTex.wrapS = turfTex.wrapT = THREE.RepeatWrapping; turfTex.repeat.set(3,3);
+const turfTex = sRGB(new THREE.CanvasTexture(turfCanvas));
+turfTex.wrapS = turfTex.wrapT = THREE.RepeatWrapping; turfTex.repeat.set(4,4);
 try{ turfTex.anisotropy = renderer.capabilities.getMaxAnisotropy(); }catch(_){}
 const pitch = new THREE.Mesh(
   new THREE.PlaneGeometry(80,80),
-  new THREE.MeshStandardMaterial({map:turfTex, roughness:.92}));
+  new THREE.MeshStandardMaterial({map:turfTex, roughness:.97, metalness:0}));
 pitch.rotation.x = -Math.PI/2; pitch.receiveShadow = true;
 scene.add(pitch);
 
@@ -545,9 +557,9 @@ let crowdReact = ()=>{};                                   // assigned by the st
   // team 0 = goalkeeper (Collin), team 1 = striker — shirt palettes for the painted rows…
   const TEAM_SHIRTS = [
     ['#6a7180','#565d6b','#7a818f','#4b515d','#838b99'],   // Collin's end — steel-grey (his dark kit, kept readable)
-    ['#1f6bff','#2f60c8','#1a3f8e','#4f86f0','#143a86'],    // striker's end — blue kit
+    ['#2f5fb0','#2a5298','#23427a','#3f6fc0','#1d3a72'],    // striker's end — natural team blue
   ];
-  const TEAM_BODY = [0x6a7180, 0x1f6bff];                  // …and the 3-D spectators' shirts
+  const TEAM_BODY = [0x6a7180, 0x2f5fb0];                  // …and the 3-D spectators' shirts
   /* one densely-packed row of supporters, tiled along each terrace step.
      Natural-ish spread of clothing + skin tones, hair/caps, the odd empty seat. */
   function crowdRowTexture(shirts){
@@ -572,7 +584,7 @@ let crowdReact = ()=>{};                                   // assigned by the st
     const g=x.createLinearGradient(0,0,0,H);                         // soft AO top & bottom of each step
     g.addColorStop(0,'rgba(0,0,0,.30)'); g.addColorStop(.55,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.32)');
     x.fillStyle=g; x.fillRect(0,0,W,H);
-    const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
+    const t=sRGB(new THREE.CanvasTexture(c)); t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
   }
   const crowdTexTeam = [crowdRowTexture(TEAM_SHIRTS[0]), crowdRowTexture(TEAM_SHIRTS[1])];
   const teamAt = wx => (wx < 0 ? 0 : 1);   // left of centre = Collin's camp, right = striker's
@@ -589,7 +601,7 @@ let crowdReact = ()=>{};                                   // assigned by the st
       x.textAlign='center'; x.textBaseline='middle';
       x.fillText(words[i], i*seg+seg/2, H/2+1);
     }
-    const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; t.repeat.set(3,1); return t;
+    const t=sRGB(new THREE.CanvasTexture(c)); t.wrapS=THREE.RepeatWrapping; t.repeat.set(3,1); return t;
   }
 
   /* floodlight lamp bank + soft glow */
@@ -601,7 +613,7 @@ let crowdReact = ()=>{};                                   // assigned by the st
       x.fillStyle='rgba(255,255,235,.45)'; x.beginPath(); x.arc(px,py,10,0,Math.PI*2); x.fill(); // halo
       x.fillStyle='#fdfdf2';               x.beginPath(); x.arc(px,py,6.5,0,Math.PI*2); x.fill(); // bright core
     }
-    return new THREE.CanvasTexture(c);
+    return sRGB(new THREE.CanvasTexture(c));
   }
   function glowTexture(){
     const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
@@ -611,9 +623,9 @@ let crowdReact = ()=>{};                                   // assigned by the st
   }
   const glowMat = new THREE.SpriteMaterial({map:glowTexture(), transparent:true, depthWrite:false, fog:false});
 
-  const concreteMat  = new THREE.MeshStandardMaterial({color:0xc2c8d0, roughness:.96}); // terrace structure
-  const concreteDark = new THREE.MeshStandardMaterial({color:0x646a73, roughness:.95}); // step lips / back wall / poles
-  const roofMat      = new THREE.MeshStandardMaterial({color:0xd5dae1, roughness:.55, metalness:.25, side:THREE.DoubleSide});
+  const concreteMat  = new THREE.MeshStandardMaterial({color:0x9fa3a4, roughness:.98}); // terrace structure (duller weathered concrete)
+  const concreteDark = new THREE.MeshStandardMaterial({color:0x595d61, roughness:.96}); // step lips / back wall / poles
+  const roofMat      = new THREE.MeshStandardMaterial({color:0xb7bdc2, roughness:.6, metalness:.2, side:THREE.DoubleSide});
   const roofUnder    = new THREE.MeshStandardMaterial({color:0x3b424c, roughness:.9});
 
   const ROWS=11, FRONT=1.0, TOP=8.2, DEPTH=14;
@@ -803,84 +815,161 @@ lineSeg(16,.1,0,16.5); lineSeg(.1,16.5,-8,8.25); lineSeg(.1,16.5,8,8.25); lineSe
    save difficulty stays balanced when the format changes (see applyFormat). */
 const GOAL_FORMATS = { '8v8': {w:5.00, h:2.00}, '11v11': {w:7.32, h:2.44} };
 const GOAL_BASE = GOAL_FORMATS['8v8'];
-const POST_R = .07;
+const POST_R = .06;                              // 0.12 m diameter posts & crossbar (FIFA spec)
 let GOAL_W = GOAL_BASE.w, GOAL_H = GOAL_BASE.h;
-const postMat = new THREE.MeshStandardMaterial({color:0xffffff, roughness:.3, metalness:.1});
+// run-back of the net frame behind the goal line, scaled to the format (0.9 m top / 2.0 m bottom
+// on the full-size 2.44 m goal). The camera sits behind the goal, so this box is seen up close.
+let NET_TOP_D = .9, NET_BOT_D = 2.0;
+function setNetDepths(){ const s = GOAL_H/2.44; NET_TOP_D = .9*s; NET_BOT_D = 2.0*s; }
+/* glossy white painted aluminium for posts/crossbar; the rear stanchion is the same finish */
+const postMat  = new THREE.MeshStandardMaterial({color:0xf4f6f7, roughness:.22, metalness:.18});
+const frameMat = new THREE.MeshStandardMaterial({color:0xeef1f2, roughness:.3,  metalness:.15});
+const clipMat  = new THREE.MeshStandardMaterial({color:0x2a2d31, roughness:.6});       // net ties / clips
+const anchorMat= new THREE.MeshStandardMaterial({color:0x3a3d42, roughness:.7, metalness:.2}); // ground anchors
+const FRAME_R  = .028;                                  // thinner rear stanchion tubing
+const _yA = new THREE.Vector3(0,1,0), _v = new THREE.Vector3();
+// a cylinder spanning two points (for the angled stanchion bars)
+function tubeBetween(ax,ay,az, bx,by,bz, r, mat, grp){
+  _v.set(bx-ax, by-ay, bz-az); const len=_v.length() || 1e-4;
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,12), mat);
+  m.position.set((ax+bx)/2,(ay+by)/2,(az+bz)/2);
+  m.quaternion.setFromUnitVectors(_yA, _v.clone().normalize());
+  m.castShadow=true; grp.add(m); return m;
+}
+
+/* ---------- goal frame: posts + crossbar + modern box stanchion + ground anchors ---------- */
 const goalFrame = new THREE.Group(); scene.add(goalFrame);
 function buildGoalFrame(){
+  setNetDepths();
   while(goalFrame.children.length) goalFrame.remove(goalFrame.children[0]);
+  const hw = GOAL_W/2, H = GOAL_H, tD = NET_TOP_D, bD = NET_BOT_D;
+  // front frame — two posts + crossbar (rounded caps where they meet)
   for(const sx of [-1,1]){
-    const p = new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_H,16), postMat);
-    p.position.set(sx*GOAL_W/2, GOAL_H/2, 0); p.castShadow=true; goalFrame.add(p);
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,H,20), postMat);
+    p.position.set(sx*hw, H/2, 0); p.castShadow=true; goalFrame.add(p);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(POST_R,16,12), postMat);
+    cap.position.set(sx*hw, H, 0); goalFrame.add(cap);                     // smooth post↔bar corner
   }
-  const bar = new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_W+POST_R*2,16), postMat);
-  bar.rotation.z = Math.PI/2; bar.position.set(0,GOAL_H,0); bar.castShadow=true; goalFrame.add(bar);
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(POST_R,POST_R,GOAL_W,24), postMat);
+  bar.rotation.z = Math.PI/2; bar.position.set(0,H,0); bar.castShadow=true; goalFrame.add(bar);
+  // rear box stanchion (each side): top run-back, back slope, ground run-back
+  for(const sx of [-1,1]){
+    const x = sx*hw;
+    tubeBetween(x,H,0,        x,H,-tD,       FRAME_R, frameMat, goalFrame);  // top run-back
+    tubeBetween(x,H,-tD,      x,0+FRAME_R,-bD,FRAME_R, frameMat, goalFrame); // back slope down to ground
+    tubeBetween(x,0+FRAME_R,0,x,0+FRAME_R,-bD,FRAME_R, frameMat, goalFrame); // ground run-back
+  }
+  // rear horizontal bars joining the two sides (top-back & bottom-back)
+  tubeBetween(-hw,H,-tD,        hw,H,-tD,        FRAME_R, frameMat, goalFrame);
+  tubeBetween(-hw,0+FRAME_R,-bD,hw,0+FRAME_R,-bD,FRAME_R, frameMat, goalFrame);
+  // a mid back stay each side for rigidity
+  for(const sx of [-1,1]){ const x=sx*hw;
+    tubeBetween(x,H,-tD, x,H*0.0+FRAME_R,-bD, FRAME_R*0.85, frameMat, goalFrame); }
+  // ground anchors pinning the rear corners
+  for(const sx of [-1,1]){
+    const a = new THREE.Mesh(new THREE.BoxGeometry(.16,.06,.16), anchorMat);
+    a.position.set(sx*hw,.03,-bD); a.castShadow=true; goalFrame.add(a);
+    const peg = new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.18,8), anchorMat);
+    peg.position.set(sx*hw,.04,-bD+.12); peg.rotation.x=.5; goalFrame.add(peg);
+  }
+  // net ties / clips along the crossbar and post fronts
+  const nClip = Math.max(6, Math.round(GOAL_W/0.5));
+  for(let i=0;i<=nClip;i++){
+    const c = new THREE.Mesh(new THREE.SphereGeometry(.022,8,6), clipMat);
+    c.position.set(-hw + (i/nClip)*GOAL_W, H-POST_R, .02); goalFrame.add(c);
+  }
 }
-buildGoalFrame();
 
-/* ---------- deformable net — bulges & ripples when the ball hits it ---------- */
-const NET_COLS = 25, NET_ROWS = 13;
-const netNodes = [];                                   // grid of {x,y,rz, z,vz}
-for(let r=0;r<NET_ROWS;r++) for(let c=0;c<NET_COLS;c++) netNodes.push({x:0,y:0,rz:0,z:0,vz:0});
-function layoutNet(){                                   // (re)place the grid for the current goal size
-  let i=0;
-  for(let r=0;r<NET_ROWS;r++) for(let c=0;c<NET_COLS;c++){
-    const n=netNodes[i++];
-    n.x = -GOAL_W/2 + (c/(NET_COLS-1))*GOAL_W;
-    n.y = (r/(NET_ROWS-1))*GOAL_H;
-    n.rz = -1.4 + (n.y/GOAL_H)*1.2;                     // net surface slopes back & down
-    n.z = n.rz; n.vz = 0;
-  }
+/* ---------- box net: roof + back + floor swept across the width, plus two side nets ----------
+   White nylon, ~square mesh, gentle gravity sag. The back/roof/floor share one springy node
+   grid so the net billows realistically when the ball hits it; the sides are static panels. */
+const goalNet = new THREE.Group(); scene.add(goalNet);
+const netLineMat = new THREE.LineBasicMaterial({color:0xf4f7f8, transparent:true, opacity:.9});
+const netSurfMat = new THREE.MeshStandardMaterial({color:0xffffff, transparent:true, opacity:.08,
+                     side:THREE.DoubleSide, depthWrite:false, roughness:.95});
+const NET_CELL = .12;                                   // ~ square mesh cell size (m)
+let netNodes = [], netCols = 0, netRows = 0;            // main (roof+back+floor) grid
+let mainPos = null, mainAttr = null, mainSurfGeo = null;
+// cross-section profile front-top → back-top → back-bottom (roof + sloped back only).
+// There is NO floor net — the ground inside the goal is open grass; the back net simply
+// reaches the ground at the rear, where it's pinned to the bottom-back bar / anchors.
+function netProfile(t){
+  const H=GOAL_H, tD=NET_TOP_D, bD=NET_BOT_D;
+  const L1=tD, L2=Math.hypot(bD-tD,H), L=L1+L2;
+  let s=t*L;
+  if(s<=L1){ const u=s/L1; return {y:H,       z:-u*tD}; }                     // roof (crossbar → top-back bar)
+  s-=L1;     const u=s/L2; return {y:H*(1-u), z:-(tD+(bD-tD)*u)};             // back slope down to the ground
 }
-layoutNet();
-const netIdx = (r,c)=> r*NET_COLS + c;
-// one position per node, shared by the grid lines and a translucent surface so the
-// bulge reads as a 3-D pocket (shading) even when viewed head-on
-const nodePos = new Float32Array(netNodes.length*3);
-function writeNodePos(){
+function writeNetPos(){
   for(let i=0;i<netNodes.length;i++){ const n=netNodes[i];
-    nodePos[i*3]=n.x; nodePos[i*3+1]=n.y; nodePos[i*3+2]=n.z; }
+    mainPos[i*3]=n.rx; mainPos[i*3+1]=n.ry; mainPos[i*3+2]=n.rz - n.d; }     // d = billow back along -z
 }
-writeNodePos();
-const posAttr = new THREE.BufferAttribute(nodePos, 3);
-const linePairs = [];
-for(let r=0;r<NET_ROWS;r++) for(let c=0;c<NET_COLS;c++){
-  if(c<NET_COLS-1) linePairs.push(netIdx(r,c), netIdx(r,c+1));
-  if(r<NET_ROWS-1) linePairs.push(netIdx(r,c), netIdx(r+1,c));
+function buildSideNet(x){
+  const H=GOAL_H, tD=NET_TOP_D, bD=NET_BOT_D;
+  const P0=[x,H,0], P1=[x,H,-tD], P3=[x,0,0], P2=[x,0,-bD];
+  const cu=Math.max(3,Math.round(bD/NET_CELL)), cv=Math.max(4,Math.round(H/NET_CELL));
+  const pos=new Float32Array((cu+1)*(cv+1)*3); let k=0;
+  const lerp=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+  for(let v=0;v<=cv;v++) for(let u=0;u<=cu;u++){
+    const top=lerp(P0,P1,u/cu), bot=lerp(P3,P2,u/cu), p=lerp(top,bot,v/cv);
+    pos[k++]=p[0]; pos[k++]=p[1]; pos[k++]=p[2];
+  }
+  const attr=new THREE.BufferAttribute(pos,3), idx=(r,c)=>r*(cu+1)+c, lp=[];
+  for(let v=0;v<=cv;v++) for(let u=0;u<=cu;u++){ if(u<cu) lp.push(idx(v,u),idx(v,u+1)); if(v<cv) lp.push(idx(v,u),idx(v+1,u)); }
+  const lg=new THREE.BufferGeometry(); lg.setAttribute('position',attr); lg.setIndex(lp);
+  goalNet.add(new THREE.LineSegments(lg, netLineMat));
 }
-const lineGeo = new THREE.BufferGeometry();
-lineGeo.setAttribute('position', posAttr); lineGeo.setIndex(linePairs);
-scene.add(new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:.85})));
-const tris = [];
-for(let r=0;r<NET_ROWS-1;r++) for(let c=0;c<NET_COLS-1;c++){
-  const a=netIdx(r,c), b=netIdx(r,c+1), d=netIdx(r+1,c), e=netIdx(r+1,c+1);
-  tris.push(a,d,b, b,d,e);
+function buildGoalNet(){
+  setNetDepths();
+  while(goalNet.children.length) goalNet.remove(goalNet.children[0]);
+  netCols = Math.max(8, Math.round(GOAL_W/NET_CELL));
+  const profLen = NET_TOP_D + Math.hypot(NET_BOT_D-NET_TOP_D, GOAL_H);
+  netRows = Math.max(6, Math.round(profLen/NET_CELL));
+  netNodes = [];
+  for(let r=0;r<netRows;r++){
+    const t=r/(netRows-1), p=netProfile(t);
+    for(let c=0;c<netCols;c++){
+      const fx=c/(netCols-1), x=-GOAL_W/2 + fx*GOAL_W;
+      const sag = Math.sin(Math.PI*fx)*0.018 + Math.sin(Math.PI*t)*0.012;   // gentle slack, not rigid
+      netNodes.push({rx:x, ry:Math.max(p.y, 0.012), rz:p.z - sag, d:0, vd:0}); // tiny floor lift avoids z-fighting
+    }
+  }
+  mainPos = new Float32Array(netNodes.length*3); writeNetPos();
+  mainAttr = new THREE.BufferAttribute(mainPos,3);
+  const idx=(r,c)=>r*netCols+c, lp=[];
+  for(let r=0;r<netRows;r++) for(let c=0;c<netCols;c++){
+    if(c<netCols-1) lp.push(idx(r,c),idx(r,c+1));
+    if(r<netRows-1) lp.push(idx(r,c),idx(r+1,c));
+  }
+  const lg=new THREE.BufferGeometry(); lg.setAttribute('position',mainAttr); lg.setIndex(lp);
+  goalNet.add(new THREE.LineSegments(lg, netLineMat));
+  const tr=[];
+  for(let r=0;r<netRows-1;r++) for(let c=0;c<netCols-1;c++){
+    const a=idx(r,c),b=idx(r,c+1),d=idx(r+1,c),e=idx(r+1,c+1); tr.push(a,d,b,b,d,e);
+  }
+  mainSurfGeo=new THREE.BufferGeometry(); mainSurfGeo.setAttribute('position',mainAttr);
+  mainSurfGeo.setIndex(tr); mainSurfGeo.computeVertexNormals();
+  goalNet.add(new THREE.Mesh(mainSurfGeo, netSurfMat));
+  buildSideNet(-GOAL_W/2); buildSideNet(GOAL_W/2);
 }
-const surfGeo = new THREE.BufferGeometry();
-surfGeo.setAttribute('position', posAttr); surfGeo.setIndex(tris); surfGeo.computeVertexNormals();
-scene.add(new THREE.Mesh(surfGeo, new THREE.MeshStandardMaterial(
-  {color:0xffffff, transparent:true, opacity:.14, side:THREE.DoubleSide, depthWrite:false, roughness:.9})));
-function updateNetGeo(){
-  writeNodePos();
-  posAttr.needsUpdate = true;
-  surfGeo.computeVertexNormals();   // re-shade the bulging pocket
-}
-updateNetGeo();
-function rippleNet(bx, by, power){                      // billow nodes toward the viewer (-z) near the impact
+function updateNetGeo(){ if(!mainAttr) return; writeNetPos(); mainAttr.needsUpdate=true; mainSurfGeo.computeVertexNormals(); }
+function rippleNet(bx, by, power){                      // ball strikes the back net → billow it back
   for(const n of netNodes){
-    const d2 = (n.x-bx)*(n.x-bx) + (n.y-by)*(n.y-by);
-    n.vz -= power * Math.exp(-d2/1.1);                  // wide, soft billow
+    const d2 = (n.rx-bx)*(n.rx-bx) + (n.ry-by)*(n.ry-by);
+    n.vd += power * 0.12 * Math.exp(-d2/0.9);           // localised punch at the strike point
   }
 }
-function stepNet(dt){                                   // spring each node back to rest (springy ripple)
+function stepNet(dt){                                   // spring each node back to rest (moderate damping)
   let moved = false;
   for(const n of netNodes){
-    n.vz += ((n.rz - n.z)*55 - n.vz*4)*dt;
-    n.z  += n.vz*dt;
-    if(Math.abs(n.vz)>2e-3 || Math.abs(n.z-n.rz)>2e-3) moved = true;
+    n.vd += (-n.d*60 - n.vd*5)*dt;                      // stiff (low stretch) + damped (smooth return)
+    n.d  += n.vd*dt;
+    if(Math.abs(n.vd)>2e-3 || Math.abs(n.d)>2e-3) moved = true;
   }
   if(moved) updateNetGeo();
 }
+buildGoalFrame();
+buildGoalNet();
 
 /* ---------- shared toy materials ---------- */
 const M = {
@@ -917,7 +1006,7 @@ for(let i=0;i<80;i++){
   cc.beginPath(); cc.moveTo(x,y); cc.lineTo(x+len*.45, y+len); cc.stroke();  // steep diagonal strokes
 }
 cc.globalAlpha = 1;
-const camoTex = new THREE.CanvasTexture(camoCanvas);
+const camoTex = sRGB(new THREE.CanvasTexture(camoCanvas));
 camoTex.wrapS = camoTex.wrapT = THREE.RepeatWrapping; camoTex.repeat.set(1.6,1.6);
 M.camo.map = camoTex; M.camo.color.setHex(0xffffff); M.camo.needsUpdate = true;
 
@@ -929,7 +1018,7 @@ nc.fillStyle = '#ffffff'; nc.textAlign = 'center';
 nc.font = '700 38px Fredoka, sans-serif';   nc.fillText('COLLIN', 128, 52);
 nc.font = '700 132px Fredoka, sans-serif';  nc.fillText('1', 128, 178);
 nc.font = 'italic 700 30px Fredoka, sans-serif'; nc.fillText('uhlsport', 128, 232);
-const nameTex = new THREE.CanvasTexture(nameCanvas);
+const nameTex = sRGB(new THREE.CanvasTexture(nameCanvas));
 const nameMat = new THREE.MeshBasicMaterial({map:nameTex, transparent:true});
 
 /* "uhlsport / COLLIN" left-chest decal (photo) */
@@ -939,7 +1028,7 @@ const chc = chestCanvas.getContext('2d');
 chc.fillStyle = '#ffffff'; chc.textAlign = 'left';
 chc.font = 'italic 700 22px Fredoka, sans-serif'; chc.fillText('uhlsport', 6, 56);
 chc.font = '700 30px Fredoka, sans-serif';        chc.fillText('COLLIN', 6, 86);
-const chestMat = new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(chestCanvas), transparent:true});
+const chestMat = new THREE.MeshBasicMaterial({map:sRGB(new THREE.CanvasTexture(chestCanvas)), transparent:true});
 
 /* ---------- articulated figure builder (human-ish proportions) ----------
    Roughly athletic-youth proportions: legs ~45% of height, leaner limbs, a
@@ -954,13 +1043,13 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, 
   for(const side of [-1,1]){
     const hip = new THREE.Group();
     hip.position.set(side*.12, 1.0, 0);
-    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(.10,.078,.50,14), legs);
+    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(.10,.078,.50,24), legs);
     thigh.position.y = -.25; hip.add(thigh);
-    const kneeCap = new THREE.Mesh(new THREE.SphereGeometry(.082,10,8), legs);
+    const kneeCap = new THREE.Mesh(new THREE.SphereGeometry(.082,16,12), legs);
     kneeCap.position.y = -.50; hip.add(kneeCap);
     const knee = new THREE.Group();
     knee.position.y = -.50; hip.add(knee);
-    const shin = new THREE.Mesh(new THREE.CylinderGeometry(.078,.058,.44,14), legs);
+    const shin = new THREE.Mesh(new THREE.CylinderGeometry(.078,.058,.44,24), legs);
     shin.position.y = -.22; knee.add(shin);
     const ankle = new THREE.Group();                 // ankle pivot — the foot flexes & points
     ankle.position.y = -.42; knee.add(ankle);
@@ -972,16 +1061,16 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, 
   }
 
   // pelvis / shorts
-  const hipsM = new THREE.Mesh(new THREE.CylinderGeometry(.235,.20,.30,16), shorts);
+  const hipsM = new THREE.Mesh(new THREE.CylinderGeometry(.235,.20,.30,24), shorts);
   hipsM.position.y = 1.02; g.add(hipsM);
 
   // waist/spine pivot — the whole upper body (torso, arms, head) bends here
   const waist = new THREE.Group(); waist.position.y = 1.0; g.add(waist);
 
   // torso — lean & tapered teen build, with a slim shoulder yoke for the chest
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(.262,.205,.62,18), shirt);
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(.262,.205,.62,28), shirt);
   torso.position.y = .41; waist.add(torso);
-  const yoke = new THREE.Mesh(new THREE.SphereGeometry(.275,18,12), shirt);
+  const yoke = new THREE.Mesh(new THREE.SphereGeometry(.275,24,16), shirt);
   yoke.position.y = .62; yoke.scale.set(1.1,.58,.82); waist.add(yoke);
 
   // arms — shoulder → upper arm → elbow → forearm + glove (slim teen limbs)
@@ -989,19 +1078,19 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, 
   for(const side of [-1,1]){
     const sh = new THREE.Group();
     sh.position.set(side*.305, .67, 0);
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(.068,.056,.38,12), shirt);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(.068,.056,.38,20), shirt);
     upper.position.y = -.19; sh.add(upper);
-    const elbowCap = new THREE.Mesh(new THREE.SphereGeometry(.058,8,8), shirt);
+    const elbowCap = new THREE.Mesh(new THREE.SphereGeometry(.058,14,10), shirt);
     elbowCap.position.y = -.38; sh.add(elbowCap);
     const elbow = new THREE.Group();
     elbow.position.y = -.38; sh.add(elbow);
-    const fore = new THREE.Mesh(new THREE.CylinderGeometry(.055,.045,.34,12), shirt);
+    const fore = new THREE.Mesh(new THREE.CylinderGeometry(.055,.045,.34,20), shirt);
     fore.position.y = -.17; elbow.add(fore);
-    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.076,.027,8,14), cuffs);
+    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.076,.027,10,20), cuffs);
     cuff.position.y = -.34; cuff.rotation.x = Math.PI/2; elbow.add(cuff);
     const wrist = new THREE.Group();                 // wrist pivot — the hand articulates
     wrist.position.y = -.36; elbow.add(wrist);
-    const glove = new THREE.Mesh(new THREE.SphereGeometry(.112,12,10), gloves);
+    const glove = new THREE.Mesh(new THREE.SphereGeometry(.112,18,14), gloves);
     glove.position.y = -.045; glove.scale.set(1,1.12,.82); wrist.add(glove);
     sh.rotation.z = side * .16;
     sh.userData.elbow = elbow; sh.userData.wrist = wrist; sh.userData.glove = glove;
@@ -1143,7 +1232,7 @@ xc.fillStyle = '#ffffff'; xc.textAlign = 'center';
 xc.font = '700 26px Fredoka, sans-serif';        xc.fillText('FORTUUR', 128, 150);
 xc.font = '700 42px Fredoka, sans-serif';        xc.fillText('MAPLEZIER', 128, 192);
 xc.font = '600 16px Fredoka, sans-serif';        xc.fillText('· VASTGOED PROJECTEN ·', 128, 218);
-const crestMat = new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(crestCanvas), transparent:true});
+const crestMat = new THREE.MeshBasicMaterial({map:sRGB(new THREE.CanvasTexture(crestCanvas)), transparent:true});
 
 /* "9 · TIMOTHY" back-of-shirt decal (visible when the camera orbits behind him) */
 const tNameCanvas = document.createElement('canvas');
@@ -1152,7 +1241,7 @@ const tn = tNameCanvas.getContext('2d');
 tn.fillStyle = '#ffffff'; tn.textAlign = 'center';
 tn.font = '700 36px Fredoka, sans-serif';   tn.fillText('TIMOTHY', 128, 52);
 tn.font = '700 132px Fredoka, sans-serif';  tn.fillText('9', 128, 178);
-const tNameMat = new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(tNameCanvas), transparent:true});
+const tNameMat = new THREE.MeshBasicMaterial({map:sRGB(new THREE.CanvasTexture(tNameCanvas)), transparent:true});
 
 /* striker-exclusive kit materials so the player can recolour each part independently */
 const strShirtMat  = new THREE.MeshStandardMaterial({color:0x1d49cf, roughness:.3}); // jersey
@@ -1348,7 +1437,7 @@ bgPlayer(12,25,Math.PI+.4, 0x1d49cf,0x1d49cf,0xe8401c);  // blue team
 
 /* ---------- ball ---------- */
 const ball = new THREE.Group();
-const ballCore = new THREE.Mesh(new THREE.SphereGeometry(.24,20,16), M.white);
+const ballCore = new THREE.Mesh(new THREE.SphereGeometry(.24,40,28), M.white);
 ball.add(ballCore);
 for(let i=0;i<8;i++){
   const patch = new THREE.Mesh(new THREE.CircleGeometry(.085,6),
@@ -1565,7 +1654,7 @@ function applyFormat(fmt){
   DATA.format = fmt;
   const f = GOAL_FORMATS[fmt];
   GOAL_W = f.w; GOAL_H = f.h;
-  buildGoalFrame();  layoutNet();    updateNetGeo();     // near goal + net
+  buildGoalFrame();  buildGoalNet();                     // near goal frame + box net
   layoutZones();                                          // shot targets follow the goal
   buildOppFrame();   layoutOppNet(); updateOppNet();      // far (goal-to-goal) goal + net
   document.querySelectorAll('.fmt-btn').forEach(x=> x.classList.toggle('sel', x.dataset.fmt === fmt));
