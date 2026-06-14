@@ -7,6 +7,15 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.9.2] — 2026-06-14
+
+### Changed
+- **Collin remodelled joint-by-joint from a real photo of the keeper** (`collin-human.jpeg`), so both his build and his pre-dive position match the actual lean young keeper rather than a generic figure:
+  - **Proportions:** slimmer arms and legs, a narrower chest/shoulder line, a tighter pelvis and a smaller, more teen-like head and neck — a leaner, taller-looking athletic build. (Bone lengths and joint pivots are unchanged, so every dive and pose still lines up; figures auto-scale to 1.60 m as before.)
+  - **Set/ready stance rebuilt from the photo's joint angles.** Trunk leans forward only **moderately and as a waist hinge** — decoupled from the body pitch so the **shins stay vertical and the feet flat** (the old coupling tipped the feet and read as falling forward). The crouch comes from a moderate knee bend with the hips dropped back, head up to the play, and **both arms hanging from the shoulders with the elbows bent ~80° so the open gloves sit at WAIST/HIP height in front of the body** (not up by the chest, not down at the knees), about shoulder-width apart. Feet a touch wider than the shoulders.
+  - **A genuinely human face.** Replaced the blocky cylinder head with a rounded, oval head + jaw, and added the features from the photo — **eyebrows, almond eyes, a nose and ears** — under a short textured brown crop with a bare forehead and a light fringe at the hairline, plus a focused neutral expression.
+  - **Colour/kit:** hair retuned to a true mid-brown (the old shade flared ginger under the warm key light — now the shipped default) and the socks darkened to match his all-black kit.
+
 ## [1.9.1] — 2026-06-14
 
 ### Fixed

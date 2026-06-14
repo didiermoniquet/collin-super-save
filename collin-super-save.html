@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.9.1">
+<meta name="version" content="1.9.2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -367,7 +367,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.9.1';
+const VERSION = '1.9.2';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -858,18 +858,18 @@ const chestMat = new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(chestC
 function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, skin=M.skin, hair=M.hair, eyeMat=M.eye}){
   const g = new THREE.Group();
 
-  // legs — hip → thigh → knee → shin + boot (long & lean)
+  // legs — hip → thigh → knee → shin + boot (long & lean teen limbs)
   const legsP = {};
   for(const side of [-1,1]){
     const hip = new THREE.Group();
-    hip.position.set(side*.13, 1.0, 0);
-    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(.115,.09,.50,14), legs);
+    hip.position.set(side*.12, 1.0, 0);
+    const thigh = new THREE.Mesh(new THREE.CylinderGeometry(.10,.078,.50,14), legs);
     thigh.position.y = -.25; hip.add(thigh);
-    const kneeCap = new THREE.Mesh(new THREE.SphereGeometry(.092,10,8), legs);
+    const kneeCap = new THREE.Mesh(new THREE.SphereGeometry(.082,10,8), legs);
     kneeCap.position.y = -.50; hip.add(kneeCap);
     const knee = new THREE.Group();
     knee.position.y = -.50; hip.add(knee);
-    const shin = new THREE.Mesh(new THREE.CylinderGeometry(.088,.066,.44,14), legs);
+    const shin = new THREE.Mesh(new THREE.CylinderGeometry(.078,.058,.44,14), legs);
     shin.position.y = -.22; knee.add(shin);
     const ankle = new THREE.Group();                 // ankle pivot — the foot flexes & points
     ankle.position.y = -.42; knee.add(ankle);
@@ -881,30 +881,30 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, 
   }
 
   // pelvis / shorts
-  const hipsM = new THREE.Mesh(new THREE.CylinderGeometry(.25,.21,.30,16), shorts);
+  const hipsM = new THREE.Mesh(new THREE.CylinderGeometry(.235,.20,.30,16), shorts);
   hipsM.position.y = 1.02; g.add(hipsM);
 
   // waist/spine pivot — the whole upper body (torso, arms, head) bends here
   const waist = new THREE.Group(); waist.position.y = 1.0; g.add(waist);
 
-  // torso — leaner & tapered, with a rounded shoulder yoke for a fuller chest
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(.285,.225,.60,18), shirt);
-  torso.position.y = .40; waist.add(torso);
-  const yoke = new THREE.Mesh(new THREE.SphereGeometry(.30,18,12), shirt);
-  yoke.position.y = .60; yoke.scale.set(1.12,.6,.82); waist.add(yoke);
+  // torso — lean & tapered teen build, with a slim shoulder yoke for the chest
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(.262,.205,.62,18), shirt);
+  torso.position.y = .41; waist.add(torso);
+  const yoke = new THREE.Mesh(new THREE.SphereGeometry(.275,18,12), shirt);
+  yoke.position.y = .62; yoke.scale.set(1.1,.58,.82); waist.add(yoke);
 
-  // arms — shoulder → upper arm → elbow → forearm + glove (slimmer, a touch longer)
+  // arms — shoulder → upper arm → elbow → forearm + glove (slim teen limbs)
   const arms = {};
   for(const side of [-1,1]){
     const sh = new THREE.Group();
-    sh.position.set(side*.33, .66, 0);
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(.077,.064,.38,12), shirt);
+    sh.position.set(side*.305, .67, 0);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(.068,.056,.38,12), shirt);
     upper.position.y = -.19; sh.add(upper);
-    const elbowCap = new THREE.Mesh(new THREE.SphereGeometry(.066,8,8), shirt);
+    const elbowCap = new THREE.Mesh(new THREE.SphereGeometry(.058,8,8), shirt);
     elbowCap.position.y = -.38; sh.add(elbowCap);
     const elbow = new THREE.Group();
     elbow.position.y = -.38; sh.add(elbow);
-    const fore = new THREE.Mesh(new THREE.CylinderGeometry(.063,.052,.34,12), shirt);
+    const fore = new THREE.Mesh(new THREE.CylinderGeometry(.055,.045,.34,12), shirt);
     fore.position.y = -.17; elbow.add(fore);
     const cuff = new THREE.Mesh(new THREE.TorusGeometry(.076,.027,8,14), cuffs);
     cuff.position.y = -.34; cuff.rotation.x = Math.PI/2; elbow.add(cuff);
@@ -918,21 +918,41 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, 
     arms[side<0?'L':'R'] = sh;
   }
 
-  // neck + head + face (smaller head for human-ish proportions)
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.13,12), skin);
-  neck.position.y = .79; waist.add(neck);
-  const head = new THREE.Group(); head.position.y = .95; waist.add(head);
-  const skull = new THREE.Mesh(new THREE.CylinderGeometry(.185,.16,.34,20), skin);
-  head.add(skull);
-  const hairMesh = new THREE.Mesh(new THREE.SphereGeometry(.21,18,12,0,Math.PI*2,0,Math.PI*.56), hair);
-  hairMesh.position.y = .055; hairMesh.scale.set(1,.96,1.06); head.add(hairMesh);
-  const fringe = new THREE.Mesh(new THREE.BoxGeometry(.33,.08,.08), hair);
-  fringe.position.set(0,.055,.16); head.add(fringe);
-  const eyeGeo = new THREE.SphereGeometry(.026,8,8);
-  const eL = new THREE.Mesh(eyeGeo,eyeMat); eL.position.set(-.072,.02,.17);
-  const eR = eL.clone(); eR.position.x = .072; head.add(eL,eR);
-  const smile = new THREE.Mesh(new THREE.TorusGeometry(.05,.011,6,12,Math.PI), M.mouth);
-  smile.position.set(0,-.065,.17); smile.rotation.set(0,0,Math.PI); head.add(smile);
+  // neck + head + face — a rounded, oval head with human cues (jaw, brows, nose, ears)
+  // so the keeper reads as a person rather than a blocky cylinder.
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.058,.066,.13,12), skin);
+  neck.position.y = .80; waist.add(neck);
+  const head = new THREE.Group(); head.position.y = .955; waist.add(head);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(.17,20,16), skin);
+  skull.scale.set(1,1.12,1.02); head.add(skull);                          // oval cranium
+  const jaw = new THREE.Mesh(new THREE.SphereGeometry(.128,16,12), skin);
+  jaw.position.y = -.11; jaw.scale.set(1,.92,1); head.add(jaw);            // chin / jaw fills the lower face
+  // hair: short textured crop — caps the crown & dips at the back/sides, forehead left bare.
+  // centred ABOVE the eyes (a true dome) so it never drapes over the face.
+  const hairMesh = new THREE.Mesh(new THREE.SphereGeometry(.176,20,14,0,Math.PI*2,0,Math.PI*.5), hair);
+  hairMesh.position.y = .088; hairMesh.scale.set(1.04,1.05,1.08); head.add(hairMesh);
+  const back = new THREE.Mesh(new THREE.SphereGeometry(.168,16,12,0,Math.PI*2,0,Math.PI*.62), hair);
+  back.position.set(0,.05,-.03); back.scale.set(1.02,1,1); head.add(back);       // hair dips lower at the back
+  const fringe = new THREE.Mesh(new THREE.BoxGeometry(.28,.06,.07), hair);
+  fringe.position.set(0,.122,.115); fringe.rotation.x = .28; head.add(fringe);   // light fringe at the hairline
+  // eyes — slightly almond, set into the face
+  const eyeGeo = new THREE.SphereGeometry(.022,10,10);
+  const eL = new THREE.Mesh(eyeGeo,eyeMat); eL.position.set(-.06,.022,.16); eL.scale.set(1.25,1,.6);
+  const eR = eL.clone(); eR.position.x = .06; head.add(eL,eR);
+  // eyebrows (hair colour) — a focused, level brow on the forehead, below the hairline
+  const browGeo = new THREE.BoxGeometry(.05,.013,.028);
+  const bL = new THREE.Mesh(browGeo,hair); bL.position.set(-.06,.058,.158); bL.rotation.z = -.05;
+  const bR = bL.clone(); bR.position.x = .06; bR.rotation.z = .05; head.add(bL,bR);
+  // nose — a small rounded skin bump between the eyes and mouth
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(.026,10,8), skin);
+  nose.position.set(0,-.022,.158); nose.scale.set(.85,1.15,.95); head.add(nose);
+  // ears
+  const earGeo = new THREE.SphereGeometry(.033,10,10);
+  const earL = new THREE.Mesh(earGeo,skin); earL.position.set(-.167,-.01,.005); earL.scale.set(.5,1.1,.8);
+  const earR = earL.clone(); earR.position.x = .167; head.add(earL,earR);
+  // focused, neutral mouth (concentrating) — a short, near-straight line
+  const mouth = new THREE.Mesh(new THREE.TorusGeometry(.04,.0092,6,12,Math.PI*.7), M.mouth);
+  mouth.position.set(0,-.082,.16); mouth.rotation.set(0,0,Math.PI*1.15); head.add(mouth);
 
   shadowed(g);
   return {group:g, arms, head, legs:legsP, waist};
@@ -941,11 +961,11 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, 
 /* ---------- COLLIN the keeper ---------- */
 /* keeper-exclusive kit materials so recolouring never touches the striker / others */
 const kitBottomsMat    = new THREE.MeshStandardMaterial({color:0x222226, roughness:.4}); // shorts + leggings
-const kitSockMat       = new THREE.MeshStandardMaterial({color:0x3a3a42, roughness:.4}); // sock cuffs
+const kitSockMat       = new THREE.MeshStandardMaterial({color:0x1c1c20, roughness:.45}); // black sock cuffs
 const kitBootStripeMat = new THREE.MeshStandardMaterial({color:0xd63a8f, roughness:.3});  // boot swoosh
 /* keeper-exclusive appearance (skin / hair / eyes) so recolouring his face never touches anyone else */
 const keeperSkinMat = new THREE.MeshStandardMaterial({color:0xf6c89a, roughness:.35});
-const keeperHairMat = new THREE.MeshStandardMaterial({color:0x6b4423, roughness:.5});
+const keeperHairMat = new THREE.MeshStandardMaterial({color:0x46301d, roughness:.6}); // mid-brown (warm key light would push a lighter brown toward ginger)
 const keeperEyeMat  = new THREE.MeshBasicMaterial({color:0x3a2415});
 const keeper = buildFigure({shirt:M.camo, shorts:kitBottomsMat, boots:M.pink, gloves:M.volt, legs:kitBottomsMat, cuffs:M.blue,
                             skin:keeperSkinMat, hair:keeperHairMat, eyeMat:keeperEyeMat});
@@ -999,9 +1019,9 @@ const keeperHome = new THREE.Vector3(0,0,.6);
     cuff.position.set(0,-.05,0); cuff.rotation.x = Math.PI/2; knee.add(cuff);
   }
 
-  // tousled hair tufts (messy crop) — small, sitting on the crown of the smaller head
-  const tuftGeo = new THREE.SphereGeometry(.055,8,6);
-  [[-.10,.12,.05],[.09,.13,-.03],[0,.15,.07],[.12,.09,.06],[-.12,.09,-.05]].forEach(p=>{
+  // subtle texture on the crown (a few low tufts) — sits on top of the dome, no horns
+  const tuftGeo = new THREE.SphereGeometry(.04,8,6);
+  [[-.07,.2,.0],[.07,.205,-.02],[0,.215,.04],[-.04,.2,.08],[.05,.2,.07]].forEach(p=>{
     const tuft = new THREE.Mesh(tuftGeo, keeperHairMat);
     tuft.position.set(...p); tuft.scale.set(1.2,.7,1.2);
     keeper.head.add(tuft);
@@ -1294,9 +1314,9 @@ const DATA = {
   scores: {normal:{easy:0,medium:0,hard:0}, sudden:{easy:0,medium:0,hard:0}, goal2goal:0},
   stats:  {easy:blankStat(), medium:blankStat(), hard:blankStat()},
   cosmetics: {shirt:'#1b1b1f', shorts:'#1b1b1f', socks:'#9aa0a8', glove:'#ffd23f', boot:'#ff5fb4', name:'COLLIN',
-              skin:'#f6c89a', hair:'#6b4423', eyes:'#3a2415',
+              skin:'#f6c89a', hair:'#46301d', eyes:'#3a2415',
               striker: {shirt:'#1f6bff', shorts:'#1f6bff', socks:'#1f6bff', boot:'#e23b2e', name:'TIMOTHY', num:'9',
-                        skin:'#f6c89a', hair:'#6b4423', eyes:'#3a2415'}},
+                        skin:'#f6c89a', hair:'#46301d', eyes:'#3a2415'}},
 };
 function mergeScores(into, from){ if(!from) return;
   for(const d of DIFFS) into[d] = Math.max(into[d]||0, +from[d]||0); }
@@ -1479,14 +1499,21 @@ function closeReplay(){
 /* ---------- keeper pose rig ----------
    position: x/y/dz · body: roll(z)/pitch(x) · shoulders shL/shR(splay z) + fL/fR(swing x)
    · elbows eL/eR(bend) · hips hipL/hipR(swing x) + knees kL/kR(bend). Lerps to a target. */
-const KSTAND = {x:0,y:0,dz:0,roll:0,pitch:0, shL:.28,shR:-.28, fL:0,fR:0, eL:.25,eR:.25, kL:.1,kR:.1, hipL:0,hipR:0};
-// pro "set" stance: a coiled athletic crouch — knees deeply bent, chest leaning out over the
-// knees (weight on the balls of the feet), and the gloves held UP & FORWARD ready to react
-// (arms away from the body, elbows bent, no t-rex). Feet are widened separately below.
-const KREADY = {x:0,y:-.13,dz:.07,roll:0,pitch:.12, wz:0, shL:-.34,shR:.34, fL:-.6,fR:-.6,
-                eL:-1.12,eR:-1.12, kL:.86,kR:.86, hipL:.3,hipR:.3};
+const KSTAND = {x:0,y:0,dz:0,roll:0,pitch:0, lean:0, shL:.28,shR:-.28, fL:0,fR:0, eL:.25,eR:.25, kL:.1,kR:.1, hipL:0,hipR:0};
+// "set" stance — replicated joint-by-joint from collin-human.jpeg:
+//   · trunk leans forward ~18-20° — but as a WAIST hinge (lean), NOT whole-body pitch, so the
+//     shins/feet stay vertical & flat on the turf (the old coupling tipped the feet and read
+//     as falling forward). pitch stays tiny.
+//   · hips dropped back & flexed a touch (thighs angle forward), knees in a MODERATE bend
+//     (not a deep squat), shins ~vertical.
+//   · arms hang ~vertically from the shoulders; elbows bent ~80° so the forearms come forward
+//     & slightly down, putting the open gloves at WAIST/HIP height in front of the body
+//     (not up by the chest, not down at the knees), hands about shoulder-width apart.
+//   · head is craned to the play by the look-at rig. Feet ~shoulder width (widened below).
+const KREADY = {x:0,y:-.09,dz:.02,roll:0,pitch:.03, lean:.14, wz:0, shL:.2,shR:-.2, fL:-.13,fR:-.13,
+                eL:-.85,eR:-.85, kL:.55,kR:.55, hipL:.1,hipR:.1};
 // anticipation gather: deep crouch & coil just before launching off the line
-const KLOAD  = {x:0,y:-.17,dz:.04,roll:0,pitch:.15, wz:0, shL:.42,shR:-.42, fL:-.8,fR:-.8,
+const KLOAD  = {x:0,y:-.17,dz:.04,roll:0,pitch:.15, lean:.1, wz:0, shL:.42,shR:-.42, fL:-.8,fR:-.8,
                 eL:-2.0,eR:-2.0, kL:1.05,kR:1.05, hipL:.42,hipR:.42};
 let kpose = {...KREADY}, ktarget = {...KREADY};
 let diveT = -1, divePeak = 0, diveAir = .42;                 // dive timeline
@@ -1827,7 +1854,7 @@ function makeDivePose(zone){
   const trail = side > 0 ? 'L' : 'R';                // contralateral leg — loads deep & drives
   // wz = waist lateral bend (set per zone so high dives can arch while low dives stay
   // straight enough to lie flat); pitch drives the waist fold (wx) in the apply step.
-  const p = {x:0,y:0,dz:0,roll:0,pitch:0, wz:0, shL:.28,shR:-.28, fL:0,fR:0, eL:.1,eR:.1, kL:.15,kR:.15, hipL:0,hipR:0};
+  const p = {x:0,y:0,dz:0,roll:0,pitch:0, lean:0, wz:0, shL:.28,shR:-.28, fL:0,fR:0, eL:.1,eR:.1, kL:.15,kR:.15, hipL:0,hipR:0};
   let peak = .4;
   if(zone === 4){
     // S — collapsed barrier/smother: drop behind the line of the ball, chest folding
@@ -2150,9 +2177,9 @@ const KIT_COLORS = ['#e23b2e','#ff7a1f','#ffd23f','#2eaf4e','#1f6bff','#7a2bd0',
 /* dedicated palettes for the face: realistic skin tones, common hair colours (+ a couple of
    fun ones), and eye colours */
 const SKIN_COLORS = ['#ffe0bd','#f6c89a','#eac086','#d99e6a','#c68642','#a3673f','#7a4a2b','#5a3620'];
-const HAIR_COLORS = ['#1b1b1f','#3b2417','#6b4423','#a36a32','#d9b15c','#c75d2c','#9aa0a8','#ffffff','#2eaf4e','#7a2bd0'];
+const HAIR_COLORS = ['#1b1b1f','#3b2417','#46301d','#a36a32','#d9b15c','#c75d2c','#9aa0a8','#ffffff','#2eaf4e','#7a2bd0'];
 const EYE_COLORS  = ['#3a2415','#6b4423','#8a6a3b','#2e7d32','#1f6bff','#5b8aa6','#7a2bd0','#111111'];
-const APP_DEFAULTS = {skin:'#f6c89a', hair:'#6b4423', eyes:'#3a2415'};
+const APP_DEFAULTS = {skin:'#f6c89a', hair:'#46301d', eyes:'#3a2415'};
 const APP_PALETTES = {skin:SKIN_COLORS, hair:HAIR_COLORS, eyes:EYE_COLORS};
 function _rgb(h){ h=String(h).replace('#',''); if(h.length===3) h=h.split('').map(c=>c+c).join('');
   return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
@@ -2567,9 +2594,9 @@ function animate(){
   keeper.arms.R.userData.wrist.rotation.x = diving ? -.35 : -.08;
   // spine: the torso curls into a sideways dive and folds over the ball on a smother
   keeper.waist.rotation.z = kpose.wz;
-  keeper.waist.rotation.x = kpose.pitch * .45 + (ready ? Math.sin(t*2.5)*.02 : 0);
+  keeper.waist.rotation.x = kpose.pitch * .45 + (kpose.lean||0) + (ready ? Math.sin(t*2.5)*.02 : 0);
   // feet slightly wider than shoulders when set; tucks back in as he dives
-  stanceSplay = lerp(stanceSplay, ready ? .22 : 0, 1 - Math.pow(.02, dt));   // feet ~shoulder width when set
+  stanceSplay = lerp(stanceSplay, ready ? .26 : 0, 1 - Math.pow(.02, dt));   // feet a touch wider than shoulders when set
   keeper.legs.L.rotation.z = -stanceSplay; keeper.legs.R.rotation.z = stanceSplay;
   keeper.head.rotation.y = ready ? Math.sin(t*.7)*.12         // glance around when waiting
     : THREE.MathUtils.clamp((ball.position.x - keeper.group.position.x)*.34, -.85, .85); // drive chin & face to the ball
