@@ -7,6 +7,14 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.9.1] — 2026-06-14
+
+### Fixed
+- **The crowd no longer blocks the view.** On tall phone screens the camera zooms out behind the goal, which put the goal-line stand and the near ends of the side stands right in front of the lens (giant spectators filling the foreground). The bowl was widened and the goal-end / side stands pushed well back beyond the camera's furthest zoom, so the playing view stays clear.
+
+### Changed
+- **Spectators now have arms.** Each person has a pair of arms that rest low while seated and **shoot up and wave** when the cheer wave rolls past, so the celebration reads much more clearly.
+
 ## [1.9.0] — 2026-06-14
 
 ### Added

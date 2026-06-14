@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.9.0">
+<meta name="version" content="1.9.1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -367,7 +367,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.9.0';
+const VERSION = '1.9.1';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -627,6 +627,7 @@ scene.add(pitch);
   const SPACING=1.7;
   const bodyGeo=new THREE.CylinderGeometry(.13,.2,.5,6);
   const headGeo=new THREE.SphereGeometry(.135,8,6);
+  const armGeo =new THREE.BoxGeometry(.34,.08,.1);     // a skin-coloured bar = two arms (rests low, shoots up to cheer)
   const SHIRT=[0xe2e2e2,0x39527d,0x9aa1ab,0xb23a32,0x2f6b46,0xcaa23a].map(c=>new THREE.MeshLambertMaterial({color:c}));
   const SKIN =[0xf3c6a0,0xd39b6e,0x8d5a36].map(c=>new THREE.MeshLambertMaterial({color:c}));
   const crowdParts=[];    // instanced meshes whose matrices update each frame
@@ -649,10 +650,12 @@ scene.add(pitch);
     specs.forEach(s=>{ sCount[s.sb]++; kCount[s.kb]++; });
     const bodyIM=SHIRT.map((m,i)=>new THREE.InstancedMesh(bodyGeo,m,Math.max(1,sCount[i])));
     const headIM=SKIN .map((m,i)=>new THREE.InstancedMesh(headGeo,m,Math.max(1,kCount[i])));
-    [...bodyIM,...headIM].forEach(im=>{ im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled=false; g.add(im); crowdParts.push(im); });
+    const armIM =SKIN .map((m,i)=>new THREE.InstancedMesh(armGeo, m,Math.max(1,kCount[i])));
+    [...bodyIM,...headIM,...armIM].forEach(im=>{ im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled=false; g.add(im); crowdParts.push(im); });
     const sIdx=Array(SHIRT.length).fill(0), kIdx=Array(SKIN.length).fill(0);
     specs.forEach(s=>{
-      crowdPeople.push({bodyMesh:bodyIM[s.sb], bi:sIdx[s.sb]++, headMesh:headIM[s.kb], hi:kIdx[s.kb]++,
+      const bi=sIdx[s.sb]++, hi=kIdx[s.kb]++;
+      crowdPeople.push({bodyMesh:bodyIM[s.sb], bi, headMesh:headIM[s.kb], armMesh:armIM[s.kb], hi,
                         lx:s.lx, y:s.y, z:s.z, phase:s.phase, ang:s.ang});
     });
   }
@@ -669,12 +672,18 @@ scene.add(pitch);
       _d.scale.set(1,1,1);
       _d.position.set(p.lx, p.y + bob + lift + 0.28*sy, p.z); _d.updateMatrix();
       p.headMesh.setMatrixAt(p.hi, _d.matrix);
+      // arms — folded low when seated, thrown up and waving when the cheer hits
+      _d.position.set(p.lx, p.y + 0.14 + bob + lift + cheer*0.42, p.z + 0.05);
+      _d.scale.set(1 + cheer*0.3, 1, 1);
+      _d.rotation.set(0, 0, Math.sin(t*7 + p.phase)*0.45*cheer);
+      _d.updateMatrix(); p.armMesh.setMatrixAt(p.hi, _d.matrix);
+      _d.rotation.set(0,0,0);
     }
     for(const im of crowdParts) im.instanceMatrix.needsUpdate=true;
   }
 
   const bowl = new THREE.Group();
-  const HALF_X=19, GOAL_END=-8, FAR_END=24, MID_Z=(GOAL_END+FAR_END)/2;
+  const HALF_X=22, GOAL_END=-20, FAR_END=24, MID_Z=(GOAL_END+FAR_END)/2;
   const sideLen=FAR_END-GOAL_END, endLen=HALF_X*2;
   function addStand(cx,cz,rotY,length){ const g=buildStand(cx,cz,rotY,length); populateCrowd(g,cx,cz,rotY,length); bowl.add(g); }
   addStand(0,       FAR_END,  Math.PI,    endLen);   // far end — main backdrop behind the taker
