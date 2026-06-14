@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.7.2">
+<meta name="version" content="1.7.3">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -367,7 +367,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.7.2';
+const VERSION = '1.7.3';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1701,7 +1701,7 @@ function makeDivePose(zone){
     // the corner, the body flung nearly HORIZONTAL and stretched in one long line, both arms
     // reaching past the head to the top corner, the contralateral leg driving fully straight,
     // with real hang time at the apex
-    Object.assign(p, {x:side*1.3, y:.46, dz:.42, roll:-side*1.32, pitch:.14, wz:-side*.38,
+    Object.assign(p, {x:side*1.72, y:.6, dz:.42, roll:-side*1.32, pitch:.14, wz:-side*.38,
                       shL:3.06,shR:-3.06, fL:-.3,fR:-.3, eL:.0,eR:.0});
     p['hip'+lead] = .52;  p['k'+lead] = .3;          // ball-side leg trails, near-straight (long line)
     p['hip'+trail] = -.58; p['k'+trail] = .02;       // contralateral leg fully extended — the long drive
@@ -1781,7 +1781,7 @@ function updateOppDive(dt){
   else { oppTarget = oppLand; ks = 1 - Math.pow(1.2e-3, dt); }                      // on the deck
   for(const key in oppPose) oppPose[key] = lerp(oppPose[key], oppTarget[key], ks);
   const u = (oppDiveT - LOAD_T) / oppDiveAir;
-  const lift = (u <= 0 || u >= 1) ? 0 : oppDivePeak * Math.pow(Math.sin(Math.PI*u), .72);
+  const lift = (u <= 0 || u >= 1) ? 0 : oppDivePeak * Math.pow(Math.sin(Math.PI*u), .6);
   applyOppPose(oppPose, lift);
 }
 
@@ -2394,7 +2394,7 @@ function animate(){
   // briefly at full stretch, then gravity brings him back down — airtime ≈ diveAir
   if(diveT >= 0){
     const u = (diveT - LOAD_T) / diveAir;                 // 0..1 across the airborne phase
-    keeperLift = (u <= 0 || u >= 1) ? 0 : divePeak * Math.pow(Math.sin(Math.PI*u), .72);
+    keeperLift = (u <= 0 || u >= 1) ? 0 : divePeak * Math.pow(Math.sin(Math.PI*u), .6);
   } else {
     keeperLift = 0;
   }
@@ -2412,10 +2412,12 @@ function animate(){
   keeper.legs.L.rotation.x = kpose.hipL; keeper.legs.R.rotation.x = kpose.hipR;
   keeper.legs.L.userData.knee.rotation.x = kpose.kL;
   keeper.legs.R.userData.knee.rotation.x = kpose.kR;
-  // ankles point the feet when the legs extend in a dive; wrists open the hands toward the ball
+  // ankles point the feet when the legs extend in a dive; when set/standing, the ankle
+  // dorsiflexes to cancel the hip+knee bend so the SOLE stays on the turf (heels just slightly
+  // up — on the balls of the feet — rather than tip-toeing)
   const diving = (diveT >= 0);
-  keeper.legs.L.userData.ankle.rotation.x = diving ? THREE.MathUtils.clamp(.6 - kpose.kL*.5, 0, .6) : Math.sin(t*2.5)*.05;
-  keeper.legs.R.userData.ankle.rotation.x = diving ? THREE.MathUtils.clamp(.6 - kpose.kR*.5, 0, .6) : Math.sin(t*2.5)*.05;
+  keeper.legs.L.userData.ankle.rotation.x = diving ? THREE.MathUtils.clamp(.6 - kpose.kL*.5, 0, .6) : (.18 - kpose.hipL - kpose.kL + Math.sin(t*2.5)*.04);
+  keeper.legs.R.userData.ankle.rotation.x = diving ? THREE.MathUtils.clamp(.6 - kpose.kR*.5, 0, .6) : (.18 - kpose.hipR - kpose.kR + Math.sin(t*2.5)*.04);
   keeper.arms.L.userData.wrist.rotation.x = diving ? -.35 : -.08;
   keeper.arms.R.userData.wrist.rotation.x = diving ? -.35 : -.08;
   // spine: the torso curls into a sideways dive and folds over the ball on a smother
@@ -2427,10 +2429,13 @@ function animate(){
   keeper.head.rotation.y = ready ? Math.sin(t*.7)*.12         // glance around when waiting
     : THREE.MathUtils.clamp((ball.position.x - keeper.group.position.x)*.34, -.85, .85); // drive chin & face to the ball
 
-  // keep every part above the turf: if the pose would sink him, lift the whole figure
+  // ground contact: when airborne in a dive, only stop him clipping through the turf; the rest
+  // of the time (set, idle, gather, landed) PLANT his lowest point exactly on the grass so he
+  // never floats and never sinks — his feet are always on the ground.
   keeper.group.updateMatrixWorld(true);
   _box.setFromObject(keeper.group);
-  if(_box.min.y < 0) keeper.group.position.y -= _box.min.y;
+  if(_box.min.y < 0) keeper.group.position.y -= _box.min.y;          // never clip through the turf
+  else keeper.group.position.y -= _box.min.y * Math.max(0, 1 - keeperLift/0.14); // plant when grounded, float only while airborne
 
   // opponent keeper runs the same dive timeline every frame (through the result, so it lands)
   if(oppKeeper.group.visible) updateOppDive(dt);

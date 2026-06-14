@@ -7,6 +7,12 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.7.3] — 2026-06-13
+
+### Fixed
+- **The keeper's feet now stay on the ground.** In his set/ready stance Collin was up on the very tips of his boots (the deep crouch pitched the feet ~66° toes-down), so he looked like he was floating. The ankles now **dorsiflex to keep the soles flat on the turf** — heels just slightly up, on the balls of the feet — and the ground-contact rule was changed to **plant his lowest point exactly on the grass whenever he isn't airborne** (it used to only stop him sinking, never floating). He's only off the ground during the airborne part of a real dive.
+- Re-reached the **top-corner dive** so the gloves actually get to the corner with the new human proportions, and verified the keeper still saves every zone (96% diving to the right zone with a realistic reaction).
+
 ## [1.7.2] — 2026-06-13
 
 ### Fixed
