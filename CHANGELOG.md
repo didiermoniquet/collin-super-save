@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.8.1] — 2026-06-14
+
+### Removed
+- **The suburban houses and perimeter trees are gone.** They were the old "back garden" backdrop and now clash with the new stadium, so the field is framed by the stands alone. (The wider grass ground plane and the ball-stop hedge are kept.)
+
 ## [1.8.0] — 2026-06-14
 
 ### Added
