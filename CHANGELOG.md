@@ -7,6 +7,16 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.12.0] — 2026-06-15
+
+### Changed
+- **The keeper now leads with his hands on every dive — grounded in goalkeeper coaching.** Researched how the body should be placed for each type of save and re-shaped the dives so the **hands attack the ball first** (the No. 1 coaching point: "lead with your hands — the further you extend, the more you reach"):
+  - **Top corners:** the lead (top) hand now reaches out along the body's line to the corner instead of both arms staying pinned straight overhead, so it reads as a hand attacking the ball at the corner.
+  - **High through the middle:** both hands now spring **up to meet/tip the ball**, rather than the save being made with the chest/head.
+  - **Low corners:** the lead (bottom) hand leads out and down **behind** the low ball, and the dive is kept on a slight **diagonal (head higher than the hips) rather than flat on the turf** — the coached shape that's both safer and a touch longer in reach; the top hand stays up to help secure it.
+  - The collapse/smother for the low central ball (chest over it, hands scooping) was already correct and is unchanged.
+- Every change was checked against the game's own physics save-detection (capsule collision) with a headless rig harness: the keeper still **reaches every shot zone in both the 8v8 and 11v11 formats across the full keeper-height range**, with equal-or-better margin than before — so the dives look more like real goalkeeping without making saves any harder. The nearest hand-to-ball distance at full stretch dropped from ~1.1–1.5 m to ~0.0–0.4 m.
+
 ## [1.11.3] — 2026-06-15
 
 ### Changed
