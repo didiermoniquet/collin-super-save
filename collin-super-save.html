@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.11.1">
+<meta name="version" content="1.11.2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -394,7 +394,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.11.1';
+const VERSION = '1.11.2';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -593,7 +593,7 @@ let crowdReact = ()=>{};                                   // assigned by the st
   function hoardingTexture(){
     const W=512, H=64, c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
     const segs=['#0b3d91','#c8102e','#127a3a','#1f1f24','#005bbb','#e2711d'];
-    const words=['COLLIN','SUPER','SAVE!','FC·24','GOAL','· · ·'];
+    const words=['COLLIN','SUPER','SAVE!','CUP 2026','GOAL','· · ·'];
     const seg=W/segs.length;
     for(let i=0;i<segs.length;i++){
       x.fillStyle=segs[i]; x.fillRect(i*seg,0,seg,H);
@@ -1078,18 +1078,18 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, 
   for(const side of [-1,1]){
     const sh = new THREE.Group();
     sh.position.set(side*.305, .67, 0);
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(.068,.056,.38,20), shirt);
-    upper.position.y = -.19; sh.add(upper);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(.068,.056,.44,20), shirt);
+    upper.position.y = -.22; sh.add(upper);
     const elbowCap = new THREE.Mesh(new THREE.SphereGeometry(.058,14,10), shirt);
-    elbowCap.position.y = -.38; sh.add(elbowCap);
+    elbowCap.position.y = -.44; sh.add(elbowCap);
     const elbow = new THREE.Group();
-    elbow.position.y = -.38; sh.add(elbow);
-    const fore = new THREE.Mesh(new THREE.CylinderGeometry(.055,.045,.34,20), shirt);
-    fore.position.y = -.17; elbow.add(fore);
+    elbow.position.y = -.44; sh.add(elbow);
+    const fore = new THREE.Mesh(new THREE.CylinderGeometry(.055,.045,.48,20), shirt);
+    fore.position.y = -.24; elbow.add(fore);
     const cuff = new THREE.Mesh(new THREE.TorusGeometry(.076,.027,10,20), cuffs);
-    cuff.position.y = -.34; cuff.rotation.x = Math.PI/2; elbow.add(cuff);
+    cuff.position.y = -.48; cuff.rotation.x = Math.PI/2; elbow.add(cuff);
     const wrist = new THREE.Group();                 // wrist pivot — the hand articulates
-    wrist.position.y = -.36; elbow.add(wrist);
+    wrist.position.y = -.50; elbow.add(wrist);
     const glove = new THREE.Mesh(new THREE.SphereGeometry(.112,18,14), gloves);
     glove.position.y = -.045; glove.scale.set(1,1.12,.82); wrist.add(glove);
     sh.rotation.z = side * .16;
@@ -1778,8 +1778,10 @@ const KSTAND = {x:0,y:0,dz:0,roll:0,pitch:0, lean:0, shL:.28,shR:-.28, fL:0,fR:0
 //     & slightly down, putting the open gloves at WAIST/HIP height in front of the body
 //     (not up by the chest, not down at the knees), hands about shoulder-width apart.
 //   · head is craned to the play by the look-at rig. Feet ~shoulder width (widened below).
-const KREADY = {x:0,y:-.09,dz:.02,roll:0,pitch:.03, lean:.14, wz:0, shL:.2,shR:-.2, fL:-.13,fR:-.13,
-                eL:-.85,eR:-.85, kL:.55,kR:.55, hipL:.1,hipR:.1};
+// a slight athletic squat: hips dropped & back, thighs angled forward (knees over the feet),
+// shins ~vertical, torso leaning forward over — coiled and ready to spring either way.
+const KREADY = {x:0,y:-.105,dz:.03,roll:0,pitch:.04, lean:.22, wz:0, shL:-.08,shR:.08, fL:-.24,fR:-.24,
+                eL:-.6,eR:-.6, kL:.9,kR:.9, hipL:-.5,hipR:-.5};
 // anticipation gather: deep crouch & coil just before launching off the line
 const KLOAD  = {x:0,y:-.17,dz:.04,roll:0,pitch:.15, lean:.1, wz:0, shL:.42,shR:-.42, fL:-.8,fR:-.8,
                 eL:-2.0,eR:-2.0, kL:1.05,kR:1.05, hipL:.42,hipR:.42};
@@ -1789,6 +1791,7 @@ let diveExt = null, diveLand = null;                          // extension + lan
 let diveLoad = {...KLOAD};                                     // directional power-step / gather
 let keeperLift = 0;                                           // persistent vertical lift
 let stanceSplay = 0;                                          // feet-apart width in the ready stance
+const SET_SPLAY = .23;                                        // feet a touch wider than shoulders when set
 const LOAD_T = .11;                                           // anticipation (gather) duration
 const RISE_T = .2;                                            // spring-to-apex duration
 
@@ -2897,10 +2900,17 @@ function animate(){
   // spine: the torso curls into a sideways dive and folds over the ball on a smother
   keeper.waist.rotation.z = kpose.wz;
   keeper.waist.rotation.x = kpose.pitch * .45 + (kpose.lean||0) + (ready ? Math.sin(t*2.5)*.02 : 0);
-  // feet slightly wider than shoulders when set; tucks back in as he dives
-  stanceSplay = lerp(stanceSplay, ready ? .26 : 0, 1 - Math.pow(.02, dt));   // feet a touch wider than shoulders when set
+  // feet about shoulder-width when set; tucks back in as he dives
+  stanceSplay = lerp(stanceSplay, ready ? SET_SPLAY : 0, 1 - Math.pow(.02, dt));
   keeper.legs.L.rotation.z = -stanceSplay; keeper.legs.R.rotation.z = stanceSplay;
-  keeper.head.rotation.y = ready ? Math.sin(t*.7)*.12         // glance around when waiting
+  // toes turned out ~12° in the set stance (eases away into a dive), neutral when diving
+  const toeOut = diving ? 0 : (stanceSplay/SET_SPLAY)*0.22;
+  keeper.legs.L.userData.ankle.rotation.y = toeOut;
+  keeper.legs.R.userData.ankle.rotation.y = -toeOut;
+  // head: chin slightly down & eyes tracking the ball when set; a small alert glance otherwise
+  keeper.head.rotation.x = ready ? .13 : 0;                   // chin down, eyes on the ball
+  keeper.head.rotation.y = ready
+    ? THREE.MathUtils.clamp((ball.position.x - keeper.group.position.x)*.18, -.4, .4) + Math.sin(t*.7)*.05
     : THREE.MathUtils.clamp((ball.position.x - keeper.group.position.x)*.34, -.85, .85); // drive chin & face to the ball
 
   // ground contact: when airborne in a dive, only stop him clipping through the turf; the rest

@@ -7,6 +7,13 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.11.2] — 2026-06-14
+
+### Changed
+- **Reworked the keeper into a proper coiled, athletic set position — a slight squat** (matching the reference photo). Feet a touch wider than the shoulders with the **toes turned out ~12°**, in a **slight squat: the hips drop and sit back with the thighs angled forward (knees over the feet) and the shins ~vertical**, the **torso leaning ~15° forward** so the shoulders are ahead of the hips, **chin down with the eyes tracking the ball**, and the arms held off the body with the elbows bent so the **open hands sit at knee height, apart, in front of the body** — ready to spring either way. (Verified by measurement: knee bend ≈52°, hips ~7 cm below standing, thighs angled forward, lean ≈16°, feet gap ≈0.43 m, toes out ≈12°, hands ≈0.54 m apart at knee height in front.)
+- **Lengthened the figures' arms** to more natural human proportions — the old arms were short (fingertips only reached mid-thigh), which is why the keeper couldn't get his hands down to knee height in front. Saves were re-verified in both formats after the change (the keeper still reaches every zone).
+- Replaced the **`FC·24`** label on the pitch-side advertising hoardings (it read as the EA video game) with a neutral **`CUP 2026`**.
+
 ## [1.11.1] — 2026-06-14
 
 ### Fixed
