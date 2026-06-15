@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.11.3">
+<meta name="version" content="1.12.0">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -394,7 +394,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.11.3';
+const VERSION = '1.12.0';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -2134,35 +2134,37 @@ function makeDivePose(zone){
                       kL:1.32,kR:1.32, hipL:.52,hipR:.52});
     peak = .05;                                      // drops into it rather than leaping
   } else if(zone === 1){
-    // W — explosive two-foot vertical spring; body extends and arches back a touch to
-    // reach up-and-over the bar, arms stretched straight overhead, legs trailing
-    Object.assign(p, {y:.22, pitch:-.16, shL:3.02,shR:-3.02, fL:-.16,fR:-.16, eL:0,eR:0,
+    // W — explosive two-foot vertical spring up to the high central ball, both hands LEADING
+    // up to meet/tip it (a keeper takes a high central ball with the hands, not the chest)
+    Object.assign(p, {y:.22, pitch:-.16, shL:.38,shR:-.38, fL:.25,fR:.25, eL:-.72,eR:-.72,
                       kL:.08,kR:.08, hipL:-.24,hipR:-.24});
     peak = .8;
   } else if(zone < 3){
     // Q/E top corners — a BIG spectacular full-stretch flying save: an explosive leap high to
-    // the corner, the body flung nearly HORIZONTAL and stretched in one long line, both arms
-    // reaching past the head to the top corner, the contralateral leg driving fully straight,
-    // with real hang time at the apex
+    // the corner, the body flung nearly HORIZONTAL and stretched in one long line, the LEAD (top)
+    // hand attacking the ball out at the corner with the trail arm extended for balance, the
+    // contralateral leg driving fully straight, with real hang time at the apex
     Object.assign(p, {x:side*1.72, y:.6, dz:.42, roll:-side*1.32, pitch:.14, wz:-side*.38,
                       shL:3.06,shR:-3.06, fL:-.3,fR:-.3, eL:.0,eR:.0});
     p['hip'+lead] = .52;  p['k'+lead] = .3;          // ball-side leg trails, near-straight (long line)
     p['hip'+trail] = -.58; p['k'+trail] = .02;       // contralateral leg fully extended — the long drive
+    p['sh'+lead]  = (lead==='L'?  .25 : -.25);       // LEAD hand reaches out along the body's line to the top corner
+    p['f'+lead]   = .26;  p['e'+lead]  = .05;         // (not just straight overhead — the top hand attacks the ball)
     p['sh'+trail] = (trail==='L'? 2.35 : -2.35);     // far hand stays extended, a touch behind — no t-rex
     p['e'+trail] = -.25;
     peak = .95;                                       // a real leap to the top corner (a top-corner save IS a flying save)
   } else {
-    // A/D bottom corners — full-stretch low dive that HUGS THE GROUND (Courtois-style shape):
-    // the body lays out fully horizontal and long, just skimming the turf, the lead hand reaching
-    // along the ground to the low ball while the top hand trails for balance, legs extended
-    // straight behind. It barely leaves the floor — a ground-hugging slide, not a flight.
-    Object.assign(p, {x:side*1.32, y:.06, dz:.3, roll:-side*1.44, pitch:-.06, wz:-side*.12,
+    // A/D bottom corners — full-stretch low dive kept on a slight DIAGONAL (head higher than the
+    // hips — never fully flat on the turf: safer and a longer reach), the lead/bottom hand leading
+    // out & down behind the low ball while the top hand stays up to help secure it, legs extended
+    // in a long trailing line. It barely leaves the floor — a ground-hugging push, not a flight.
+    Object.assign(p, {x:side*1.32, y:.06, dz:.3, roll:-side*1.30, pitch:-.06, wz:-side*.12,
                       shL:2.7,shR:-2.7, fL:-.35,fR:-.35, eL:.0,eR:.0});
     p['hip'+lead] = .1;   p['k'+lead] = .12;     // legs nearly straight — the long trailing line
     p['hip'+trail] = -.34; p['k'+trail] = .03;
-    p['sh'+lead]  = (lead==='L'?  3.05 : -3.05); // lead arm thrown out & down to the low ball
-    p['sh'+trail] = (trail==='L'? 1.85 : -1.85); // top hand trails behind for balance
-    p['f'+lead]   = -.5;  p['e'+lead]  = .0;     // lead arm forward, straight to the ball
+    p['sh'+lead]  = (lead==='L'?  .26 : -.26);   // lead (bottom) hand reaches out & DOWN behind the low ball
+    p['sh'+trail] = (trail==='L'? 1.85 : -1.85); // top hand stays up to help/secure
+    p['f'+lead]   = .27;  p['e'+lead]  = .0;     // along the body's line to the ball on the ground
     p['e'+trail]  = -.2;
     peak = .3;                                   // a low push to meet the knee-high ball, then lands on the side
   }
