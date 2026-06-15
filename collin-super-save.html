@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.11.2">
+<meta name="version" content="1.11.3">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -394,7 +394,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.11.2';
+const VERSION = '1.11.3';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -593,7 +593,7 @@ let crowdReact = ()=>{};                                   // assigned by the st
   function hoardingTexture(){
     const W=512, H=64, c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
     const segs=['#0b3d91','#c8102e','#127a3a','#1f1f24','#005bbb','#e2711d'];
-    const words=['COLLIN','SUPER','SAVE!','CUP 2026','GOAL','· · ·'];
+    const words=['COLLIN','SUPER','SAVE!','CUP '+new Date().getFullYear(),'GOAL','· · ·'];
     const seg=W/segs.length;
     for(let i=0;i<segs.length;i++){
       x.fillStyle=segs[i]; x.fillRect(i*seg,0,seg,H);

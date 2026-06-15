@@ -17,7 +17,7 @@
    three.js version or renamed icons). Keeping it in sync with the game version
    is a convenient habit. */
 
-const CACHE = 'collin-super-save-v1.1.8';
+const CACHE = 'collin-super-save-v1.1.9';
 
 /* Local app shell — same-origin, must cache successfully on install. */
 const CORE = [

@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.11.3] — 2026-06-15
+
+### Changed
+- The **`CUP <year>`** advertising-hoarding label now uses the **current year automatically** (CUP 2026, CUP 2027, …) instead of a fixed year.
+
 ## [1.11.2] — 2026-06-14
 
 ### Changed
