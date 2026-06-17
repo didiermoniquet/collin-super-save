@@ -7,6 +7,11 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.12.1] — 2026-06-17
+
+### Fixed
+- **Shortened the players' arms** — they'd been lengthened too far (longer than the legs, ~1.05× leg length), which read as gangly, especially in dives. They're now a natural ~0.88× the leg length (shorter than the legs). The keeper's hands still reach knee height in his set stance, and saves were re-verified in both formats (he still reaches every zone).
+
 ## [1.12.0] — 2026-06-15
 
 ### Changed
@@ -16,7 +21,6 @@ and the project aims to follow [Semantic Versioning](https://semver.org/).
   - **Low corners:** the lead (bottom) hand leads out and down **behind** the low ball, and the dive is kept on a slight **diagonal (head higher than the hips) rather than flat on the turf** — the coached shape that's both safer and a touch longer in reach; the top hand stays up to help secure it.
   - The collapse/smother for the low central ball (chest over it, hands scooping) was already correct and is unchanged.
 - Every change was checked against the game's own physics save-detection (capsule collision) with a headless rig harness: the keeper still **reaches every shot zone in both the 8v8 and 11v11 formats across the full keeper-height range**, with equal-or-better margin than before — so the dives look more like real goalkeeping without making saves any harder. The nearest hand-to-ball distance at full stretch dropped from ~1.1–1.5 m to ~0.0–0.4 m.
-
 ## [1.11.3] — 2026-06-15
 
 ### Changed

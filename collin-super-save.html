@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.12.0">
+<meta name="version" content="1.12.1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -394,7 +394,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.12.0';
+const VERSION = '1.12.1';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1078,18 +1078,18 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, 
   for(const side of [-1,1]){
     const sh = new THREE.Group();
     sh.position.set(side*.305, .67, 0);
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(.068,.056,.44,20), shirt);
-    upper.position.y = -.22; sh.add(upper);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(.068,.056,.40,20), shirt);
+    upper.position.y = -.20; sh.add(upper);
     const elbowCap = new THREE.Mesh(new THREE.SphereGeometry(.058,14,10), shirt);
-    elbowCap.position.y = -.44; sh.add(elbowCap);
+    elbowCap.position.y = -.40; sh.add(elbowCap);
     const elbow = new THREE.Group();
-    elbow.position.y = -.44; sh.add(elbow);
-    const fore = new THREE.Mesh(new THREE.CylinderGeometry(.055,.045,.48,20), shirt);
-    fore.position.y = -.24; elbow.add(fore);
+    elbow.position.y = -.40; sh.add(elbow);
+    const fore = new THREE.Mesh(new THREE.CylinderGeometry(.055,.045,.38,20), shirt);
+    fore.position.y = -.19; elbow.add(fore);
     const cuff = new THREE.Mesh(new THREE.TorusGeometry(.076,.027,10,20), cuffs);
-    cuff.position.y = -.48; cuff.rotation.x = Math.PI/2; elbow.add(cuff);
+    cuff.position.y = -.38; cuff.rotation.x = Math.PI/2; elbow.add(cuff);
     const wrist = new THREE.Group();                 // wrist pivot — the hand articulates
-    wrist.position.y = -.50; elbow.add(wrist);
+    wrist.position.y = -.40; elbow.add(wrist);
     const glove = new THREE.Mesh(new THREE.SphereGeometry(.112,18,14), gloves);
     glove.position.y = -.045; glove.scale.set(1,1.12,.82); wrist.add(glove);
     sh.rotation.z = side * .16;
