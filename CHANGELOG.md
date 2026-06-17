@@ -7,6 +7,17 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.12.2] — 2026-06-17
+
+### Changed
+- **The keeper now reaches for the ball with his hands on every dive — using proper goalkeeping technique per shot.** On top of the per-zone shapes, the reaching hand(s) now **procedurally aim at the live ball position and the elbow straightens**, so the glove genuinely extends to meet the moving ball instead of holding a fixed pose. Following how a real keeper saves:
+  - **Low corners, low central (smother) and high central** → **both hands** go to the ball to catch/trap it.
+  - **Top corners** → **one hand** (the near/strong hand) at full stretch — a top-corner ball is physically a one-hander; you can't get the second hand up there.
+  - It only engages when he's diving toward the ball's side (no flailing across a wrong-way guess) and eases in/out across the dive. Contact was re-verified at every shot zone in both 8v8 and 11v11.
+- **He now catches and holds the ball when he can, instead of always parrying.** A two-handed save (low corners, low/high central) **gathers the ball and holds it secured between both gloves** — no rebound. Only the full-stretch **top-corner** saves (a one-handed tip) and wrong-way deflections are still parried clear.
+- **Low diving catches (bottom-left / bottom-right, and the smother) now clutch the ball low and tight to the body** — the catch pose locks to him so the ball stays down where he grabbed it instead of drifting up to chest height at the end of the dive.
+- **When he concedes, the keeper reacts in dejection — where he was beaten.** He rises **at his own position (not recentred)** and **covers his face with both hands in shame**: elbows pulled in toward the chest, forearms rising to the face, both palms over the eyes, shoulders rounded forward and the head tilted down a little into the hands. (Only on a goal; a save shows no dejection.)
+
 ## [1.12.1] — 2026-06-17
 
 ### Fixed

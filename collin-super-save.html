@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.12.1">
+<meta name="version" content="1.12.2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -394,7 +394,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.12.1';
+const VERSION = '1.12.2';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1526,6 +1526,8 @@ let ballFrom = new THREE.Vector3(), ballTo = new THREE.Vector3(), arcH = 1;
 let saves = 0, streak = 0, conceded = 0, round = 0;
 let resultTimer = 0, windupTimer = 0, strikeT = 0;
 let netHit = false, lastSaved = false;   // net-ripple trigger + last outcome (for reactions)
+let keeperConceded = false;              // Collin let one in → dejection (head in hands) during the result
+let keeperConcededX = 0;                 // his lateral position when he conceded (so he slumps there, not recentred)
 
 /* ---------- difficulty: only the shot speed changes (slower → faster) ---------- */
 const DIFFICULTY = {
@@ -1785,6 +1787,11 @@ const KREADY = {x:0,y:-.105,dz:.03,roll:0,pitch:.04, lean:.22, wz:0, shL:-.08,sh
 // anticipation gather: deep crouch & coil just before launching off the line
 const KLOAD  = {x:0,y:-.17,dz:.04,roll:0,pitch:.15, lean:.1, wz:0, shL:.42,shR:-.42, fL:-.8,fR:-.8,
                 eL:-2.0,eR:-2.0, kL:1.05,kR:1.05, hipL:.42,hipR:.42};
+// dejection after conceding: stood up, slumped forward, both hands brought up to the head
+// dejection after conceding: slumped & closed, both hands covering the face (elbows pulled in
+// toward the chest, forearms rising up to the eyes)
+const KDEJECT = {x:0,y:-.02,dz:0,roll:0,pitch:.08, lean:.26, wz:0, shL:.7,shR:-.7, fL:-.7,fR:-.7,
+                eL:-2.9,eR:-2.9, kL:.16,kR:.16, hipL:0,hipR:0};
 let kpose = {...KREADY}, ktarget = {...KREADY};
 let diveT = -1, divePeak = 0, diveAir = .42;                 // dive timeline
 let diveExt = null, diveLand = null;                          // extension + landing keyframes
@@ -1897,7 +1904,7 @@ function updateHUD(){
 function startRound(){
   state = 'windup';
   windupTimer = 1.05 + Math.random()*.6;
-  committed = false; playerZone = -1;
+  committed = false; playerZone = -1; keeperConceded = false;
   lastReaction = null; divedEarly = false;
   // keeper returns to the ready-crouch; cancel any dive arc
   ktarget = {...KREADY}; diveT = -1;
@@ -2277,13 +2284,31 @@ function resolveG2GAttack(){
 }
 
 function resolveShot(saved){
-  state = 'result'; resultTimer = 1.5; lastSaved = saved;
+  state = 'result'; resultTimer = 1.5; lastSaved = saved; keeperConceded = !saved;
+  if(!saved) keeperConcededX = kpose.x;    // remember where he was beaten, so he slumps there (no recentre)
   crowdReact(saved ? 0 : 1);   // a save → Collin's camp erupts; a goal → the striker's camp
 
-  // ball reaction (same for both modes): a save parries it away, a goal carries it into the net
+  // ball reaction: a clean two-handed save HOLDS the ball; otherwise it's parried/tipped away;
+  // a goal carries it into the net.
   if(saved){
-    ballMode = 'phys';
-    ballVel.set((Math.random()-.5)*5, 4.5 + Math.random()*2, 4.5 + Math.random()*3);
+    // he catches whenever it's physically two-handed (low corners, low & high central); a
+    // full-stretch TOP-CORNER ball is a one-handed tip, and a wrong-way deflection is a parry.
+    const bx = ball.position.x;
+    const topCorner = Math.abs(bx) > GOAL_W*0.18 && ball.position.y > GOAL_H*0.55;
+    const towardBall = Math.abs(bx) <= GOAL_W*0.18 || Math.sign(bx) === Math.sign(kpose.x || bx);
+    if(towardBall && !topCorner){
+      ballMode = 'held';                                 // gathered & held between both gloves — no rebound
+      // a LOW catch (bottom corners / smother): lock the catch pose to the body so he clutches the
+      // ball low and tight — it must NOT drift up to chest height at the end of the dive
+      heldFreeze = ball.position.y < GOAL_H*0.5;
+      if(heldFreeze){
+        heldQL.copy(keeper.arms.L.quaternion); heldQR.copy(keeper.arms.R.quaternion);
+        heldEL = keeper.arms.L.userData.elbow.rotation.x; heldER = keeper.arms.R.userData.elbow.rotation.x;
+      }
+    } else {
+      ballMode = 'phys';                                 // one-handed tip / body parry — pushed clear
+      ballVel.set((Math.random()-.5)*5, 4.5 + Math.random()*2, 4.5 + Math.random()*3);
+    }
     sndSave();
   } else {
     ballMode = 'lerp'; netHit = false;
@@ -2796,6 +2821,15 @@ function spinBall(dt, rate){ ball.rotation.x -= dt*rate; ball.rotation.y += dt*r
 const _wp = new THREE.Vector3();
 const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _v4 = new THREE.Vector3();
 const _box = new THREE.Box3();
+// temps for aiming the diving keeper's hands at the ball
+const _aimShoulder = new THREE.Vector3(), _aimDir = new THREE.Vector3();
+const _aimQ = new THREE.Quaternion(), _waistQ = new THREE.Quaternion();
+const _ARM_DOWN = new THREE.Vector3(0,-1,0);
+// a low catch (bottom corners / smother) freezes the catch pose so he clutches the ball low &
+// secure instead of drifting it up to chest height
+let heldFreeze = false;
+const heldQL = new THREE.Quaternion(), heldQR = new THREE.Quaternion();
+let heldEL = 0, heldER = 0;
 // shortest distance from the ball to segment a→b (limbs treated as capsules)
 function segDist(a, b){
   const abx=b.x-a.x, aby=b.y-a.y, abz=b.z-a.z;
@@ -2850,7 +2884,10 @@ function animate(){
   /* ---- keeper: gather → explosive ballistic dive → land (no hovering) ---- */
   const ballLive = (state==='windup' || state==='strike' || state==='flight');
   let ks;
-  if(diveT >= 0){
+  if(state === 'result' && keeperConceded){              // conceded → rise into dejection, hands over the face,
+    ktarget = {...KDEJECT, x: keeperConcededX};           // staying out where he was beaten (NOT recentred)
+    diveT = -1; ks = 1 - Math.pow(2.5e-3, dt);
+  } else if(diveT >= 0){
     diveT += dt;
     const airborne = diveT < LOAD_T + diveAir;            // in the air for this dive
     if(diveT < LOAD_T){                                   // power step: plant & load toward the ball
@@ -2888,6 +2925,42 @@ function animate(){
   keeper.arms.R.rotation.z = kpose.shR; keeper.arms.R.rotation.x = kpose.fR + (ready?breathe*2.5:0);
   keeper.arms.L.userData.elbow.rotation.x = kpose.eL;
   keeper.arms.R.userData.elbow.rotation.x = kpose.eR;
+  // ---- reach toward the ball: during the dive, aim the diving hand(s) straight at the live
+  // ball position and straighten the elbow so the glove genuinely extends to meet it ----
+  const holding = (ballMode === 'held' && diveT >= 0);            // caught it — keep both hands on it
+  if(holding && heldFreeze){
+    // low catch: clutch — hold the exact catch pose locked to the body, keeping the ball down & tight
+    keeper.arms.L.quaternion.copy(heldQL); keeper.arms.R.quaternion.copy(heldQR);
+    keeper.arms.L.userData.elbow.rotation.x = heldEL;
+    keeper.arms.R.userData.elbow.rotation.x = heldER;
+  } else if(diveT >= 0 && (ballLive || holding)){
+    const u = (diveT - LOAD_T) / diveAir;                          // 0..1 across the airborne reach
+    const reach = holding ? 1 : THREE.MathUtils.clamp(Math.min(u/0.18, (1-u)/0.18), 0, 1); // ramp up, hold, ease out
+    if(reach > 0){
+      keeper.group.updateMatrixWorld(true);
+      keeper.waist.getWorldQuaternion(_waistQ).invert();           // world → waist-local for the arm
+      // classify the shot by where the ball is IN the goal (centre = x0), so it stays stable as he stretches
+      const bx = ball.position.x;
+      const wide = Math.abs(bx) > GOAL_W*0.18;                      // out toward a post (a corner), not central
+      const high = ball.position.y > GOAL_H*0.55;                   // upper part of the goal
+      const topCorner = wide && high;                              // only a top-corner ball is a one-hander
+      // only reach when he's actually going toward the ball (not flailing across a wrong-way dive)
+      const towardBall = !wide || Math.sign(bx) === Math.sign(kpose.x || bx);
+      // PRO technique: two hands to grab everywhere a keeper realistically can (low corners, low &
+      // high central) — one (near/strong) hand only to a full-stretch top corner.
+      const lead = bx >= 0 ? 'R' : 'L';
+      // both hands once he's caught it; otherwise pro per-zone choice (one hand only to a top corner)
+      const arms = holding ? ['L','R'] : (!towardBall ? [] : (topCorner ? [lead] : ['L','R']));
+      for(const s of arms){
+        const arm = keeper.arms[s];
+        arm.getWorldPosition(_aimShoulder);
+        _aimDir.copy(ball.position).sub(_aimShoulder).normalize().applyQuaternion(_waistQ);
+        _aimQ.setFromUnitVectors(_ARM_DOWN, _aimDir);              // point the arm's length at the ball
+        arm.quaternion.slerp(_aimQ, reach);                         // blend from the keyframe pose
+        arm.userData.elbow.rotation.x = lerp(arm.userData.elbow.rotation.x, 0, reach); // straighten to extend the glove
+      }
+    }
+  }
   keeper.legs.L.rotation.x = kpose.hipL; keeper.legs.R.rotation.x = kpose.hipR;
   keeper.legs.L.userData.knee.rotation.x = kpose.kL;
   keeper.legs.R.userData.knee.rotation.x = kpose.kR;
@@ -2909,11 +2982,18 @@ function animate(){
   const toeOut = diving ? 0 : (stanceSplay/SET_SPLAY)*0.22;
   keeper.legs.L.userData.ankle.rotation.y = toeOut;
   keeper.legs.R.userData.ankle.rotation.y = -toeOut;
-  // head: chin slightly down & eyes tracking the ball when set; a small alert glance otherwise
-  keeper.head.rotation.x = ready ? .13 : 0;                   // chin down, eyes on the ball
-  keeper.head.rotation.y = ready
-    ? THREE.MathUtils.clamp((ball.position.x - keeper.group.position.x)*.18, -.4, .4) + Math.sin(t*.7)*.05
-    : THREE.MathUtils.clamp((ball.position.x - keeper.group.position.x)*.34, -.85, .85); // drive chin & face to the ball
+  // head: chin slightly down & eyes tracking the ball when set; bowed in dejection after conceding
+  const dejecting = (state === 'result' && keeperConceded);
+  if(dejecting){
+    const hk = 1 - Math.pow(2e-3, dt);
+    keeper.head.rotation.x = lerp(keeper.head.rotation.x, .35, hk);                // head tilts down a little into the hands
+    keeper.head.rotation.y = lerp(keeper.head.rotation.y, Math.sin(t*1.4)*.1, hk); // slow disbelieving shake
+  } else {
+    keeper.head.rotation.x = ready ? .13 : 0;                 // chin down, eyes on the ball
+    keeper.head.rotation.y = ready
+      ? THREE.MathUtils.clamp((ball.position.x - keeper.group.position.x)*.18, -.4, .4) + Math.sin(t*.7)*.05
+      : THREE.MathUtils.clamp((ball.position.x - keeper.group.position.x)*.34, -.85, .85); // drive chin & face to the ball
+  }
 
   // ground contact: when airborne in a dive, only stop him clipping through the turf; the rest
   // of the time (set, idle, gather, landed) PLANT his lowest point exactly on the grass so he
@@ -2998,7 +3078,13 @@ function animate(){
   }
   else if(state === 'result'){
     resultTimer -= dt;
-    if(ballMode === 'phys'){
+    if(ballMode === 'held'){
+      // caught — the ball sits secured between both gloves as he lands & holds it
+      keeper.arms.L.userData.glove.getWorldPosition(_v1);
+      keeper.arms.R.userData.glove.getWorldPosition(_v2);
+      ball.position.copy(_v1).add(_v2).multiplyScalar(0.5);
+      spinBall(dt, 0);
+    } else if(ballMode === 'phys'){
       ballVel.y -= GRAV*dt;
       ball.position.addScaledVector(ballVel, dt);
       if(ball.position.y < BALL_R){                     // ground bounce + friction
