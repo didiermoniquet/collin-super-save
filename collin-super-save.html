@@ -394,7 +394,7 @@
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.12.2';
+const VERSION = '1.12.3';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -1035,7 +1035,30 @@ const chestMat = new THREE.MeshBasicMaterial({map:sRGB(new THREE.CanvasTexture(c
    smaller head and a subtle shoulder yoke. The joint hierarchy & userData are
    unchanged, so every pose/dive keeps working; figures are auto-scaled to a
    target height (see FIG_BUILD_H) so the exact build size doesn't matter. */
-function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, skin=M.skin, hair=M.hair, eyeMat=M.eye}){
+// dark latex palm shared by both keepers' gloves (the grippy side of a real GK glove)
+const glovePalmMat = new THREE.MeshStandardMaterial({color:0x26262b, roughness:.55});
+// a real-looking goalkeeper glove: padded backhand, four fanned+curled fingers, a thumb, and a
+// latex palm. The group's origin sits where the old hand-sphere did, so reach/collision are unchanged.
+function makeGlove(mat){
+  const g = new THREE.Group();
+  const hand = new THREE.Mesh(new THREE.SphereGeometry(.1,16,12), mat);   // padded backhand / hand mass
+  hand.scale.set(1.06,1.2,.8); hand.position.y = -.03; g.add(hand);
+  const palm = new THREE.Mesh(new THREE.SphereGeometry(.082,14,10), glovePalmMat); // grippy latex palm
+  palm.scale.set(1.04,1.25,.5); palm.position.set(0,-.04,.058); g.add(palm);
+  const fGeo = new THREE.CylinderGeometry(.023,.019,.1,8), tipGeo = new THREE.SphereGeometry(.022,8,6);
+  for(let i=0;i<4;i++){                                                   // four fingers, fanned & curled forward
+    const f = new THREE.Mesh(fGeo, mat);
+    f.position.set((i-1.5)*.035, -.135, .02); f.rotation.set(.32,0,(i-1.5)*.05);
+    const tip = new THREE.Mesh(tipGeo, mat); tip.position.y = -.05; f.add(tip);
+    g.add(f);
+  }
+  const thumb = new THREE.Mesh(new THREE.CylinderGeometry(.026,.021,.08,8), mat);  // thumb, tucked to the side
+  thumb.position.set(.08,-.05,.04); thumb.rotation.set(.5,0,.85);
+  const tt = new THREE.Mesh(tipGeo, mat); tt.position.y = -.04; thumb.add(tt);
+  g.add(thumb);
+  return g;
+}
+function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, skin=M.skin, hair=M.hair, eyeMat=M.eye, keeperGloves=false}){
   const g = new THREE.Group();
 
   // legs — hip → thigh → knee → shin + boot (long & lean teen limbs)
@@ -1090,8 +1113,9 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, 
     cuff.position.y = -.38; cuff.rotation.x = Math.PI/2; elbow.add(cuff);
     const wrist = new THREE.Group();                 // wrist pivot — the hand articulates
     wrist.position.y = -.40; elbow.add(wrist);
-    const glove = new THREE.Mesh(new THREE.SphereGeometry(.112,18,14), gloves);
-    glove.position.y = -.045; glove.scale.set(1,1.12,.82); wrist.add(glove);
+    const glove = keeperGloves ? makeGlove(gloves) : new THREE.Mesh(new THREE.SphereGeometry(.112,18,14), gloves);
+    if(!keeperGloves) glove.scale.set(1,1.12,.82);       // bare hand for outfield players
+    glove.position.y = -.045; wrist.add(glove);
     sh.rotation.z = side * .16;
     sh.userData.elbow = elbow; sh.userData.wrist = wrist; sh.userData.glove = glove;
     waist.add(sh);
@@ -1148,7 +1172,7 @@ const keeperSkinMat = new THREE.MeshStandardMaterial({color:0xf6c89a, roughness:
 const keeperHairMat = new THREE.MeshStandardMaterial({color:0x46301d, roughness:.6}); // mid-brown (warm key light would push a lighter brown toward ginger)
 const keeperEyeMat  = new THREE.MeshBasicMaterial({color:0x3a2415});
 const keeper = buildFigure({shirt:M.camo, shorts:kitBottomsMat, boots:M.pink, gloves:M.volt, legs:kitBottomsMat, cuffs:M.blue,
-                            skin:keeperSkinMat, hair:keeperHairMat, eyeMat:keeperEyeMat});
+                            skin:keeperSkinMat, hair:keeperHairMat, eyeMat:keeperEyeMat, keeperGloves:true});
 /* measure the un-decorated build height once; every figure scales proportionally
    off it, so changing the model's proportions never breaks the world sizing */
 const FIG_BUILD_H = (()=>{ const b=new THREE.Box3().setFromObject(keeper.group); return b.max.y - b.min.y; })();
@@ -1177,15 +1201,6 @@ const keeperHome = new THREE.Vector3(0,0,.6);
     new THREE.MeshBasicMaterial({color:0x2e7d4f}));
   badgeDot.position.set(-.14, .50, .303); keeper.waist.add(badgeDot);
 
-  // gloves: black tiger-stripe bars raked across the volt backhand — on the wrist so they follow the hand
-  for(const k of ['L','R']){
-    for(let s=-1;s<=1;s++){
-      const stripe = new THREE.Mesh(new THREE.BoxGeometry(.018,.06,.10), M.black);
-      stripe.position.set(s*.045, -.05, .065);
-      stripe.rotation.z = .45 + s*.18;
-      keeper.arms[k].userData.wrist.add(stripe);
-    }
-  }
 
   // pink boots: darker swoosh + white sole on the ankle (follow the foot), sock cuff on the shin
   for(const sx of [-1,1]){
@@ -1441,7 +1456,7 @@ oppGroup.visible = false;
 scene.add(oppGroup);
 /* opponent keeper — wears the customised striker kit, faces the shooter */
 const oppKeeper = buildFigure({shirt:strShirtMat, shorts:strShortsMat, boots:M.redBoot, gloves:M.black, legs:M.greyLeg, cuffs:M.black,
-                               skin:strikerSkinMat, hair:strikerHairMat, eyeMat:strikerEyeMat});
+                               skin:strikerSkinMat, hair:strikerHairMat, eyeMat:strikerEyeMat, keeperGloves:true});
 oppKeeper.group.scale.setScalar(1.62/FIG_BUILD_H);
 oppKeeper.group.position.set(0, 0, OPP_GZ-.55);
 oppKeeper.group.rotation.y = Math.PI;     // face the shooter
@@ -2240,6 +2255,31 @@ function updateOppDive(dt){
   const u = (oppDiveT - LOAD_T) / oppDiveAir;
   const lift = (u <= 0 || u >= 1) ? 0 : oppDivePeak * Math.pow(Math.sin(Math.PI*u), .6);
   applyOppPose(oppPose, lift);
+  // reach for the ball with the hands (incoming shot), and keep them on it once caught
+  const oppHolding = (ballMode === 'heldOpp');
+  if(g2gAttackShot || oppHolding){
+    const u = (oppDiveT - LOAD_T) / oppDiveAir;
+    const reach = oppHolding ? 1 : THREE.MathUtils.clamp(Math.min(u/0.18, (1-u)/0.18), 0, 1);
+    if(reach > 0){
+      oppKeeper.group.updateMatrixWorld(true);
+      oppKeeper.waist.getWorldQuaternion(_waistQ).invert();
+      const bx = ball.position.x;
+      const topCorner = !oppHolding && Math.abs(bx) > GOAL_W*0.18 && ball.position.y > GOAL_H*0.55;
+      let arms;
+      if(topCorner){                                            // top corner → the nearer single hand
+        oppKeeper.arms.L.userData.glove.getWorldPosition(_v1); oppKeeper.arms.R.userData.glove.getWorldPosition(_v2);
+        arms = Math.abs(_v1.x-bx) <= Math.abs(_v2.x-bx) ? ['L'] : ['R'];
+      } else arms = ['L','R'];                                   // otherwise both hands to grab
+      for(const s of arms){
+        const arm = oppKeeper.arms[s];
+        arm.getWorldPosition(_aimShoulder);
+        _aimDir.copy(ball.position).sub(_aimShoulder).normalize().applyQuaternion(_waistQ);
+        _aimQ.setFromUnitVectors(_ARM_DOWN, _aimDir);
+        arm.quaternion.slerp(_aimQ, reach);
+        arm.userData.elbow.rotation.x = lerp(arm.userData.elbow.rotation.x, 0, reach);
+      }
+    }
+  }
 }
 
 // map a (Collin-frame) pose onto the reversed-facing opponent figure
@@ -2273,7 +2313,13 @@ function applyOppPose(p, lift){
 function resolveG2GAttack(){
   g2gAttackShot = false;
   state = 'result'; resultTimer = 1.4; ballMode = 'phys';
-  if(g2gShotSaved){ sndSave(); ballVel.set((Math.random()-.5)*4, 3+Math.random()*2, -(4+Math.random()*3)); }
+  if(g2gShotSaved){
+    sndSave();
+    // catch & hold a two-handed save; tip a full-stretch top corner away
+    const topCorner = Math.abs(ball.position.x) > GOAL_W*0.18 && ball.position.y > GOAL_H*0.55;
+    if(topCorner){ ballMode='phys'; ballVel.set((Math.random()-.5)*4, 3+Math.random()*2, -(4+Math.random()*3)); }
+    else ballMode = 'heldOpp';
+  }
   else {                                                    // goal — billow the net + push the camera in
     sndGoal(); ballVel.set((Math.random()-.5)*1.2, 1.2, 2.2);
     rippleOppNet(ball.position.x, ball.position.y, 22);
@@ -3078,10 +3124,11 @@ function animate(){
   }
   else if(state === 'result'){
     resultTimer -= dt;
-    if(ballMode === 'held'){
-      // caught — the ball sits secured between both gloves as he lands & holds it
-      keeper.arms.L.userData.glove.getWorldPosition(_v1);
-      keeper.arms.R.userData.glove.getWorldPosition(_v2);
+    if(ballMode === 'held' || ballMode === 'heldOpp'){
+      // caught — the ball sits secured between that keeper's gloves as he holds it
+      const kp = ballMode === 'heldOpp' ? oppKeeper : keeper;
+      kp.arms.L.userData.glove.getWorldPosition(_v1);
+      kp.arms.R.userData.glove.getWorldPosition(_v2);
       ball.position.copy(_v1).add(_v2).multiplyScalar(0.5);
       spinBall(dt, 0);
     } else if(ballMode === 'phys'){

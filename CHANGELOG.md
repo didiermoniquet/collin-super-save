@@ -7,6 +7,12 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.12.3] — 2026-06-18
+
+### Changed
+- **Both keepers now wear realistic goalkeeper gloves.** The old flat tiger-stripe wrist bars are gone; each glove is now a proper modelled GK glove — a contoured backhand, a separate dark latex grip palm facing outward, four fingers and a thumb. Outfield players keep their bare hands.
+- **The opponent keeper (Goal-to-Goal mode) now reaches for and catches the ball too.** Matching Collin's behaviour, the opponent's gloves **procedurally aim at the live ball** on a save — **one hand** at full stretch to a top corner, **both hands** otherwise — and he **gathers and holds the ball** on a two-handed save instead of always parrying. Verified: the opponent's glove meets the ball (≈0.03 m) and a caught ball stays pinned in his hands.
+
 ## [1.12.2] — 2026-06-17
 
 ### Changed
