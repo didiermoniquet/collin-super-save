@@ -7,6 +7,99 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.18.0] — 2026-06-19
+
+### Changed
+- **Surface realism pass — the figures no longer read as one uniform plastic.** Added procedural
+  **canvas bump-map textures** and differentiated every material's light response (proportions untouched):
+  - **Fabric** (jerseys, shorts, leggings, socks): a fine **knit weave** with matte roughness. The lofted body now carries UVs so textures map onto it.
+  - **Skin:** soft mottling + a gentle sheen (no longer a flat fill); faint **cheek warmth**.
+  - **Hair:** vertical **strand** texture with highlights and matte roughness — no more smooth helmet.
+  - **Gloves:** knit backhand vs **glossier latex grip palm**, panel **stitching**, wrist **strap + buckle**.
+  - **Boots:** synthetic-leather grain, a **tongue + laces**, side seams, matte rubber sole.
+  - Bump maps are colour-independent, so kit recolouring is unaffected.
+- **Face readability at gameplay distance:** stronger dark **brows**, larger **eyes** with eyelids + catchlights, **nostril shadows**, and proper **upper/lower lips** with a mouth line — it reads as a face from across the box. Added a ribbed **crew collar**.
+
+## [1.17.1] — 2026-06-19
+
+### Changed
+- **Large-form / mass-distribution pass — proportions of an athletic ~12-year-old, not an adult.**
+  - **Shoulders ~20% narrower** (arm root .315→.245, chest .298→.233) — the bodybuilder inverted-triangle is gone.
+  - **Torso** reshaped to ribcage → abdomen → pelvis stacked with only a **gentle** chest-to-waist taper and a **fuller lower trunk**.
+  - **Neck** thicker and slightly shorter so it supports the head naturally (no thin tube); head lowered onto it.
+  - **Arms** now taper to a **slim wrist** before the hand, so the limb reads as a forearm ending in a hand rather than a pipe.
+  - **Gloves ~35% bigger** so they **dominate the hands** like real keeper gloves.
+  - **Knees and ankles** softened (gentler kneecap/calf lobes, fuller ankle) for smoother transitions.
+- Verified against the squint/silhouette test, the textured front, and a full dive.
+
+## [1.17.0] — 2026-06-19
+
+### Changed
+- **Anatomical relief on the continuous body.** The `loft()` builder now takes per-section **muscle lobes** (and fabric folds), so the single-skin limbs and trunk carry real anatomy instead of being plain ovals:
+  - **Arms:** a rounded deltoid that merges into the trunk, a **bicep up the front** and a **tricep down the back**, the **point of the elbow (olecranon)** at the back, and a **forearm flexor** swell tapering to the wrist.
+  - **Legs:** a **quadriceps** up the front of the thigh, **hamstrings** at the back, a **calf belly** high on the back of the shin, and a kneecap at the front.
+  - **Torso:** in side view the **chest now projects forward over a set-back abdomen** (a real ribcage S-curve), with pecs; in front view broad chest → pinched waist.
+  - **Pelvis:** the shorts now read as a pelvis — **hip width, glutes, a hint of the iliac crests, and an inseam pinch** so the legs separate as they emerge.
+  - Faint **fabric folds** at the hem, waist and chest.
+- **Real goalkeeper gloves.** Rebuilt from the old sphere into a **flat lofted backhand, four fingers with volume and gaps, a thumb, a latex grip palm and a wrist strap** — it reads as a glove, not a ball.
+- **Deeper face sculpt:** added **upper eyelids**, a stronger **nose bridge & tip** with **nostril wings**, a sharper **jawline**, and fuller cheekbones.
+
+## [1.16.0] — 2026-06-19
+
+### Changed
+- **The body is no longer assembled from separate primitive parts.** Every limb and the trunk are now **single continuous lofted surfaces** (a new `loft()` builds one smooth skin through a stack of shaped elliptical cross-sections), replacing the old stack of cylinders + sphere "joint caps":
+  - **Arms** are one flowing skin — deltoid → bicep → elbow → forearm → wrist — with **no separate shoulder/elbow cap objects**; the upper-arm and forearm ends overlap at the elbow so the joint bends out of one form.
+  - **Legs** are one flowing skin — thigh (quad up front) → knee → calf (muscle on the back) → slim ankle — with **no separate kneecap**; the knee emerges from the anatomy.
+  - **Torso** is one continuous trunk — pelvis hem → pinched waist → ribcage/abdomen → chest → shoulders → neck base — wider than deep so it reads as a human trunk, not a rounded box. The **shorts** are a single skin wrapping the pelvis and the tops of the thighs, with the jersey hem draping over them.
+  - **Neck** rises out of a wide trapezius/clavicle base instead of being a cylinder plugged between parts.
+  - Verified as a silhouette and across poses (ready, deep knee/elbow bends, dive); the joint rig, kit recolouring and save-collision are unchanged.
+
+## [1.15.0] — 2026-06-19
+
+### Changed
+- **The head is now a sculpted human head, not a sphere with hair stuck on.** It's built as a single mesh whose vertices are **displaced into real anatomy** — a cranium and occiput, a flatter face plane, a brow ridge, **recessed eye sockets**, a **nose bridge and tip**, **cheekbones with youthful fullness**, and a **gently tapering jaw with a rounded chin**. The **hair conforms to the scalp** (a second surface offset along the skull normals, masked to a natural hairline) instead of a floating dome, the **ears are sculpted**, and the eyes are almond-shaped with a catchlight. Applies to both keepers and the striker (each keeps its own skin/hair/eye colours). The body remains the procedural model; only the head was rebuilt this pass.
+
+## [1.14.2] — 2026-06-19
+
+### Changed
+- **Dive realism (priority):** the flying save is no longer a rigid plank. The diving keyframes now form a flowing **C-curve** — the **chest twists toward the ball** (new spinal-twist `wy` channel on the waist), the spine **curls and arches** slightly, and **both legs trail with a natural bend** instead of locking straight. The reaching arm keeps a **slight elbow bend at full stretch** (no hyper-extended stick arm), so the glove leads and the keeper reads as *attacking* the ball rather than colliding with it. The curve and twist relax as he lands. Applies to both keepers.
+- **Neck & head:** neck ~10% longer with a slimmer trapezius, and the head **raised so it sits on top of the shoulders** instead of sunk between them — the natural shoulder slope is kept.
+- **Arms:** anatomical taper — wide at the shoulder, narrowing to the elbow, swelling again through the forearm, narrowing to the wrist — with subtle **bicep/tricep and forearm muscle** volume so the limbs aren't plain cylinders.
+- **Lower legs:** a more defined **calf** high on the shin tapering to a slimmer ankle — a clearer knee → calf → ankle line.
+
+## [1.14.1] — 2026-06-19
+
+### Changed
+- **Silhouette & proportion pass** so the figures read as a realistic (slightly stylized) U12 footballer rather than a toy — verified as a plain black silhouette: human, athlete, goalkeeper at a glance.
+  - **Head** ~13% smaller; **neck** longer and emerging from a wide, low, sloped trapezius instead of a squared yoke.
+  - **Shoulders** lowered and narrowed a touch, with the deltoid flattened into a natural slope (no more shoulder-pad look).
+  - **Torso** ~12% taller with a more pinched waist and restrained (un-exaggerated) athletic V.
+  - **Arms** thicker (upper arm + forearm), forearms slightly shorter, arms set closer to the body.
+  - **Legs** noticeably longer (the big fix for the chibi look), with a clearer kneecap, quad and calf.
+  - **Gloves** wider and heavier/more padded; **boots** ~20% less bulky — longer and slimmer, more like a real football boot.
+
+## [1.14.0] — 2026-06-19
+
+### Changed
+- **Both keepers and the striker were rebuilt to look like athletic adult footballers instead of toy mannequins.** Same articulated rig and joints (so every dive/get-up still works) — only the meshes changed:
+  - **Proportions:** broader shoulders with rounded deltoid caps, an athletic V torso (lathe profile: narrow waist → ribcage swell → broad chest) with pec definition, a clearly visible neck + trapezius, thicker tapered arms and legs (upper arm ≈ forearm, thigh ≈ shin), and a smaller, more adult head.
+  - **Limbs:** quad and calf bulges, knee caps and elbow caps, and fabric folds at the elbows, knees and waist — no more plain tubes or rectangles.
+  - **Hands:** bigger padded goalkeeper gloves with four fanned fingers, a thumb, a latex grip palm and a wrist strap; outfield players get larger bare fists with a thumb.
+  - **Feet:** proper football boots — heel, instep, ankle collar, rounded toe, a moulded white sole and six studs underneath — replacing the block feet.
+  - **Head:** visible ears below the temple hair, cheekbones, layered hair (crop + fringe + back + temples), and tidier facial features.
+
+## [1.13.0] — 2026-06-19
+
+### Added
+- **Showcase / demo mode** — open `collin-super-save.html#demo` (or `?demo`) and the keeper auto-loops **dive → concede → get-up** on a cinematic 3/4 camera, cycling through all six dive directions, with the striker/HUD/controls hidden and a caption naming each beat. Gated entirely behind the flag, so normal play is untouched. Handy for watching the animation without playing.
+
+### Changed
+- **Collin now gets up off the deck like a human instead of levitating.** After conceding he used to float straight from lying flat to standing in one spring. He now plays a researched floor-to-stand: **lie & hold** a beat (head hung — the dejection cue), **plant a hand and push the chest up off the turf**, **gather onto one knee** (lead foot flat, a forearm on the thigh), then **drive up through that leg** into a weary, head-in-hands slump, with the torso uprighting last. Built procedurally from the exact pose he landed in, and mirrored correctly for dives to either side. The conceded result window was lengthened (1.5 s → 2.9 s) to let the sequence breathe.
+- **Less stiff, more human dive motion.** Widened the kinetic-chain stagger so the legs/hips clearly drive first while the spine and arms whip out and trail later (less rigid lockstep), and **softened the landing** so the impact is absorbed rather than snapping flat. Applies to both Collin and the opponent keeper.
+
+### Fixed
+- The keeper's feet now sit **flat** the moment he is back on them when getting up (the ankle no longer stays toe-pointed once he stands).
+
 ## [1.12.3] — 2026-06-18
 
 ### Changed
