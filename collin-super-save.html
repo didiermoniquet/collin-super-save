@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Super Save!">
 <meta name="theme-color" content="#7ec8e3">
-<meta name="version" content="1.18.0">
+<meta name="version" content="1.18.8">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -388,13 +388,17 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- non-module GLTFLoader matching three r128 — used to load the optional external GLB goalkeeper
+     (assets/models/collin-keeper.glb). If this fails to load, THREE.GLTFLoader is undefined and the
+     game falls back to the procedural goalkeeper. -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script>
 /* =====================================================
    COLLIN · SUPER SAVE — a toy-box penalty shootout
    ===================================================== */
 /* Version — single source of truth. Check at runtime via the start/end screens,
    the console (GAME_VERSION), or the <meta name="version"> tag in the page source. */
-const VERSION = '1.18.0';
+const VERSION = '1.18.8';
 window.GAME_VERSION = VERSION;
 document.querySelectorAll('.ver').forEach(e=> e.textContent = 'v'+VERSION);
 
@@ -976,9 +980,10 @@ const M = {
   skin:  new THREE.MeshStandardMaterial({color:0xf6c89a, roughness:.35}),
   hair:  new THREE.MeshStandardMaterial({color:0x6b4423, roughness:.5}),
   eye:   new THREE.MeshBasicMaterial({color:0x3a2415}),    // default iris/pupil
+  eyeWhite: new THREE.MeshStandardMaterial({color:0xe9e3d6, roughness:.4}),   // soft sclera (so eyes read as eyes, not holes)
   mouth: new THREE.MeshBasicMaterial({color:0x3a2415}),    // smile (kept dark, never recoloured)
   lip:   new THREE.MeshStandardMaterial({color:0xc06a5f, roughness:.5}),   // muted-rose lips
-  blush: new THREE.MeshStandardMaterial({color:0xe48a78, roughness:.6, transparent:true, opacity:.35}), // faint cheek warmth
+  blush: new THREE.MeshStandardMaterial({color:0xe09581, roughness:.6, transparent:true, opacity:.15}), // very faint cheek warmth (lean teen, not rosy)
   black: new THREE.MeshStandardMaterial({color:0x222226, roughness:.35}),
   camo:  new THREE.MeshStandardMaterial({color:0x2e2e34, roughness:.4}),
   blue:  new THREE.MeshStandardMaterial({color:0x1f6bff, roughness:.3}),
@@ -1071,52 +1076,57 @@ const chestMat = new THREE.MeshBasicMaterial({map:sRGB(new THREE.CanvasTexture(c
    target height (see FIG_BUILD_H) so the exact build size doesn't matter. */
 // dark latex palm shared by both keepers' gloves (the grippy side of a real GK glove)
 const glovePalmMat = new THREE.MeshStandardMaterial({color:0x26262b, roughness:.55});
+const gloveAccentMat = new THREE.MeshStandardMaterial({color:0xc8ff2e, roughness:.42}); // volt/lime fingers + strap (Collin's gloves)
 const bootSoleMat  = new THREE.MeshStandardMaterial({color:0xf1f1f4, roughness:.5});   // moulded sole plate
 const studMat      = new THREE.MeshStandardMaterial({color:0x18181c, roughness:.5});   // boot studs
 // a real-looking goalkeeper glove: a thick padded backhand, four fanned+curled fingers, a thumb,
 // a latex grip palm and a wrist strap. The group's origin sits where the old hand-sphere did, so
 // reach/collision are unchanged — only the silhouette is beefier.
-function makeGlove(mat){
+// `hand` = +1 (left) or -1 (right): mirrors the thumb to the correct side so the two gloves are a
+// proper mirror pair, not two of the same hand.
+function makeGlove(mat, hand){
+  hand = hand || 1;
   const g = new THREE.Group();
   // BIG padded backhand — a flat, rounded paddle (lofted, wider than thick), not a sphere. A keeper's
   // glove visually dominates the hand, so this is oversized relative to the slim wrist above it.
   g.add(loft([
-    {y:.1,rx:.072,rz:.052},{y:.02,rx:.104,rz:.066},{y:-.06,rx:.122,rz:.072},
-    {y:-.14,rx:.114,rz:.067},{y:-.185,rx:.097,rz:.058}
+    {y:.1,rx:.064,rz:.046},{y:.02,rx:.092,rz:.058},{y:-.06,rx:.107,rz:.062},
+    {y:-.14,rx:.10,rz:.058},{y:-.185,rx:.085,rz:.05}
   ], mat, 'both', 22));
   // grippy latex palm — a thinner darker layer on the front face
   g.add(loft([
     {y:.02,rx:.085,rz:.024,cz:.04},{y:-.07,rx:.098,rz:.026,cz:.043},{y:-.15,rx:.082,rz:.02,cz:.038}
   ], glovePalmMat, 'both', 18));
-  // four fingers — rounded, with real volume, gaps between, lightly curled toward the ball
-  const fGeo=new THREE.CylinderGeometry(.031,.026,.115,10), tipGeo=new THREE.SphereGeometry(.03,10,8);
+  // four fingers — volt/lime accent (two-tone glove, like Collin's), rounded with gaps, curled to the ball
+  const fGeo=new THREE.CylinderGeometry(.025,.02,.115,10), tipGeo=new THREE.SphereGeometry(.024,10,8);
   for(let i=0;i<4;i++){
-    const f=new THREE.Mesh(fGeo,mat);
-    f.position.set((i-1.5)*.058,-.235,.032); f.rotation.set(.3,0,(i-1.5)*.04);
-    const tip=new THREE.Mesh(tipGeo,mat); tip.position.y=-.066; f.add(tip);
+    const f=new THREE.Mesh(fGeo,gloveAccentMat);
+    f.position.set((i-1.5)*.05,-.235,.032); f.rotation.set(.3,0,(i-1.5)*.04);
+    const tip=new THREE.Mesh(tipGeo,gloveAccentMat); tip.position.y=-.066; f.add(tip);
     g.add(f);
   }
-  // thumb — thick, opposed, off the palm side
-  const thumb=new THREE.Mesh(new THREE.CylinderGeometry(.036,.028,.105,10),mat);
-  thumb.position.set(.122,-.06,.058); thumb.rotation.set(.4,0,.95);
-  const tt=new THREE.Mesh(tipGeo,mat); tt.position.y=-.058; thumb.add(tt); g.add(thumb);
+  // thumb — volt/lime accent too
+  const thumb=new THREE.Mesh(new THREE.CylinderGeometry(.029,.022,.105,10),gloveAccentMat);
+  thumb.position.set(.108*hand,-.06,.055); thumb.rotation.set(.4,0,.95*hand);   // thumb on the inner side per hand
+  const tt=new THREE.Mesh(tipGeo,gloveAccentMat); tt.position.y=-.058; thumb.add(tt); g.add(thumb);
   // backhand panel stitching — seams fanning toward the fingers (latex-coloured thread)
   for(let i=0;i<3;i++){ const seam=new THREE.Mesh(new THREE.BoxGeometry(.006,.18,.004), glovePalmMat);
     seam.position.set((i-1)*.058,-.07,.07); seam.rotation.z=(i-1)*.14; g.add(seam); }
-  // wrist strap (+ a buckle nub for detail)
-  const strap=new THREE.Mesh(new THREE.TorusGeometry(.082,.026,8,18), glovePalmMat);
+  // wrist strap (volt/lime) + a buckle nub
+  const strap=new THREE.Mesh(new THREE.TorusGeometry(.082,.026,8,18), gloveAccentMat);
   strap.position.y=.105; strap.rotation.x=Math.PI/2; strap.scale.set(1.2,1,.72); g.add(strap);
   const buckle=new THREE.Mesh(new THREE.BoxGeometry(.03,.022,.01), glovePalmMat);
   buckle.position.set(0,.105,.06); g.add(buckle);
   return g;
 }
 // bigger bare fist + thumb for outfield players (origin = old hand-sphere centre)
-function makeHand(mat){
+function makeHand(mat, hand){
+  hand = hand || 1;
   const h = new THREE.Group();
   const fist = new THREE.Mesh(new THREE.SphereGeometry(.122,16,12), mat);
   fist.scale.set(1,1.16,.9); h.add(fist);
   const thumb = new THREE.Mesh(new THREE.SphereGeometry(.04,10,8), mat);
-  thumb.scale.set(1,1.4,1); thumb.position.set(.08,.03,.05); thumb.rotation.z = .6; h.add(thumb);
+  thumb.scale.set(1,1.4,1); thumb.position.set(.08*hand,.03,.05); thumb.rotation.z = .6*hand; h.add(thumb);  // mirror per hand
   return h;
 }
 // a shaped football boot: heel, instep, ankle collar, rounded toe, a moulded sole and studs.
@@ -1125,16 +1135,16 @@ function makeBoot(mat){
   const b = new THREE.Group();
   const heel = new THREE.Mesh(new THREE.SphereGeometry(.078,14,12), mat);
   heel.scale.set(1,.94,1.08); heel.position.set(0,0,-.12); b.add(heel);
-  const mid = new THREE.Mesh(new THREE.BoxGeometry(.15,.098,.34), mat);                // slimmer, longer instep
-  mid.position.set(0,0,.04); b.add(mid);
+  const mid = new THREE.Mesh(new THREE.BoxGeometry(.15,.098,.29), mat);                // slimmer instep (shorter — real boot length)
+  mid.position.set(0,0,.03); b.add(mid);
   const collar = new THREE.Mesh(new THREE.CylinderGeometry(.075,.083,.10,14), mat);    // ankle collar
   collar.position.set(0,.07,-.08); b.add(collar);
-  const toe = new THREE.Mesh(new THREE.SphereGeometry(.078,14,12), mat);               // long, slim toe cap
-  toe.scale.set(1,.74,1.95); toe.position.set(0,-.012,.28); b.add(toe);
-  const sole = new THREE.Mesh(new THREE.BoxGeometry(.155,.038,.58), bootSoleMat);      // slim moulded sole plate
-  sole.position.set(0,-.072,.07); b.add(sole);
+  const toe = new THREE.Mesh(new THREE.SphereGeometry(.078,14,12), mat);               // rounded toe cap (shorter, not a flipper)
+  toe.scale.set(1,.74,1.5); toe.position.set(0,-.012,.215); b.add(toe);
+  const sole = new THREE.Mesh(new THREE.BoxGeometry(.155,.038,.48), bootSoleMat);      // slim moulded sole plate (shorter)
+  sole.position.set(0,-.072,.04); b.add(sole);
   const studGeo = new THREE.CylinderGeometry(.015,.02,.03,8);                          // studs underneath
-  [[-.045,-.18],[.045,-.18],[-.05,.05],[.05,.05],[-.04,.3],[.04,.3]].forEach(([x,z])=>{
+  [[-.045,-.16],[.045,-.16],[-.05,.04],[.05,.04],[-.04,.24],[.04,.24]].forEach(([x,z])=>{
     const s = new THREE.Mesh(studGeo, studMat); s.position.set(x,-.094,z); b.add(s);
   });
   // lacing detail: a dark tongue panel + a few lace bars across the instep, and a side panel seam
@@ -1153,85 +1163,156 @@ function makeBoot(mat){
 // head, so the look-at rig, dejection and kit all keep working.
 function buildHead(skin, hair, eyeMat){
   const grp = new THREE.Group();
-  const RX=.164, RY=.187, RZ=.171;
-  const G = (x,c,w)=>Math.exp(-((x-c)*(x-c))/(w*w));                 // gaussian bump
+
+  // Collin-style youth head pass: the old version was still an egg/ball with features stuck on.
+  // This version deliberately separates the large forms: controlled cranium, slight temple narrowing,
+  // soft cheeks, narrower lower face, visible nose/lips/chin profile, and short faded hair that follows
+  // the skull instead of forming a bowl/helmet cap.
+  const RX=.126, RY=.190, RZ=.178;   // slimmer/taller youth skull; still longer front↔back than side↔side
+  const G = (x,c,w)=>Math.exp(-((x-c)*(x-c))/(w*w));
   const ss=(a,b,x)=>{ const t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); };
-  const base = new THREE.SphereGeometry(1, 56, 42);
+
+  const base = new THREE.SphereGeometry(1, 64, 48);
   const N = base.attributes.position.count;
   const dir = [];
   for(let i=0;i<N;i++) dir.push(new THREE.Vector3().fromBufferAttribute(base.attributes.position,i));
+
   // ---- sculpt the skull/face ----
   const faceGeo = base.clone();
   const fp = faceGeo.attributes.position;
   for(let i=0;i<N;i++){
     const nx=dir[i].x, ny=dir[i].y, nz=dir[i].z;
-    let x=nx*RX, y=ny*RY, z=nz*RZ;
-    const front=Math.max(0,nz), lower=Math.max(0,-ny);
-    x *= 1 - 0.2*lower*(.45+.55*front);                             // jaw narrows GENTLY toward the chin (not gaunt)
-    const chin = G(nz,1,.55)*G(ny,-0.6,.24)*G(nx,0,.52);
-    z += chin*.044; y -= chin*.01;                                  // a rounded chin, forward & down
-    x += Math.sign(nx)*(G(nx,.58,.22)*G(ny,-0.32,.2))*(.3+.7*front)*.016; // a sharper jawline (ramus, ear→chin)
-    z += (G(nx,.58,.26)+G(nx,-.58,.26))*G(ny,-0.36,.18)*(.4+.6*front)*.012; // jaw, forward
-    z += G(nz,1,.5)*G(ny,0.31,.13)*G(nx,0,.6)*.022;                 // brow ridge
-    z -= front*G(ny,0.085,.08)*(G(nx,.37,.18)+G(nx,-.37,.18))*.016; // recessed eye sockets
-    z += G(nx,0,.13)*G(ny,0.06,.24)*front*.046;                    // nose bridge (stronger)
-    z += G(nx,0,.1)*G(ny,-0.07,.075)*front*.04;                    // nose tip
-    x += Math.sign(nx)*G(nx,.1,.07)*G(ny,-0.085,.07)*front*.01;     // nostril wings
-    z += (G(nx,.47,.2)+G(nx,-.47,.2))*G(ny,-0.04,.16)*front*.024;   // cheekbones
-    z += front*G(ny,-0.12,.26)*(1-G(nx,0,.12))*.01;                // youthful cheek fullness
-    z -= front*G(ny,0.04,.4)*(1-G(nx,0,.15))*.007;                 // gently flatten the mid-face plane
-    z -= Math.max(0,-nz)*G(ny,0.06,.5)*.012;                        // occiput (back of skull)
+    const front=Math.max(0,nz), back=Math.max(0,-nz), up=Math.max(0,ny), lower=Math.max(0,-ny);
+
+    // Width is not constant top→bottom. Youth skull is widest high/behind the ears, narrows at the
+    // temples, has soft cheeks, then clearly tapers into a small chin. This is what removes the egg.
+    let wMul = 1
+      + 0.040*G(ny,0.30,0.32)*(0.35+0.65*back)     // controlled parietal width: high and slightly behind ears
+      - 0.120*G(ny,0.12,0.22)*(0.45+0.55*front)    // temple pinch below the skull dome
+      - 0.100*G(ny,-0.16,0.25)*front               // cheeks are soft, not inflated side-balls
+      - 0.280*G(ny,-0.48,0.24)*(0.50+0.50*front)   // lower face/jaw taper
+      - 0.160*lower*(0.30+0.70*front);             // small youthful chin, not a wide adult jaw
+
+    let x = nx*RX*wMul;
+    let y = ny*RY;
+    let z = nz*RZ;
+
+    // Top/back skull: low, controlled oval dome. No peaked crown and no balloon occiput.
+    y -= up*up*0.010;                                              // lower the crown slightly
+    z += back*(0.020*G(ny,0.28,0.42) + 0.012*G(ny,-0.10,0.38));     // flatten the back balloon into a natural curve
+    z -= back*0.004*G(ny,-0.55,0.18);                              // small nape tuck into neck
+
+    // Face plane: sides of face are eased back so nose/lips/chin read as their own forms.
+    z -= front*G(ny,-0.04,0.50)*(1-G(nx,0,0.24))*0.017;
+    z -= front*G(ny,-0.32,0.24)*0.006;                              // lower face is not a flat inflated mask
+
+    // Forehead: soft child forehead, gently sloping into nose bridge rather than round egg forehead.
+    z -= front*G(ny,0.53,0.25)*G(nx,0,0.65)*0.010;
+    z += front*G(ny,0.16,0.10)*G(nx,0,0.48)*0.006;                  // very subtle brow volume
+
+    // Shallow eye sockets: enough depth that eyes sit in the face, not on top of it.
+    z -= front*G(ny,0.015,0.075)*(G(nx,0.30,0.13)+G(nx,-0.30,0.13))*0.018;
+    y -= front*G(ny,0.015,0.075)*(G(nx,0.30,0.13)+G(nx,-0.30,0.13))*0.002;
+
+    // Nose profile: narrow bridge → small rounded tip → slight nostril base. Kept soft, not a wedge.
+    z += front*G(nx,0,0.080)*G(ny,-0.02,0.17)*0.020;                // bridge
+    z += front*G(nx,0,0.072)*G(ny,-0.22,0.105)*0.047;               // rounded child nose tip
+    x += Math.sign(nx)*G(Math.abs(nx),0.065,0.045)*G(ny,-0.31,0.070)*front*0.006; // nostril wings
+    z -= front*G(nx,0,0.110)*G(ny,-0.35,0.060)*0.010;               // tuck under nose
+
+    // Mouth plane and chin: visible side-profile sequence without doll lips.
+    z += front*G(ny,-0.435,0.055)*G(nx,0,0.15)*0.010;               // small mouth/lip projection
+    z -= front*G(ny,-0.515,0.060)*G(nx,0,0.18)*0.010;               // recess below lower lip
+    const chin = front*G(ny,-0.61,0.105)*G(nx,0,0.26);
+    z += chin*0.036;                                                // small rounded chin projects
+    y -= chin*0.012;
+
+    // Very soft cheek fullness — broad and blended, never two circular blobs.
+    z += front*G(ny,-0.14,0.22)*(1-G(nx,0,0.22))*0.003;
+
     fp.setXYZ(i, x, y, z);
   }
   faceGeo.computeVertexNormals();
   grp.add(new THREE.Mesh(faceGeo, skin));
-  // ---- hair: a second skin offset along the skull normals, masked to a natural hairline ----
+
+  // ---- hair: short faded sides + messy uneven fringe, not a bowl cap ----
   const sn = faceGeo.attributes.normal, hairGeo = faceGeo.clone(), hpp = hairGeo.attributes.position;
   const tp=new THREE.Vector3(), tn=new THREE.Vector3();
   for(let i=0;i<N;i++){
-    const d=dir[i], fr=Math.max(0,d.z);
-    const hairline = 0.34*fr - 0.16*(1-fr);                          // bare forehead in front, low at the back/sides
-    let m = ss(hairline, hairline+0.13, d.y) * (1 - fr*G(d.y,-0.25,.45));
+    const d=dir[i], fr=Math.max(0,d.z), back=Math.max(0,-d.z), sideAbs=Math.abs(d.x), up=Math.max(0,d.y);
+
+    // Low/short sides: push the hairline upward around temples/above ears, while preserving top coverage.
+    const sideFade = ss(0.42,0.88,sideAbs) * ss(-0.25,0.46,0.46-d.y);
+    const napeFade = back * ss(-0.55,-0.10,-d.y) * 0.10;
+
+    // Uneven forward fringe: broken small clumps. Higher threshold = less hair / more forehead exposed.
+    const clumpWave = Math.sin(d.x*11.0+0.8)*0.030 + Math.sin(d.x*23.0+2.1)*0.020 + Math.sin(d.x*43.0-0.6)*0.012;
+    const asym = d.x*0.035;
+    const frontLift = fr*(0.200 + clumpWave + asym);                // irregular front edge, not one clean arc
+    const baseLine = -0.02 + frontLift + sideFade*0.42 + napeFade;
+    let m = ss(baseLine, baseLine+0.065, d.y);
+
     tp.fromBufferAttribute(hpp,i); tn.fromBufferAttribute(sn,i);
-    const noise = 1 + Math.sin(d.x*23)*Math.sin(d.y*18+1)*Math.sin(d.z*15)*.22;
-    tp.addScaledVector(tn, m>0.03 ? .014*noise*m : -.006);          // proud where there's hair, tucked inside elsewhere
+    const sideThin = THREE.MathUtils.clamp(1 - sideFade*0.92 - sideAbs*0.08, 0.15, 1);
+    const strandNoise = 1 + Math.sin(d.x*19+d.y*12)*0.08 + Math.sin(d.x*37+d.z*18)*0.06;
+
+    if(m > 0.025){
+      // Thin crop hugging skull; less offset on sides so it reads faded, not helmet-thick.
+      const offset = 0.0065 * strandNoise * m * sideThin;
+      tp.addScaledVector(tn, offset);
+
+      // Brush the front fringe forward/down in uneven clumps while keeping the crown low.
+      const frontAmount = m*fr*fr*sideThin;
+      const clump = 0.55 + 0.45*Math.sin(d.x*17.0+1.1)*Math.sin(d.x*6.0-0.3);
+      tp.z += frontAmount*(0.024 + 0.006*Math.sin(d.x*15+d.y*5));
+      tp.y -= frontAmount*(0.020*(0.45+0.75*clump));
+      tp.x += m*sideThin*(0.007*Math.sin(d.y*9+d.z*4) + 0.004*Math.sin(d.x*27));
+    } else {
+      // Sink non-hair vertices just under the head surface, so there is no visible hair shell below the fade.
+      tp.addScaledVector(tn, -0.006);
+    }
     hpp.setXYZ(i, tp.x, tp.y, tp.z);
   }
   hairGeo.computeVertexNormals();
   grp.add(new THREE.Mesh(hairGeo, hair));
-  // ---- eyes set into the sockets ----
+
+  // ---- eyes: smaller almond eyes sitting inside sockets, not big pasted circles ----
   for(const sx of [-1,1]){
-    const eye=new THREE.Mesh(new THREE.SphereGeometry(.027,14,10), eyeMat);  // dark almond eye — sized to read at distance
-    eye.position.set(sx*.056,.006,RZ*.9); eye.scale.set(1.4,1.05,.5); grp.add(eye);
-    const lid=new THREE.Mesh(new THREE.SphereGeometry(.034,14,8,0,Math.PI*2,0,Math.PI*.5), skin); // upper eyelid hood
-    lid.scale.set(1.3,.9,.7); lid.position.set(sx*.056,.02,RZ*.88); lid.rotation.x=-.5; grp.add(lid);
-    const cat=new THREE.Mesh(new THREE.SphereGeometry(.005,6,6), M.white);   // catchlight gives it life
-    cat.position.set(sx*.056+.008,.012,RZ*.9+.016); grp.add(cat);
-    const brow=new THREE.Mesh(new THREE.BoxGeometry(.066,.022,.024), eyeMat); // strong dark brow (reads as a face from far)
-    brow.position.set(sx*.058,.056,RZ*.86); brow.rotation.set(.22,0,sx*.08); grp.add(brow);
-    const blush=new THREE.Mesh(new THREE.SphereGeometry(.05,12,10), M.blush);  // faint cheek warmth
-    blush.scale.set(1,.7,.4); blush.position.set(sx*.075,-.05,RZ*.82); grp.add(blush);
+    const sclera=new THREE.Mesh(new THREE.SphereGeometry(.020,16,10), M.eyeWhite);
+    sclera.position.set(sx*.050,-.002,RZ*.875); sclera.scale.set(1.18,.48,.34); grp.add(sclera);
+    const iris=new THREE.Mesh(new THREE.SphereGeometry(.0095,12,8), eyeMat);
+    iris.position.set(sx*.052,-.003,RZ*.900); iris.scale.set(1,.72,.38); grp.add(iris);
+    const lid=new THREE.Mesh(new THREE.SphereGeometry(.023,12,8,0,Math.PI*2,0,Math.PI*.5), skin);
+    lid.scale.set(1.25,.30,.45); lid.position.set(sx*.050,.012,RZ*.890); lid.rotation.x=-.12; grp.add(lid);
+    const brow=new THREE.Mesh(new THREE.BoxGeometry(.036,.006,.010), hair);
+    brow.position.set(sx*.050,.041,RZ*.845); brow.rotation.set(.08,0,sx*.03); grp.add(brow);
   }
-  // ---- sculpted ears (helix + inner concha shadow) ----
+
+  // ---- ears: thin, tucked, correctly placed ----
+  const earInner = new THREE.MeshStandardMaterial({color:0xcaa07e, roughness:.6});
   for(const sx of [-1,1]){
-    const ear=new THREE.Mesh(new THREE.SphereGeometry(.043,14,12), skin);
-    ear.scale.set(.3,1.05,.72); ear.position.set(sx*RX*.99,-.012,-.004); ear.rotation.y=sx*-.32; grp.add(ear);
-    const concha=new THREE.Mesh(new THREE.SphereGeometry(.024,10,8), eyeMat);
-    concha.scale.set(.34,.85,.5); concha.position.set(sx*(RX*.99+sx*.004),-.016,.012); concha.rotation.y=sx*-.32;
-    concha.material = new THREE.MeshStandardMaterial({color:0x9c6f4e, roughness:.6}); grp.add(concha);
+    const ear=new THREE.Group();
+    ear.position.set(sx*RX*.90,-.010,-.020); ear.rotation.set(0,sx*-.22,sx*.08); grp.add(ear);
+    const pinna=new THREE.Mesh(new THREE.SphereGeometry(.047,16,12), skin);
+    pinna.scale.set(.14,.92,.52); ear.add(pinna);
+    const helix=new THREE.Mesh(new THREE.SphereGeometry(.045,14,10), skin);
+    helix.scale.set(.075,.78,.30); helix.position.set(sx*.009,.006,-.008); ear.add(helix);
+    const concha=new THREE.Mesh(new THREE.SphereGeometry(.026,12,8), earInner);
+    concha.scale.set(.10,.46,.30); concha.position.set(sx*-.003,-.003,.010); ear.add(concha);
+    const lobe=new THREE.Mesh(new THREE.SphereGeometry(.017,10,8), skin);
+    lobe.scale.set(.28,.42,.48); lobe.position.set(sx*-.002,-.040,.004); ear.add(lobe);
   }
-  // ---- nostrils + mouth ----
+
+  // ---- nostrils + subtle mouth: reduced graphic/doll effect ----
   for(const sx of [-1,1]){
-    const n=new THREE.Mesh(new THREE.SphereGeometry(.009,8,6), eyeMat);
-    n.position.set(sx*.018,-.074,RZ*.84); n.scale.set(1,.7,1); grp.add(n);
+    const n=new THREE.Mesh(new THREE.SphereGeometry(.0055,8,6), eyeMat);
+    n.position.set(sx*.014,-.071,RZ*.855); n.scale.set(1,.65,1); grp.add(n);
   }
-  // lips — an upper and a fuller lower lip with a mouth line between (reads as a mouth, not a smile arc)
-  const upperLip=new THREE.Mesh(new THREE.SphereGeometry(.03,12,8), M.lip);
-  upperLip.scale.set(1.5,.42,.5); upperLip.position.set(0,-.082,RZ*.85); grp.add(upperLip);
-  const lowerLip=new THREE.Mesh(new THREE.SphereGeometry(.03,12,8), M.lip);
-  lowerLip.scale.set(1.35,.5,.5); lowerLip.position.set(0,-.098,RZ*.85); grp.add(lowerLip);
-  const mouthLine=new THREE.Mesh(new THREE.BoxGeometry(.058,.006,.01), M.mouth);
-  mouthLine.position.set(0,-.09,RZ*.87); grp.add(mouthLine);
+  const softLip = M.lip.clone(); softLip.color.set(0x9d6158); softLip.roughness=.72;
+  const lip=new THREE.Mesh(new THREE.SphereGeometry(.021,12,8), softLip);
+  lip.scale.set(1.45,.28,.34); lip.position.set(0,-.084,RZ*.875); grp.add(lip);
+  const mouthLine=new THREE.Mesh(new THREE.BoxGeometry(.038,.004,.008), M.mouth);
+  mouthLine.position.set(0,-.083,RZ*.890); grp.add(mouthLine);
   return grp;
 }
 // Loft ONE continuous surface through a stack of cross-sections (ordered bottom→top). A single
@@ -1289,22 +1370,22 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, 
     const hip = new THREE.Group();
     hip.position.set(side*.125, 1.0, 0);
     hip.add(loft([
-      {y:-.62,rx:.066,rz:.07},{y:-.56,rx:.083,rz:.087,lobes:[{ang:FWD,amp:.06,w:.7}]},   // soft knee (no sharp cap)
-      {y:-.46,rx:.09,rz:.089,lobes:[{ang:FWD,amp:.09,w:.85}]},
-      {y:-.30,rx:.10,rz:.098,lobes:[{ang:FWD,amp:.15,w:.9},{ang:BACK,amp:.08,w:.9}]},      // quad / hamstring
-      {y:-.14,rx:.115,rz:.107,lobes:[{ang:FWD,amp:.1,w:.95},{ang:BACK,amp:.13,w:.85}]},
-      {y:-.02,rx:.12,rz:.113,lobes:[{ang:BACK,amp:.1,w:.9}]},{y:.06,rx:.108,rz:.10}
-    ], legs, 'none'));                                                    // thigh
+      {y:-.62,rx:.051,rz:.055},{y:-.56,rx:.061,rz:.065,lobes:[{ang:FWD,amp:.035,w:.7}]},  // soft knee (no sharp cap)
+      {y:-.46,rx:.066,rz:.065,lobes:[{ang:FWD,amp:.05,w:.85}]},
+      {y:-.30,rx:.080,rz:.078,lobes:[{ang:FWD,amp:.09,w:.9},{ang:BACK,amp:.06,w:.9}]},     // lean quad / hamstring (slim teen legs)
+      {y:-.14,rx:.091,rz:.086,lobes:[{ang:FWD,amp:.07,w:.95},{ang:BACK,amp:.08,w:.85}]},
+      {y:-.02,rx:.096,rz:.090,lobes:[{ang:BACK,amp:.07,w:.9}]},{y:.06,rx:.086,rz:.081}
+    ], legs, 'none'));                                                    // thigh (slim)
     const knee = new THREE.Group(); knee.position.y = -.56; hip.add(knee);
     knee.add(loft([
-      {y:-.56,rx:.058,rz:.06},{y:-.48,rx:.062,rz:.066},                                    // ankle — slightly fuller, smoother into the boot
-      {y:-.30,rx:.066,rz:.074,lobes:[{ang:BACK,amp:.12,w:.8}]},
-      {y:-.17,rx:.072,rz:.084,lobes:[{ang:BACK,amp:.26,w:.7}]},                            // calf belly (softened)
-      {y:-.05,rx:.083,rz:.088,lobes:[{ang:BACK,amp:.14,w:.85},{ang:FWD,amp:.07,w:.6}]},     // upper calf + soft knee
-      {y:.06,rx:.084,rz:.087,lobes:[{ang:FWD,amp:.06,w:.6}]}
+      {y:-.56,rx:.044,rz:.046},{y:-.48,rx:.048,rz:.051},                                    // slim ankle, smooth into the boot
+      {y:-.30,rx:.051,rz:.057,lobes:[{ang:BACK,amp:.08,w:.8}]},
+      {y:-.17,rx:.055,rz:.065,lobes:[{ang:BACK,amp:.17,w:.7}]},                            // lean calf belly
+      {y:-.05,rx:.064,rz:.069,lobes:[{ang:BACK,amp:.1,w:.85},{ang:FWD,amp:.05,w:.6}]},      // upper calf + soft knee
+      {y:.06,rx:.065,rz:.068,lobes:[{ang:FWD,amp:.04,w:.6}]}
     ], legs, 'none'));                                                    // calf → ankle (overlaps the thigh at the knee)
     const ankle = new THREE.Group(); ankle.position.y = -.48; knee.add(ankle);
-    const boot = makeBoot(boots); ankle.add(boot);
+    const boot = makeBoot(boots); boot.scale.set(.89,.88,1.0); ankle.add(boot);   // slimmer, less bulky (matches the lean legs)
     hip.userData.knee = knee; hip.userData.ankle = ankle; hip.userData.boot = boot;
     g.add(hip);
     legsP[side<0?'L':'R'] = hip;
@@ -1313,10 +1394,12 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, 
   // shorts — a single flared skin wrapping the pelvis: hip width, glutes at the back, a hint of the
   // iliac crests at the front, and a small inseam pinch so the two legs read as they emerge.
   g.add(loft([
-    {y:.80,rx:.21,rz:.165,lobes:[{ang:FWD,amp:-.1,w:.45},{ang:BACK,amp:-.1,w:.45}]},
-    {y:.90,rx:.252,rz:.185,lobes:[{ang:BACK,amp:.14,w:.8}]},
-    {y:.99,rx:.272,rz:.19,lobes:[{ang:BACK,amp:.12,w:.8},{ang:.7,amp:.07,w:.4},{ang:Math.PI-.7,amp:.07,w:.4}]},
-    {y:1.05,rx:.2,rz:.156}
+    {y:.64,rx:.214,rz:.158,lobes:[{ang:FWD,amp:-.03,w:.4},{ang:BACK,amp:-.02,w:.4}]},   // loose hem hanging over the thigh — drapes straight, not a bulge
+    {y:.73,rx:.222,rz:.16,lobes:[{ang:FWD,amp:-.025,w:.45}]},                            // baggy drape, hangs clear of the slim thigh
+    {y:.82,rx:.226,rz:.158,lobes:[{ang:BACK,amp:.05,w:.7}]},                             // light seat (not a bulbous block)
+    {y:.90,rx:.232,rz:.162,lobes:[{ang:BACK,amp:.07,w:.8}]},                             // hip
+    {y:.99,rx:.234,rz:.16,lobes:[{ang:BACK,amp:.055,w:.8},{ang:.7,amp:.05,w:.4},{ang:Math.PI-.7,amp:.05,w:.4}]},  // waist — slimmer, shallower (no diaper box)
+    {y:1.05,rx:.182,rz:.142}                                                             // tucks under the shirt
   ], shorts, 'none'));
 
   // waist/spine pivot — the whole upper body (trunk, arms, head) bends here
@@ -1325,16 +1408,18 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, 
   // torso — a child's trunk: ribcage → abdomen → pelvis stacked with only a GENTLE taper (no
   // bodybuilder inverted-triangle). The chest is barely wider than the waist and the lower trunk
   // carries a bit more volume; in side view the chest still projects slightly forward over the belly.
+  // SLIM lean-child trunk: a thin ribcage and small waist with almost no taper (no V), a lightly
+  // fuller lower trunk, and narrow sloping shoulders.
   waist.add(loft([
-    {y:-.05,rx:.222,rz:.172,fold:.02},{y:.06,rx:.218,rz:.166,cz:-.006},          // fuller lower trunk (pelvis / lower abs)
-    {y:.18,rx:.207,rz:.158,cz:-.01,fold:.02},                                    // waist — only a soft pinch
-    {y:.32,rx:.212,rz:.162,cz:-.012},{y:.45,rx:.222,rz:.172,cz:0},               // abdomen → lower ribs
-    {y:.57,rx:.232,rz:.184,cz:.024,lobes:[{ang:FWD-.5,amp:.07,w:.42},{ang:FWD+.5,amp:.07,w:.42}]}, // chest, gentle pecs
-    {y:.66,rx:.233,rz:.176,cz:.014,fold:.02},                                    // upper chest — barely wider than the waist
-    {y:.72,rx:.215,rz:.152},{y:.79,rx:.152,rz:.134},{y:.86,rx:.1,rz:.105}        // modest shoulders → neck base
+    {y:-.05,rx:.182,rz:.145,fold:.015},{y:.06,rx:.179,rz:.141,cz:-.006},         // slimmer lower trunk
+    {y:.18,rx:.167,rz:.133,cz:-.008,fold:.015},                                  // small waist
+    {y:.32,rx:.173,rz:.137,cz:-.01},{y:.45,rx:.182,rz:.145,cz:0},                // slim ribcage
+    {y:.57,rx:.181,rz:.149,cz:.014,lobes:[{ang:FWD-.5,amp:.03,w:.42},{ang:FWD+.5,amp:.03,w:.42}]}, // slimmer flat child chest
+    {y:.64,rx:.178,rz:.143,cz:.008,fold:.012},                                   // upper chest ≈ waist (no V)
+    {y:.71,rx:.146,rz:.124},{y:.76,rx:.124,rz:.114},{y:.81,rx:.1,rz:.1},{y:.86,rx:.082,rz:.088} // narrow gentle slope (no shoulder shelf/wing)
   ], shirt, 'bottom'));
   // crew collar — a raised ribbed ring at the neckline (jersey detail)
-  const collar=new THREE.Mesh(new THREE.TorusGeometry(.092,.02,8,22), shirt);
+  const collar=new THREE.Mesh(new THREE.TorusGeometry(.08,.018,8,22), shirt);
   collar.position.set(0,.83,0); collar.rotation.x=Math.PI/2; collar.scale.set(1,1,.92); waist.add(collar);
 
   // arms — one continuous skin carrying anatomy: a rounded deltoid that merges into the trunk, a bicep
@@ -1344,42 +1429,42 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, 
   for(const side of [-1,1]){
     const OUT = side>0 ? 0 : Math.PI;                    // outward (away from the torso) for this arm
     const sh = new THREE.Group();
-    sh.position.set(side*.245, .62, 0);                                 // shoulders ~20% narrower (athletic child, not adult)
+    sh.position.set(side*.19, .62, 0);                                  // narrower child shoulders
     sh.add(loft([
-      {y:-.44,rx:.057,rz:.06,lobes:[{ang:BACK,amp:.14,w:.5}]},                  // olecranon (point of elbow)
-      {y:-.40,rx:.063,rz:.069,lobes:[{ang:BACK,amp:.12,w:.5}]},
-      {y:-.28,rx:.071,rz:.078,lobes:[{ang:FWD,amp:.12,w:.7},{ang:BACK,amp:.1,w:.8}]},
-      {y:-.16,rx:.082,rz:.089,lobes:[{ang:FWD,amp:.16,w:.65},{ang:BACK,amp:.12,w:.8}]},  // bicep front / tricep back
-      {y:-.04,rx:.092,rz:.092,lobes:[{ang:OUT,amp:.07,w:.7}]},                  // deltoid (slimmer)
-      {y:.06,rx:.096,rz:.092,lobes:[{ang:OUT,amp:.05,w:.85}]}
-    ], shirt, 'none'));                                                  // upper arm
-    const elbow = new THREE.Group(); elbow.position.y = -.40; sh.add(elbow);
+      {y:-.44,rx:.05,rz:.053,lobes:[{ang:BACK,amp:.1,w:.5}]},                   // olecranon (point of elbow)
+      {y:-.40,rx:.055,rz:.06,lobes:[{ang:BACK,amp:.09,w:.5}]},
+      {y:-.28,rx:.06,rz:.067,lobes:[{ang:FWD,amp:.08,w:.7},{ang:BACK,amp:.07,w:.8}]},
+      {y:-.16,rx:.068,rz:.075,lobes:[{ang:FWD,amp:.1,w:.65},{ang:BACK,amp:.08,w:.8}]},   // lean bicep / tricep (little mass)
+      {y:-.04,rx:.075,rz:.076,lobes:[{ang:OUT,amp:.015,w:.85}]},                // soft small deltoid (no shelf/wing)
+      {y:.06,rx:.078,rz:.077,lobes:[{ang:OUT,amp:.008,w:.95}]}
+    ], shirt, 'none'));                                                  // upper arm (slim)
+    const elbow = new THREE.Group(); elbow.position.y = -.37; sh.add(elbow);   // shorter arm — gloves rest higher
     elbow.add(loft([
-      {y:-.40,rx:.043,rz:.044},{y:-.34,rx:.047,rz:.05},                        // SLIM wrist — a clear taper to the hand
-      {y:-.22,rx:.06,rz:.069,lobes:[{ang:FWD,amp:.1,w:.7}]},
-      {y:-.08,rx:.077,rz:.087,lobes:[{ang:FWD,amp:.18,w:.6},{ang:OUT,amp:.1,w:.6}]},      // full forearm just below the elbow
-      {y:.02,rx:.079,rz:.083,lobes:[{ang:BACK,amp:.14,w:.5}]}                   // olecranon continuation
-    ], shirt, 'none'));                                                  // forearm (overlaps the upper arm at the elbow)
-    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.06,.02,10,20), cuffs);  // sleeve/wrist band
-    cuff.position.y = -.335; cuff.rotation.x = Math.PI/2; elbow.add(cuff);
-    const wrist = new THREE.Group(); wrist.position.y = -.34; elbow.add(wrist);
-    const glove = keeperGloves ? makeGlove(gloves) : makeHand(gloves);
-    glove.position.y = -.05; wrist.add(glove);
+      {y:-.36,rx:.037,rz:.038},{y:-.31,rx:.041,rz:.044},                       // slim wrist (shorter forearm)
+      {y:-.2,rx:.051,rz:.059,lobes:[{ang:FWD,amp:.08,w:.7}]},
+      {y:-.08,rx:.065,rz:.074,lobes:[{ang:FWD,amp:.12,w:.6},{ang:OUT,amp:.07,w:.6}]},    // lean forearm
+      {y:.02,rx:.068,rz:.072,lobes:[{ang:BACK,amp:.1,w:.5}]}                   // olecranon continuation
+    ], shirt, 'none'));                                                  // forearm (slim)
+    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.05,.018,10,20), cuffs);  // sleeve/wrist band
+    cuff.position.y = -.3; cuff.rotation.x = Math.PI/2; elbow.add(cuff);
+    const wrist = new THREE.Group(); wrist.position.y = -.31; elbow.add(wrist);   // shorter forearm
+    const glove = keeperGloves ? makeGlove(gloves, -side) : makeHand(gloves, -side); // -side → thumb toward the body midline
+    glove.position.y = -.05; glove.scale.setScalar(.63); wrist.add(glove);   // visible but not dominant (slimmer hand, not a cartoon paddle)
     sh.rotation.z = side * .1;
     sh.userData.elbow = elbow; sh.userData.wrist = wrist; sh.userData.glove = glove;
     waist.add(sh);
     arms[side<0?'L':'R'] = sh;
   }
 
-  // neck — a THICK, short skin rising from a wide trapezius/clavicle base up under the jaw, so it
-  // supports the head naturally (not a thin tube). Rises out of the shoulders as one form.
+  // neck — slim, youthful and SHORT (≈15% less visible length) so the head sits close to the shoulders.
   waist.add(loft([
-    {y:.74,rx:.135,rz:.12,cz:-.008},{y:.81,rx:.103,rz:.102},{y:.89,rx:.097,rz:.096},{y:.96,rx:.092,rz:.091}
+    {y:.73,rx:.099,rz:.093,cz:-.006},{y:.78,rx:.081,rz:.081},{y:.83,rx:.075,rz:.075},{y:.87,rx:.072,rz:.072}
   ], skin, 'none'));
 
-  // head — a sculpted human head (see buildHead), sitting on top of a short, thick neck.
+  // head — a sculpted human head (see buildHead). Bigger head-to-body ratio (a child, not an adult
+  // athlete), sitting close down on the short neck.
   const head = buildHead(skin, hair, eyeMat);
-  head.position.y = 1.02; head.scale.setScalar(.79); waist.add(head);
+  head.position.y = .905; head.scale.setScalar(.84); waist.add(head);
 
   shadowed(g);
   return {group:g, arms, head, legs:legsP, waist};
@@ -1387,12 +1472,12 @@ function buildFigure({shirt, shorts, boots, gloves, legs=M.black, cuffs=M.volt, 
 
 /* ---------- COLLIN the keeper ---------- */
 /* keeper-exclusive kit materials so recolouring never touches the striker / others */
-const kitBottomsMat    = new THREE.MeshStandardMaterial({color:0x222226, roughness:.4}); // shorts + leggings
+const kitBottomsMat    = new THREE.MeshStandardMaterial({color:0x222226, roughness:.82}); // shorts + leggings (matte fabric — no plastic sheen)
 const kitSockMat       = new THREE.MeshStandardMaterial({color:0x1c1c20, roughness:.45}); // black sock cuffs
-const kitBootStripeMat = new THREE.MeshStandardMaterial({color:0xd63a8f, roughness:.3});  // boot swoosh
+const kitBootStripeMat = new THREE.MeshStandardMaterial({color:0xff5a1f, roughness:.3});  // boot swoosh — Collin's pink Nikes have an ORANGE tick
 /* keeper-exclusive appearance (skin / hair / eyes) so recolouring his face never touches anyone else */
 const keeperSkinMat = new THREE.MeshStandardMaterial({color:0xf6c89a, roughness:.35});
-const keeperHairMat = new THREE.MeshStandardMaterial({color:0x46301d, roughness:.6}); // mid-brown (warm key light would push a lighter brown toward ginger)
+const keeperHairMat = new THREE.MeshStandardMaterial({color:0x533c25, roughness:.6}); // medium warm brown (matches the photo; not too dark)
 const keeperEyeMat  = new THREE.MeshBasicMaterial({color:0x3a2415});
 const keeper = buildFigure({shirt:M.camo, shorts:kitBottomsMat, boots:M.pink, gloves:M.volt, legs:kitBottomsMat, cuffs:M.blue,
                             skin:keeperSkinMat, hair:keeperHairMat, eyeMat:keeperEyeMat, keeperGloves:true});
@@ -1430,14 +1515,68 @@ const keeperHome = new THREE.Vector3(0,0,.6);
   for(const sx of [-1,1]){
     const knee = keeper.legs[sx<0?'L':'R'].userData.knee;
     const ankle = keeper.legs[sx<0?'L':'R'].userData.ankle;
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(.205,.05,.17), kitBootStripeMat);
-    stripe.position.set(0,-.01,.085); ankle.add(stripe);
-    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.10,.026,8,14), kitSockMat);
-    cuff.position.set(0,-.05,0); cuff.rotation.x = Math.PI/2; knee.add(cuff);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(.2,.026,.09), kitBootStripeMat);   // a slim swoosh, not a thick band
+    stripe.position.set(0,-.012,.085); ankle.add(stripe);
+    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.052,.011,8,16), kitSockMat);      // subtle legging band low on the shin (not a chunky knee ring)
+    cuff.position.set(0,-.40,.002); cuff.rotation.x = Math.PI/2; knee.add(cuff);
   }
 
   // (hair is now sculpted onto the scalp inside buildHead — no crown tufts needed)
   shadowed(keeper.group);
+}
+
+/* =====================================================
+   EXTERNAL GLB GOALKEEPER (optional, preferred)
+   Load a real free-to-use GLB/GLTF model as the VISIBLE keeper while the procedural figure
+   stays as the invisible gameplay rig — collisions (`keeperTouchesBall`), dive poses, ball-reach
+   and ground-planting all keep running on `keeper.group / arms / legs / head / waist`. The GLB is
+   added as a CHILD of `keeper.group`, so it inherits the keeper's position, rotation and live
+   height scale (KSCALE) for free. If the model is missing or fails to load, nothing changes and the
+   procedural keeper is used as-is (a clear console warning is logged).
+   Drop the model at KEEPER_GLB_URL — see assets/models/README.md for licensing & how to add one.
+   ===================================================== */
+const USE_GLB_KEEPER     = true;                          // master switch — false forces the procedural keeper
+const KEEPER_GLB_URL     = 'assets/models/collin-keeper.glb';
+const KEEPER_GLB_SCALE   = 1.0;                           // normalise the model to ~FIG_BUILD_H units (parent group then adds KSCALE → real height)
+const KEEPER_GLB_OFFSET  = new THREE.Vector3(0, 0, 0);   // local offset inside keeper.group (e.g. lift feet onto the line)
+const KEEPER_GLB_ROTATION_Y = 0;                         // face +z, same as the procedural rig
+let keeperVisual = null;                                  // the loaded GLB scene (null unless/until it loads)
+
+// hide ONLY the procedural body meshes — never the imported GLB (`__glb` tag), never delete, never
+// touch the joint hierarchy the animation/collision code relies on.
+function hideProceduralKeeperVisuals(k){
+  k.group.traverse(o=>{ if(o.isMesh && !o.userData.__glb) o.visible = false; });
+}
+
+// load a GLB/GLTF keeper. Resolves with the prepared scene (shadows on, scaled/placed/rotated),
+// rejects on any failure (missing file, no GLTFLoader, parse error).
+function loadKeeperModel(url){
+  return new Promise((resolve, reject)=>{
+    if(!THREE.GLTFLoader){ reject(new Error('GLTFLoader script not loaded')); return; }
+    new THREE.GLTFLoader().load(url, gltf=>{
+      const model = gltf.scene || (gltf.scenes && gltf.scenes[0]);
+      if(!model){ reject(new Error('GLB contained no scene')); return; }
+      model.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; o.userData.__glb = true; } });
+      model.scale.setScalar(KEEPER_GLB_SCALE);
+      model.position.copy(KEEPER_GLB_OFFSET);
+      model.rotation.y = KEEPER_GLB_ROTATION_Y;
+      model.userData.__glb = true;
+      resolve(model);
+    }, undefined, err=> reject(err));
+  });
+}
+
+if(USE_GLB_KEEPER){
+  loadKeeperModel(KEEPER_GLB_URL).then(model=>{
+    keeperVisual = model;
+    keeper.group.add(keeperVisual);              // inherit keeper position / rotation / live height scale
+    hideProceduralKeeperVisuals(keeper);         // swap the procedural skin out; the rig keeps posing invisibly
+    console.info('[keeper] external GLB loaded — using model at', KEEPER_GLB_URL,
+                 '(tune KEEPER_GLB_SCALE / _OFFSET / _ROTATION_Y if needed).');
+  }).catch(err=>{
+    console.warn('[keeper] external GLB not loaded ('+(err && err.message || err)+
+                 ') — falling back to the procedural goalkeeper.', KEEPER_GLB_URL);
+  });
 }
 
 /* ---------- striker — "Fortuur Maplezier" kit from the photo ---------- */
@@ -1682,7 +1821,7 @@ const oppHome = oppKeeper.group.position.clone();
   set([M.camo, kitBottomsMat, kitSockMat, M.blue, strShirtMat, strShortsMat, strSockMat, M.greyLeg, M.black, kitBootStripeMat], FABRIC_BUMP, .013, .85);
   set([keeperSkinMat, strikerSkinMat, M.skin], SKIN_BUMP, .004, .62);     // skin — soft sheen
   set([keeperHairMat, strikerHairMat, M.hair], HAIR_BUMP, .02, .9);       // hair — matte strands
-  set([M.volt], FABRIC_BUMP, .009, .74);                                  // glove backhand — knit
+  set([M.volt, gloveAccentMat], FABRIC_BUMP, .009, .74);                  // glove backhand + accent — knit
   set([glovePalmMat], null, 0, .38);                                      // latex grip palm — glossier
   set([M.pink, M.redBoot], LEATHER_BUMP, .006, .48);                      // boot uppers — synthetic leather
   set([bootSoleMat], LEATHER_BUMP, .004, .68);                            // sole — matte rubber
@@ -1791,8 +1930,9 @@ const DATA = {
   scores: {normal:{easy:0,medium:0,hard:0}, sudden:{easy:0,medium:0,hard:0}, goal2goal:0},
   stats:  {easy:blankStat(), medium:blankStat(), hard:blankStat()},
   format: '8v8',     // goal size: '8v8' (5×2 m) | '11v11' (7.32×2.44 m)
-  cosmetics: {shirt:'#1b1b1f', shorts:'#1b1b1f', socks:'#9aa0a8', glove:'#ffd23f', boot:'#ff5fb4', name:'COLLIN',
-              skin:'#f6c89a', hair:'#46301d', eyes:'#3a2415', height:1.60,
+  kitVer: 2,         // bump to reset stale saved kits to the current default (Collin's real kit)
+  cosmetics: {shirt:'#1b1b1f', shorts:'#1b1b1f', socks:'#1b1b1f', glove:'#1f6bff', boot:'#ff5fb4', name:'COLLIN',
+              skin:'#f6c89a', hair:'#3b2417', eyes:'#3a2415', height:1.60,
               striker: {shirt:'#1f6bff', shorts:'#1f6bff', socks:'#1f6bff', boot:'#e23b2e', name:'TIMOTHY', num:'9',
                         skin:'#f6c89a', hair:'#46301d', eyes:'#3a2415', height:1.72}},
 };
@@ -1812,7 +1952,9 @@ function mergeData(raw){ if(!raw) return; let o; try{ o=JSON.parse(raw); }catch(
   if(o.scores){ mergeScores(DATA.scores.normal, o.scores.normal); mergeScores(DATA.scores.sudden, o.scores.sudden);
     if(o.scores.goal2goal!=null) DATA.scores.goal2goal = Math.max(DATA.scores.goal2goal||0, +o.scores.goal2goal||0); }
   if(o.stats) for(const d of DIFFS) mergeStat(DATA.stats[d], o.stats[d]);
-  if(o.cosmetics) for(const k in DATA.cosmetics) if(o.cosmetics[k]!=null) DATA.cosmetics[k]=o.cosmetics[k];
+  // only restore a saved kit if it's from the current kit version — otherwise keep the new default
+  // (Collin's real kit), so a release that changes the canonical look actually shows up.
+  if(o.kitVer === DATA.kitVer && o.cosmetics) for(const k in DATA.cosmetics) if(o.cosmetics[k]!=null) DATA.cosmetics[k]=o.cosmetics[k];
   if(o.format && GOAL_FORMATS[o.format]) DATA.format = o.format;
 }
 function mergeLegacy(raw){ if(!raw) return; try{ const o=JSON.parse(raw);  // v1 flat {easy,medium,hard} → normal mode
@@ -2021,8 +2163,10 @@ const KSTAND = {x:0,y:0,dz:0,roll:0,pitch:0, lean:0, shL:.28,shR:-.28, fL:0,fR:0
 //   · head is craned to the play by the look-at rig. Feet ~shoulder width (widened below).
 // a slight athletic squat: hips dropped & back, thighs angled forward (knees over the feet),
 // shins ~vertical, torso leaning forward over — coiled and ready to spring either way.
-const KREADY = {x:0,y:-.105,dz:.03,roll:0,pitch:.04, lean:.22, wz:0, wy:0, shL:-.08,shR:.08, fL:-.24,fR:-.24,
-                eL:-.6,eR:-.6, kL:.9,kR:.9, hipL:-.5,hipR:-.5};
+// alert goalkeeper ready stance: sunk down on bent knees, hips back, chest leaned forward, elbows
+// bent with the gloves held in front around upper-thigh height, weight on the balls of the feet.
+const KREADY = {x:0,y:-.06,dz:.05,roll:0,pitch:.05, lean:.14, wz:0, wy:0, shL:-.05,shR:.05, fL:-.2,fR:-.2,
+                eL:-.78,eR:-.78, kL:.7,kR:.7, hipL:-.18,hipR:-.18};
 // anticipation gather: deep crouch & coil just before launching off the line
 const KLOAD  = {x:0,y:-.17,dz:.04,roll:0,pitch:.15, lean:.1, wz:0, shL:.42,shR:-.42, fL:-.8,fR:-.8,
                 eL:-2.0,eR:-2.0, kL:1.05,kR:1.05, hipL:.42,hipR:.42};
@@ -2031,6 +2175,10 @@ const KLOAD  = {x:0,y:-.17,dz:.04,roll:0,pitch:.15, lean:.1, wz:0, shL:.42,shR:-
 // toward the chest, forearms rising up to the eyes)
 const KDEJECT = {x:0,y:-.02,dz:0,roll:0,pitch:.08, lean:.26, wz:0, shL:.7,shR:-.7, fL:-.7,fR:-.7,
                 eL:-2.9,eR:-2.9, kL:.16,kR:.16, hipL:0,hipR:0};
+// calm, near-upright stand used ONLY by the #scan turntable, so the whole kit/figure reads cleanly
+// (arms relaxed slightly out, knees barely bent) instead of the hunched ready crouch.
+const KSCAN = {x:0,y:-.03,dz:.05,roll:0,pitch:.02, lean:.06, wz:0, wy:0, shL:-.17,shR:.17, fL:-.16,fR:-.16,
+               eL:-.42,eR:-.42, kL:.34,kR:.34, hipL:-.16,hipR:-.16};
 let kpose = {...KREADY}, ktarget = {...KREADY}, kvel = {};   // kvel: per-joint spring velocity
 let diveT = -1, divePeak = 0, diveAir = .42;                 // dive timeline
 let diveExt = null, diveLand = null;                          // extension + landing keyframes
@@ -2045,10 +2193,40 @@ const RISE_HOLD=.48, RISE_PUSH=.5, RISE_KNEEL=.6;   // per-phase durations (s); 
 // animation can be watched without playing. demoAir satisfies `ballLive` so the dive reaches; demoGetup
 // drives the get-up branch directly, both without touching the real game state machine.
 const DEMO = (location.hash.replace('#','') === 'demo') || /(?:^|[?&])demo(?:&|$)/.test(location.search);
+// full-body scan (open with #scan): a clean, zoomed, slowly-rotating turntable of Collin — no shots,
+// the keeper just stands in his ready pose while the camera orbits, so the whole kit/figure can be
+// photographed from every side. Handy for eyeballing the model (and for reference snapshots).
+const SCAN = (location.hash.replace('#','') === 'scan') || /(?:^|[?&])scan(?:&|$)/.test(location.search);
+let scanReady = false, scanIdle = 0, scanTouched = false;
+const _scanBox = new THREE.Box3(), _scanCtr = new THREE.Vector3();
+function scanLoop(dt){
+  if(!scanReady){
+    ['startOverlay','endOverlay','hud','g2gBar','powerMeter','pad','homeBtn'].forEach(id=>{
+      const e = document.getElementById(id); if(e) e.style.display='none'; });
+    document.querySelectorAll('.overlay').forEach(e=> e.style.display='none');
+    striker.group.visible = false; userZoomed = true; scanReady = true;
+    kpose = {...KSCAN}; ktarget = {...KSCAN}; kvel = {};   // stand him up clean for the scan (not the ready crouch)
+    orbit.theta = orbitGoal.theta = 0;            // start head-on (facing the camera)
+    orbit.phi   = orbitGoal.phi   = 1.42;         // a touch above level
+  }
+  if(pointers.size > 0) scanTouched = true;        // hand the camera over once you grab it
+  _scanBox.setFromObject(keeper.group); _scanBox.getCenter(_scanCtr);
+  camTargetGoal.copy(_scanCtr);                    // keep the body centred as it settles/breathes
+  if(!scanTouched){                                // auto-frame the standing body until you take over (zoom/tilt locked to a clean fit)
+    const h = _scanBox.max.y - _scanBox.min.y;
+    camTarget.copy(_scanCtr);
+    orbit.phi    = orbitGoal.phi    = 1.42;
+    orbit.radius = orbitGoal.radius = h * 1.42;    // zoomed in to fill the frame
+  }
+  // gentle turntable — pauses the moment you grab it, resumes ~2.5 s after you let go,
+  // so you can drag to any angle (and tilt with a vertical drag) and hold it for a photo
+  if(pointers.size > 0) scanIdle = 0; else scanIdle += dt;
+  if(scanIdle > 2.5) orbitGoal.theta += dt * 0.3;
+}
 let demoAir = false, demoGetup = false;
 let keeperLift = 0;                                           // persistent vertical lift
 let stanceSplay = 0;                                          // feet-apart width in the ready stance
-const SET_SPLAY = .23;                                        // feet a touch wider than shoulders when set
+const SET_SPLAY = .2;                                         // feet ~shoulder-width — balanced, knees forward (not bowed)
 const LOAD_T = .11;                                           // anticipation (gather) duration
 const RISE_T = .2;                                            // spring-to-apex duration
 
@@ -2926,8 +3104,8 @@ function applyCosmetics(){
   if(normalizeCosmetics()) saveData();                                           // keep colours within the palette
   try{ M.volt.color.set(DATA.cosmetics.glove); }catch(e){}                       // gloves
   try{ M.pink.color.set(DATA.cosmetics.boot); }catch(e){}                        // boots
-  try{ kitBootStripeMat.color.set(shade(DATA.cosmetics.boot, -.22)); }catch(e){} // boot swoosh
-  try{ kitBottomsMat.color.set(DATA.cosmetics.shorts); }catch(e){}               // shorts + leggings
+  try{ kitBootStripeMat.color.set('#ff5a1f'); }catch(e){}                        // boot swoosh — fixed orange Nike tick (Collin's boots)
+  try{ kitBottomsMat.color.set(shade(DATA.cosmetics.shorts, -.45)); }catch(e){}  // shorts + leggings — kept darker so the matte black reads BLACK (like real leggings), not grey, when the thighs catch the key light
   try{ kitSockMat.color.set(DATA.cosmetics.socks); }catch(e){}                   // socks
   try{ keeperSkinMat.color.set(DATA.cosmetics.skin); }catch(e){}                 // skin
   try{ keeperHairMat.color.set(DATA.cosmetics.hair); }catch(e){}                 // hair
@@ -3230,6 +3408,7 @@ function animate(){
   }
 
   if(DEMO) demoLoop(dt);                                  // showcase loop drives the keeper directly
+  if(SCAN) scanLoop(dt);                                  // full-body turntable scan (#scan)
 
   /* ---- keeper: gather → explosive ballistic dive → land (no hovering) ---- */
   const ballLive = (state==='windup' || state==='strike' || state==='flight') || (DEMO && demoAir);
@@ -3352,7 +3531,7 @@ function animate(){
     keeper.head.rotation.x = lerp(keeper.head.rotation.x, .35, hk);                // head tilts down a little into the hands
     keeper.head.rotation.y = lerp(keeper.head.rotation.y, Math.sin(t*1.4)*.1, hk); // slow disbelieving shake
   } else {
-    keeper.head.rotation.x = ready ? .13 : 0;                 // chin down, eyes on the ball
+    keeper.head.rotation.x = ready ? -.25 : 0;                // head up (counters the forward lean) — eyes level/forward, alert, watching the ball
     keeper.head.rotation.y = ready
       ? THREE.MathUtils.clamp((ball.position.x - keeper.group.position.x)*.18, -.4, .4) + Math.sin(t*.7)*.05
       : THREE.MathUtils.clamp((ball.position.x - keeper.group.position.x)*.34, -.85, .85); // drive chin & face to the ball
@@ -3579,7 +3758,15 @@ ball.position.set(.35,BALL_R,11.6);
 let demoPhase = 'init', demoTimer = 0, demoIdx = 0, demoCap = null, demoShotDur = 1;
 const demoShotFrom = new THREE.Vector3(), demoShotTo = new THREE.Vector3();
 const DEMO_ZONES = [3, 5, 0, 2, 4, 1];   // bottom-L, bottom-R, top-L, top-R, smother, high — variety
+const DEMO_SCAN_DUR = 12;                 // full-body turntable: one slow rotation, then the dives
+const _demoCtr = new THREE.Vector3();
 function demoCaption(txt){ if(demoCap) demoCap.textContent = txt; }
+function demoEnterScan(){
+  kpose = {...KSCAN}; ktarget = {...KSCAN}; kvel = {};   // stand up clean for the turntable
+  committed = false; diveT = -1; riseT = -1; demoAir = false; demoGetup = false; keeperConceded = false;
+  orbit.theta = orbitGoal.theta = 0;                      // start head-on
+  demoCaption('Collin'); demoPhase = 'scan'; demoTimer = DEMO_SCAN_DUR;
+}
 function setupDemoScene(){
   // clear the menus & match HUD for an unobstructed view
   ['startOverlay','endOverlay','hud','g2gBar','powerMeter','pad','homeBtn'].forEach(id=>{
@@ -3602,12 +3789,26 @@ function setupDemoScene(){
   committed = false; diveT = -1; riseT = -1; keeperConceded = false;
 }
 function demoLoop(dt){
-  if(demoPhase === 'init'){ setupDemoScene(); demoPhase = 'ready'; demoTimer = 1.0; }
+  if(demoPhase === 'init'){ setupDemoScene(); demoEnterScan(); }
   demoTimer -= dt;
   // gently follow the keeper toward the corner while he's down, then recentre
-  camTargetGoal.x = (demoGetup || diveT >= 0) ? (kpose.x || 0) * 0.5 : 0;
+  if(demoPhase !== 'scan') camTargetGoal.x = (demoGetup || diveT >= 0) ? (kpose.x || 0) * 0.5 : 0;
 
-  if(demoPhase === 'ready'){
+  if(demoPhase === 'scan'){
+    // a clean, zoomed full-body turntable of Collin standing upright, then on to the dives
+    ktarget = KSCAN;
+    keeper.head.getWorldPosition(_demoCtr); _demoCtr.y -= 0.72;           // aim mid-body (head minus ~half height)
+    camTargetGoal.copy(_demoCtr); camTarget.copy(_demoCtr);
+    orbit.phi = orbitGoal.phi = 1.4;
+    orbit.radius = orbitGoal.radius = 2.6;                                // zoomed in to fill the frame with the figure
+    orbitGoal.theta += dt * (Math.PI*2 / DEMO_SCAN_DUR); orbit.theta = orbitGoal.theta;  // one slow full turn
+    if(demoTimer <= 0){
+      kpose = {...KREADY}; ktarget = {...KREADY}; kvel = {};            // back to the ready stance
+      camTargetGoal.set(0,1.0,0.6);                                     // ease back to the cinematic goal framing
+      orbitGoal.theta = 0.62; orbitGoal.phi = 1.22; orbitGoal.radius = 9.2;
+      demoCaption(''); demoPhase = 'ready'; demoTimer = 1.6;
+    }
+  } else if(demoPhase === 'ready'){
     committed = false; demoAir = false; demoGetup = false;
     if(demoTimer <= 0){
       const zone = DEMO_ZONES[demoIdx % DEMO_ZONES.length];
@@ -3642,7 +3843,8 @@ function demoLoop(dt){
       demoGetup = false; keeperConceded = false; riseT = -1; diveT = -1;
       ktarget = {...KREADY}; committed = false;
       demoIdx++; demoCaption('');
-      demoPhase = 'ready'; demoTimer = 1.2;
+      if(demoIdx % DEMO_ZONES.length === 0){ demoEnterScan(); }   // after all six dives → full-body scan
+      else { demoPhase = 'ready'; demoTimer = 1.2; }
     }
   }
 }

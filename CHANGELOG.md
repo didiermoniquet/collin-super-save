@@ -7,6 +7,99 @@ The version shown on the start/end screens (and `window.GAME_VERSION` /
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.18.8] — 2026-06-20
+
+A long pass to make Collin look like the real reference photo, then a pivot to a **GLB/GLTF
+character workflow** (the procedural sculpt had plateaued for a believable human child).
+
+### Added
+- **External GLB goalkeeper workflow (preferred, with procedural fallback):** the game now tries to load a real free-to-use model at `assets/models/collin-keeper.glb` and uses it as the visible keeper; the procedural figure stays as the **invisible gameplay rig** (collisions, dive poses, ball-reach, ground-planting still run on it). If the model is missing or fails to load, it **falls back to the procedural keeper** with a clear console warning — nothing else changes. Added `GLTFLoader` (non-module, three r128), `loadKeeperModel()` / `hideProceduralKeeperVisuals()`, and tunable `USE_GLB_KEEPER` / `KEEPER_GLB_*` constants. Licensing & "how to add a model" documented in `assets/models/README.md`. *(No model is shipped yet — that's a TODO pending a chosen CC0/CC-BY asset.)*
+- **Scan mode (`#scan`):** a zoomed, slowly-rotating **full-body turntable** of Collin standing upright — for inspecting / photographing the model from every angle. It auto-spins but pauses while you drag (resumes ~2.5 s after release), and a vertical drag tilts the view. Gated behind the flag; normal play untouched.
+- **Demo opens on the full-body scan:** `#demo` now begins with the zoomed turntable, then runs the dive → concede → get-up loop through all six zones (the scan returns after every six dives).
+
+### Changed
+- **Proportions tuned to the photo:** the **head is larger** (scale .71 → .84), the **feet are shorter** (the boot's toe, instep and sole were foreshortened so they no longer project forward like flippers — group origin unchanged, so save-collision sampling is unaffected).
+- **Natural oval head:** the skull was egg-shaped; it's now a believable oval — wider, a bit longer front-to-back (proper occiput), not over-tall in the forehead.
+- **Hair matched to his actual cut** (from the head-shot): a **textured crop with a forward fringe and a high skin fade** — the sides/nape fade short, the top stays full, and the front is brushed *forward so the fringe falls over the brow* (an earlier pass had it wrongly swept *up* into a quiff). Jagged, textured fringe edge; warm medium-brown colour.
+- **Neck reworked:** fuller and shorter (was a thin, long stalk after the previous slim-down) so the head sits naturally on the shoulders.
+- **Lean legs:** the thighs and calves were too chunky/muscular — slimmed ~15–20% to match Collin's lean teen legs, and the **protruding dark ring at the knee is gone** (it's now a subtle band low on the shin, like the real leggings). The boot's orange band is slimmed to a tidy swoosh rather than a thick stripe.
+- **More alert face:** eyes opened up a touch (bigger, lighter upper lid so they don't droop), brows raised and levelled — reads focused rather than sleepy.
+- **Head re-sculpted into a believable child's head (3D shape, not just texture):** the skull was a smooth egg with painted-on features. Now it has real facial planes — a **forehead plane** sloping to the brow, **recessed eye sockets** with a soft brow, a **nose** that projects at the right height (bridge → rounded tip → nostril base), a slightly **recessed mouth** with soft lips, a **small chin**, soft cheeks and a **narrower child jaw**. The **eyes** are now a pale eyeball + small iris set into the socket (they read as eyes, not dark holes), and the **ears** are rebuilt with a pinna, helix rim, concha bowl and lobe, placed correctly (top ≈ brow, bottom ≈ nose).
+- **Skull FORM (not a uniform ellipsoid):** the base head is no longer a sphere/egg — width and depth vary with height so it reads as a real skull from every angle: an **elongated oval from the top** (longer front-to-back than side-to-side), **widest at the parietal** and narrower at the temples/crown from the front, a **gentle controlled occiput** that **tapers into the neck** at the back.
+- **Lean youth head (skull-shape pass):** reworked the head to a believable lean 12-year-old: trimmed the over-bulbous cranium and the **ballooned back-of-head**, removed the **swollen-cheek blobs** (and the rosy blush) for soft broad cheek fullness, **narrowed the lower face/jaw** to a small rounded chin, kept a clear **forehead → nose → lips → chin** side profile, and **slimmed/tucked the ears**. Hair reworked to **short faded sides + a broad messy fringe** that follows the skull (no peak, no widow's-peak V, no bowl/helmet cap).
+- **Athletic ready stance (reworked):** the keeper was sitting into a deep squat — hips way back, knees over-bent, robot arms reaching forward. Now it's a real ready position: **knee bend reduced ~20%, hips raised and brought forward, a slight (not hunched) forward lean, head up watching the ball,** and the **arms hang closer to the torso** with the gloves resting in front of the thighs. The dive keyframes override these, so the reach is unchanged.
+- **Shorts drape like fabric (not a "diaper" block):** the pelvis was a bulbous grey box — reslimmed and shallowed so the shorts hang as loose cloth over the upper thigh.
+- **Slimmer gloves & boots:** the gloves are ~10% smaller with thinner fingers and a flatter, more hand-shaped backhand (less cartoon paddle); the boots are narrowed/de-bulked to suit the lean legs.
+- **Hair flattened & messier:** lower crown that hugs the skull (no helmet dome or round lumps), with an asymmetric, irregular fringe — less sculpted.
+- **Clearer side profile:** stronger nose bridge/tip and a small natural chin so the face reads as a child's head from the side, not a blank mask.
+- **Orange Nike tick** on the pink boots (was a dark-pink swoosh), matching his real boots.
+- **Cheeks de-rosied** — the blush is much fainter, suiting the lean-teen face.
+
+### Fixed
+- **All-black legs to match the real Collin:** the leggings + shorts were reading **mid-grey** because the upward-facing thighs caught the key light and lifted the near-black diffuse colour. They now render the kit's matte black properly — the leggings track the chosen shorts colour but a shade darker, and the fabric is fully matte (no plastic sheen) — so the keeper is black head-to-toe like the reference photo, not grey-trousered.
+
+## [1.18.6] — 2026-06-19
+
+### Fixed
+- **Hair** no longer reads as stuck-on lumps — removed the separate crown clump meshes and made it a **low-profile crop that hugs the skull** (faded sides, fine messy texture, irregular hairline).
+- **Head/gaze** lifted (~15°) so the keeper looks forward at the field, alert — not staring at the ground.
+- **Shoulder/jersey cape** removed: the dark triangular "wings" are gone — the upper arms hang closer (elbows in), the trunk shoulders are narrower with a gentle continuous slope, and the deltoid is flattened.
+- **Face** softened further toward a youth face: smaller low-contrast eyes, barely-there lid, very faint brows, smaller nostrils, a subtle mouth (no painted lips).
+
+### Changed
+- **Less crouched, more natural ready stance:** knee bend reduced ~18%, body raised, feet ~shoulder-width (no bow), gloves brought closer in front of the thighs.
+- **Gloves another ~9% smaller** — visible but no longer the dominant feature.
+- Height, leg length, boot size and kit colours unchanged.
+
+## [1.18.5] — 2026-06-19
+
+### Changed
+- Precise youth-proportion corrections (no redesign): **head +12%** (childlike head-to-body ratio), **neck ~15% shorter** (head sits close on the shoulders), **shoulders ~7% narrower** with a softer slope, **torso slimmed** ~6%, **gloves ~13% smaller** (no longer dominate the body), small **thigh volume** kept, **hair** pushed further off the helmet (harder side fade, messier asymmetric fringe), **face** a touch longer/narrower and softer.
+- **More alert ready stance:** wider planted feet, knees bent, hips back, chest forward, gloves held apart in front of the thighs, and the **head lifted** (eyes up) instead of staring at the ground. Height, leg length, boot size and kit colours unchanged.
+
+## [1.18.4] — 2026-06-19
+
+### Changed
+- **Head ~10% smaller** (lighter in the silhouette, less dominant) and sitting a touch lower.
+- **Softer, less "mask" face**: smaller low-contrast eyes (no graphic catchlight), fainter brows, barely-there eye sockets, a softer natural nose — reads naturally at distance.
+- **Hair off the bowl/dome**: stronger quadratic **side fade**, thinned temples, an irregular asymmetric fringe, plus **scattered crown clumps** for an uneven, asymmetric silhouette.
+- **Softer shoulders**: extra rings for a gentle neck→shoulder slope and a flatter deltoid (no shelf/sharp corner). Width unchanged.
+- **More alert ready stance**: deeper knee bend, hips further back, more forward chest lean, gloves held in front at thigh height — ready to react.
+- Torso width, shoulder width, leg length, arm length and glove size left as-is (as requested).
+
+## [1.18.3] — 2026-06-19
+
+### Changed
+- **Alert goalkeeper ready stance** (was standing like a mannequin): the idle pose is now a real set position — **knees bent, hips back, chest leaned forward, elbows bent with the gloves held in front around upper-thigh height**, on the balls of the feet, ready to dive.
+- **Shorter neck** so the head sits close to the shoulders (no long tube).
+- **Slightly shorter arms** — the gloves rest at upper-thigh height instead of hanging low.
+- **More thigh volume** (kept legs long) — no stick legs.
+- **Head longer & narrower** — less round baby-face.
+- **Hair reworked off the bowl** into a faded crop: short thinned temples (side fade), a volumized irregular/asymmetric fringe, clumped top.
+- Body girth and shoulder width left unchanged (as requested).
+
+## [1.18.2] — 2026-06-19
+
+### Changed
+- **Reproportioned to a lean ~12-year-old** (per the reference photo) — slimmed across the board, no more adult-athlete/hero build:
+  - **Head ~11% smaller** (scale .79 → .70).
+  - **Shoulders narrower** (arm root .245 → .205) and **sloping** — the gentle-V is gone.
+  - **Neck noticeably thinner** and youthful.
+  - **Torso slimmer**: thin ribcage, small waist, near-straight taper (chest ≈ waist), reduced pecs.
+  - **Arms much leaner** (thinner upper arm/forearm, lighter muscle relief, slim wrist); **legs slimmer** (leaner quads/calves).
+  - **Gloves ~13% smaller** so they sit on believable hands.
+  - **Hair** reworked from a smooth dome into an irregular crop — **side fade, wavy/asymmetric fringe, clumped volume**.
+  - **Softer face**: gentler jaw/cheeks, subtle hair-coloured brows (no exaggerated bone structure).
+
+## [1.18.1] — 2026-06-19
+
+### Changed
+- **The keeper now wears Collin's real kit by default** (from the reference photo): dark charcoal **"uhlsport COLLIN" jersey**, **black shorts + black full-length leggings + black socks**, **pink boots**, **fair skin** and **short dark-brown hair**. The gloves are now **two-tone — a blue backhand with volt/lime fingers, thumb and wrist strap** (a fixed accent), matching his blue/lime gloves.
+- A **kit-version gate** (`kitVer`) resets stale saved kits to this new default on load so the canonical look actually shows; **scores and stats are preserved**, and any kit you customise from now on still persists. Bumped the service-worker cache so clients pick it up.
+
+### Fixed
+- **The keeper no longer has two left hands.** Both gloves were built from the same mesh with the thumb always on one side; the thumb is now **mirrored per hand** (pointing toward the body midline), so they're a proper left/right pair. Same fix applied to outfield players' bare hands.
+
 ## [1.18.0] — 2026-06-19
 
 ### Changed
